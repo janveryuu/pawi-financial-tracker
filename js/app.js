@@ -474,7 +474,7 @@ function setupPawiChat() {
     loadingMsg.className = 'chat-message ai-message animate-in';
     loadingMsg.style.cssText = 'display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px;';
     loadingMsg.innerHTML = `
-      <img src="pawikan-2.png" alt="Pawi" style="width: 36px; height: 36px; border-radius: 50%; background: var(--accent-green-bg); padding: 4px; border: 1px solid var(--accent-green);">
+      <img src="assets/pawikan-2.png" alt="Pawi" style="width: 36px; height: 36px; border-radius: 50%; background: var(--accent-green-bg); padding: 4px; border: 1px solid var(--accent-green);">
       <div style="background: var(--bg-card); padding: 12px 16px; border-radius: 0 16px 16px 16px; border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: var(--text-sm); line-height: 1.5; max-width: 85%; opacity: 0.7;">
         Thinking... 🐢
       </div>
@@ -534,7 +534,7 @@ function showPawiMessage(htmlContent, body) {
   aiMsg.className = 'chat-message ai-message animate-in';
   aiMsg.style.cssText = 'display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px;';
   aiMsg.innerHTML = `
-    <img src="pawikan-2.png" alt="Pawi" style="width: 36px; height: 36px; border-radius: 50%; background: var(--accent-green-bg); padding: 4px; border: 1px solid var(--accent-green);">
+    <img src="assets/pawikan-2.png" alt="Pawi" style="width: 36px; height: 36px; border-radius: 50%; background: var(--accent-green-bg); padding: 4px; border: 1px solid var(--accent-green);">
     <div style="background: var(--bg-card); padding: 12px 16px; border-radius: 0 16px 16px 16px; border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: var(--text-sm); line-height: 1.5; max-width: 85%;">
       ${htmlContent}
     </div>

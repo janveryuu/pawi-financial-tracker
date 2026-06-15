@@ -39,7 +39,7 @@ export function renderTransactions(container) {
     <!-- Pawikan History Banner -->
     <div class="pawikan-page-banner pawikan-history-banner animate-in" id="history-pawikan-banner">
       <div class="pawikan-banner-content">
-        <img src="pawikan-sleeping.png" alt="Pawi sleeping" class="pawikan-banner-img" id="history-mascot">
+        <img src="assets/pawikan-sleeping.png" alt="Pawi sleeping" class="pawikan-banner-img" id="history-mascot">
         <div class="pawikan-banner-text">
           <div class="pawikan-banner-title">🐢 Pawi's tip...</div>
           <div class="pawikan-banner-msg">Review your spending history regularly. Patterns reveal habits — and habits shape your financial future!</div>
@@ -153,7 +153,7 @@ function renderFilteredTransactions() {
   if (transactions.length === 0) {
     return `
       <div class="empty-state">
-        <img src="pawikan-sleeping.png" alt="Pawi sleeping" style="width:100px;height:100px;object-fit:contain;filter:drop-shadow(0 4px 16px rgba(34,197,94,0.25));margin-bottom:var(--space-4);animation:mascotSleep 3s ease-in-out infinite">
+        <img src="assets/pawikan-sleeping.png" alt="Pawi sleeping" style="width:100px;height:100px;object-fit:contain;filter:drop-shadow(0 4px 16px rgba(34,197,94,0.25));margin-bottom:var(--space-4);animation:mascotSleep 3s ease-in-out infinite">
         <div class="empty-state-title">No transactions found</div>
         <div class="empty-state-text">Pawi is resting... Log one with Ctrl+K to wake things up! 🐢</div>
       </div>

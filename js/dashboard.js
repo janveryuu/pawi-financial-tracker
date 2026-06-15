@@ -206,7 +206,7 @@ function renderGreeting() {
       </div>
       <div class="greeting-hero-mascot">
         <img
-          src="pawikan-2.png"
+          src="assets/pawikan-2.png"
           alt="Pawi mascot"
           class="greeting-mascot-img"
           id="greeting-mascot"
@@ -225,7 +225,7 @@ function renderInsightBanner() {
     <div class="insight-banner animate-in stagger-2">
       <div class="insight-header">
         <div class="insight-avatar" style="overflow: hidden; background: transparent;">
-          <img src="Pawikan-Original.png" alt="Pawi" style="width: 100%; height: 100%; object-fit: cover;">
+          <img src="assets/Pawikan-Original.png" alt="Pawi" style="width: 100%; height: 100%; object-fit: cover;">
         </div>
         <span class="insight-name">Pawi</span>
       </div>

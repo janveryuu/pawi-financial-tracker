@@ -19,7 +19,7 @@ export function renderWrap(container) {
   container.innerHTML = `
     <div class="wrap-container animate-in" id="wrap-container">
       <div class="wrap-loading" id="wrap-loading">
-        <img src="pawikan-2.png" alt="Pawi" class="wrap-loading-img">
+        <img src="assets/pawikan-2.png" alt="Pawi" class="wrap-loading-img">
         <h2 class="wrap-loading-text">Pawi is crunching your numbers...</h2>
         <p style="color:var(--text-secondary);margin-top:var(--space-2)">Consulting the Gemini oracle for your financial verdict</p>
       </div>
@@ -232,7 +232,7 @@ function buildSlides() {
           <div class="wrap-ai-message">
             "${aiMessage}"
           </div>
-          <img src="pawikan-2.png" alt="Pawi" class="wrap-final-mascot">
+          <img src="assets/pawikan-2.png" alt="Pawi" class="wrap-final-mascot">
           <div style="margin-top:var(--space-4); opacity: 0.7; font-size: var(--text-sm); font-weight: bold;">
             Tap 'Close' on the top right to return to Dashboard
           </div>

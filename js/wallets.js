@@ -27,16 +27,16 @@ const CURRENCIES = ['PHP', 'USD', 'EUR', 'GBP', 'JPY'];
    ============================================================ */
 const WALLET_BRAND_ICONS = {
   cash: `<div class="wallet-brand-icon" style="background:transparent; overflow:visible;">
-    <img src="cash-logo.png" style="width:100%;height:100%;object-fit:contain;transform:scale(1.8);" alt="Cash">
+    <img src="assets/cash-logo.png" style="width:100%;height:100%;object-fit:contain;transform:scale(1.8);" alt="Cash">
   </div>`,
   gcash: `<div class="wallet-brand-icon" style="background:#007df1; overflow:hidden;">
-    <img src="gcash.jpg" style="width:100%;height:100%;object-fit:cover;transform:scale(1.35);" alt="GCash">
+    <img src="assets/gcash.jpg" style="width:100%;height:100%;object-fit:cover;transform:scale(1.35);" alt="GCash">
   </div>`,
   paypal: `<div class="wallet-brand-icon" style="background:white; overflow:hidden;">
-    <img src="Paypal-logo.png" style="width:100%;height:100%;object-fit:contain;padding:2px;" alt="PayPal">
+    <img src="assets/Paypal-logo.png" style="width:100%;height:100%;object-fit:contain;padding:2px;" alt="PayPal">
   </div>`,
   paymaya: `<div class="wallet-brand-icon" style="background:white; overflow:hidden;">
-    <img src="Paymaya-logo.png" style="width:100%;height:100%;object-fit:contain;padding:3px;" alt="PayMaya">
+    <img src="assets/Paymaya-logo.png" style="width:100%;height:100%;object-fit:contain;padding:3px;" alt="PayMaya">
   </div>`,
   bdo: `<div class="wallet-brand-icon" style="background:#0047BB">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
@@ -96,7 +96,7 @@ export function renderWallets(container) {
     <!-- Pawikan Wallets Banner -->
     <div class="pawikan-page-banner animate-in" id="wallets-pawikan-banner">
       <div class="pawikan-banner-content">
-        <img src="pawikan-2.png" alt="Pawi" class="pawikan-banner-img" id="wallets-mascot">
+        <img src="assets/pawikan-2.png" alt="Pawi" class="pawikan-banner-img" id="wallets-mascot">
         <div class="pawikan-banner-text">
           <div class="pawikan-banner-title">🐢 Pawi says...</div>
           <div class="pawikan-banner-msg">Keep your wallets organized! A clear view of your money is the first step to financial freedom.</div>
