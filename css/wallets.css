@@ -1,0 +1,338 @@
+/* ============================================================
+   SENTIMO — Wallets & Accounts View
+   Account cards grid, net worth header, credit utilization,
+   filter tabs, add account, drag-and-drop.
+   ============================================================ */
+
+/* ============================================================
+   WALLETS HEADER
+   ============================================================ */
+.wallets-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+}
+
+.wallets-net-worth {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.wallets-net-worth-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.wallets-nw-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+}
+
+.wallets-nw-amount {
+  font-family: var(--font-heading);
+  font-size: var(--text-4xl);
+  font-weight: var(--weight-extrabold);
+  color: var(--text-primary);
+  margin: var(--space-1) 0;
+}
+
+.wallets-nw-change {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.wallets-nw-change.positive { color: var(--accent-green); }
+.wallets-nw-change.negative { color: var(--accent-red); }
+
+.wallets-nw-subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+/* ============================================================
+   FILTER TABS
+   ============================================================ */
+.wallet-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+/* ============================================================
+   ACCOUNT CARDS GRID
+   ============================================================ */
+.accounts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.account-card {
+  position: relative;
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: grab;
+  transition: all var(--duration-base) var(--ease-out);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.account-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  z-index: 0;
+}
+
+.account-card::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -30%;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  z-index: 0;
+}
+
+.account-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.account-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Brand color backgrounds */
+.account-card[data-color="green"]   { background: var(--brand-green); }
+.account-card[data-color="blue"]    { background: var(--brand-blue); }
+.account-card[data-color="yellow"]  { background: var(--brand-yellow); }
+.account-card[data-color="red"]     { background: var(--brand-red); }
+.account-card[data-color="teal"]    { background: var(--brand-teal); }
+.account-card[data-color="cyan"]    { background: var(--brand-cyan); }
+.account-card[data-color="orange"]  { background: var(--brand-orange); }
+.account-card[data-color="purple"]  { background: var(--brand-purple); }
+.account-card[data-color="default"] { background: var(--brand-default); }
+
+/* Card header */
+.account-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.account-card-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.account-card-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-extrabold);
+  color: white;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Brand icon inner div fills the entire logo container */
+.wallet-brand-icon {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+}
+
+.account-card-name {
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: white;
+}
+
+.account-card-type-badge {
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: var(--weight-medium);
+}
+
+.account-card-menu {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.account-card-menu:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Card balance */
+.account-card-balance-section {
+  margin-top: auto;
+}
+
+.account-card-balance-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  margin-bottom: var(--space-1);
+}
+
+.account-card-balance {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-extrabold);
+  color: white;
+}
+
+/* Credit card utilization */
+.credit-utilization {
+  margin-top: var(--space-3);
+}
+
+.credit-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--space-2);
+}
+
+.credit-bar-fill {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: var(--radius-full);
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+.credit-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.credit-info strong {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: var(--weight-semibold);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+  .accounts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wallets-header {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .wallets-nw-amount {
+    font-size: var(--text-3xl);
+  }
+}
+
+/* ============================================================
+   LIGHT THEME OVERRIDES
+   ============================================================ */
+[data-theme="light"] .account-card {
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="light"] .account-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme="light"] .account-card[data-color="green"]   { background: var(--accent-green-bg); border-color: var(--accent-green-light); }
+[data-theme="light"] .account-card[data-color="blue"]    { background: var(--accent-blue-bg); border-color: rgba(26, 95, 168, 0.2); }
+[data-theme="light"] .account-card[data-color="yellow"]  { background: var(--accent-yellow-bg); border-color: rgba(168, 122, 4, 0.2); }
+[data-theme="light"] .account-card[data-color="red"]     { background: var(--accent-red-bg); border-color: var(--accent-red-light); }
+[data-theme="light"] .account-card[data-color="teal"]    { background: var(--accent-teal-bg); border-color: rgba(13, 138, 110, 0.2); }
+[data-theme="light"] .account-card[data-color="cyan"]    { background: rgba(8, 145, 178, 0.08); border-color: rgba(8, 145, 178, 0.2); }
+[data-theme="light"] .account-card[data-color="orange"]  { background: rgba(234, 88, 12, 0.08); border-color: rgba(234, 88, 12, 0.2); }
+[data-theme="light"] .account-card[data-color="purple"]  { background: var(--accent-purple-bg); border-color: rgba(96, 48, 168, 0.2); }
+[data-theme="light"] .account-card[data-color="default"] { background: var(--bg-card); border-color: var(--border-medium); }
+
+/* Text colors */
+[data-theme="light"] .account-card-name,
+[data-theme="light"] .account-card-balance,
+[data-theme="light"] .account-card-balance-label {
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .account-card-type-badge,
+[data-theme="light"] .credit-info {
+  color: var(--text-muted);
+}
+
+[data-theme="light"] .credit-info strong {
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .credit-bar {
+  background: var(--border-default);
+}
+
+[data-theme="light"] .credit-bar-fill {
+  background: var(--text-primary);
+}
+
+/* Card Menu Button */
+[data-theme="light"] .account-card-menu {
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+}
+
+[data-theme="light"] .account-card-menu:hover {
+  background: var(--border-medium);
+  color: var(--text-primary);
+}
+
+/* Card Logo */
+[data-theme="light"] .account-card-logo {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}

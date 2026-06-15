@@ -1,0 +1,14 @@
+{
+  "hosting": {
+    "site": "pawi-budget-tracker",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "mobile_app/**",
+      "server/**",
+      "temp-login-interface/**"
+    ]
+  }
+}

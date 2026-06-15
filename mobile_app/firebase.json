@@ -1,0 +1,11 @@
+{
+  "hosting": {
+    "site": "pawi-mobile-app",
+    "source": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}

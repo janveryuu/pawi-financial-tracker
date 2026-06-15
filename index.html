@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Pawi — Premium offline-first personal finance tracker. Log transactions with natural language, track multi-currency wallets, set goals, and forecast cashflow. Private by default, no servers, no accounts.">
+  <meta name="theme-color" content="#0f1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <title>Pawi — Personal Finance Tracker</title>
+
+  <!-- Apply saved theme ASAP to avoid flash -->
+  <script>
+    (function () {
+      var t = localStorage.getItem('sentimo-theme');
+      if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    })();
+  </script>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="pawikan-logo.png?v=1">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Chart.js v4 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+  <!-- CSS Design System & Layout -->
+  <!-- CSS Design System & Layout -->
+  <link rel="stylesheet" href="css/design-system.css?v=12">
+  <link rel="stylesheet" href="css/layout.css?v=21">
+  <link rel="stylesheet" href="css/components.css?v=12">
+  <link rel="stylesheet" href="css/animations.css?v=12">
+  <link rel="stylesheet" href="css/command-bar.css?v=12">
+  <link rel="stylesheet" href="css/dashboard.css?v=12">
+  <link rel="stylesheet" href="css/wallets.css?v=12">
+  <link rel="stylesheet" href="css/plan.css?v=12">
+  <link rel="stylesheet" href="css/analytics.css?v=11">
+  <link rel="stylesheet" href="css/camera.css?v=11">
+  <link rel="stylesheet" href="css/wrap.css?v=1">
+
+  <!-- Page-specific inline styles for elements unique to index.html -->
+  <style>
+    /* History view styles (inline since they're simple) */
+    .history-filters {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      margin-bottom: var(--space-5);
+      flex-wrap: wrap;
+    }
+
+    .history-search-wrapper {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      flex: 1;
+      min-width: 200px;
+      padding: var(--space-2) var(--space-4);
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      transition: border-color var(--duration-fast) var(--ease-out);
+    }
+
+    .history-search-wrapper:focus-within {
+      border-color: var(--accent-green);
+      box-shadow: 0 0 0 3px var(--accent-green-bg);
+    }
+
+    .history-search-wrapper svg {
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .history-search-input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      color: var(--text-primary);
+    }
+
+    .history-search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .history-summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-3);
+      margin-bottom: var(--space-5);
+    }
+
+    .history-stat {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .history-stat-label {
+      font-size: var(--text-xs);
+      font-weight: var(--weight-semibold);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: var(--tracking-caps);
+    }
+
+    .history-stat-value {
+      font-family: var(--font-heading);
+      font-size: var(--text-lg);
+      font-weight: var(--weight-bold);
+      color: var(--text-primary);
+    }
+
+    .history-stat-value.income {
+      color: var(--accent-green);
+    }
+
+    .history-stat-value.expense {
+      color: var(--accent-red);
+    }
+
+    .history-stat-value.positive {
+      color: var(--accent-green);
+    }
+
+    .history-stat-value.negative {
+      color: var(--accent-red);
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .history-date-group {
+      margin-bottom: var(--space-3);
+    }
+
+    .history-date-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-2) 0;
+      font-size: var(--text-xs);
+      font-weight: var(--weight-semibold);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: var(--tracking-caps);
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: var(--space-1);
+    }
+
+    .history-date-total {
+      font-family: var(--font-heading);
+      font-weight: var(--weight-bold);
+      font-size: var(--text-sm);
+    }
+
+    .history-date-total.positive {
+      color: var(--accent-green);
+    }
+
+    .history-date-total.negative {
+      color: var(--accent-red);
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-2);
+      border-radius: var(--radius-sm);
+      transition: background var(--duration-fast) var(--ease-out);
+      position: relative;
+    }
+
+    .history-item:hover {
+      background: var(--bg-card);
+    }
+
+    .history-item-right {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .history-item-time {
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .history-delete-btn {
+      opacity: 0;
+      transition: opacity var(--duration-fast) var(--ease-out);
+      color: var(--text-muted);
+    }
+
+    .history-item:hover .history-delete-btn {
+      opacity: 1;
+    }
+
+    .history-delete-btn:hover {
+      color: var(--accent-red) !important;
+    }
+
+    /* Settings data actions */
+    .settings-data-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-3);
+    }
+
+    .settings-data-actions .btn {
+      justify-content: center;
+    }
+
+    @media (max-width: 768px) {
+      .history-summary {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .history-filters {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .settings-data-actions {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ============================================================
+       PAWIKAN MASCOT STYLES
+       ============================================================ */
+
+    /* Sidebar mascot */
+    .sidebar-mascot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: var(--space-4) var(--space-3) var(--space-2);
+      position: relative;
+    }
+
+    .sidebar-mascot-img {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 12px rgba(34, 197, 94, 0.35));
+      transition: transform var(--duration-slow) var(--ease-spring),
+        filter var(--duration-base) var(--ease-out);
+      animation: mascotFloat 4s ease-in-out infinite;
+      cursor: pointer;
+    }
+
+    .sidebar-mascot-img:hover {
+      transform: scale(1.12) rotate(-5deg);
+      filter: drop-shadow(0 8px 20px rgba(34, 197, 94, 0.55));
+      animation: none;
+    }
+
+    .sidebar-mascot-bubble {
+      display: none;
+      position: absolute;
+      bottom: 110px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: var(--space-2) var(--space-3);
+      font-size: var(--text-xs);
+      color: var(--text-secondary);
+      white-space: normal;
+      text-align: center;
+      width: 160px;
+      line-height: 1.4;
+      box-shadow: var(--shadow-lg);
+      z-index: 10;
+      animation: fadeInScale 0.2s var(--ease-spring) both;
+      pointer-events: none;
+    }
+
+    .sidebar-mascot-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 10px;
+      height: 10px;
+      background: var(--bg-elevated);
+      border-right: 1px solid var(--border-default);
+      border-bottom: 1px solid var(--border-default);
+      transform: translateX(-50%) rotate(45deg);
+    }
+
+    .sidebar-mascot:hover .sidebar-mascot-bubble {
+      display: block;
+    }
+
+    .sidebar-mascot-name {
+      font-size: var(--text-xs);
+      font-weight: var(--weight-semibold);
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: var(--space-1);
+      letter-spacing: var(--tracking-caps);
+      text-transform: uppercase;
+    }
+
+    /* Loading screen mascot */
+    .mascot-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-4);
+      animation: fadeInUp 0.6s var(--ease-out) both;
+    }
+
+    .mascot-loading-img {
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
+      animation: mascotSleep 3s ease-in-out infinite,
+        fadeInScale 0.6s var(--ease-spring) both;
+      filter: drop-shadow(0 8px 24px rgba(34, 197, 94, 0.30));
+    }
+
+    .mascot-loading-text {
+      font-family: var(--font-heading);
+      font-size: var(--text-xl);
+      font-weight: var(--weight-bold);
+      color: var(--text-primary);
+      text-align: center;
+    }
+
+    .mascot-loading-sub {
+      font-size: var(--text-sm);
+      color: var(--text-tertiary);
+      text-align: center;
+      margin-top: calc(-1 * var(--space-3));
+    }
+
+    /* Floating mascot companion (bottom-right corner, desktop only) */
+    .pawikan-companion {
+      position: fixed;
+      bottom: var(--space-8);
+      right: 110px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: var(--space-2);
+      pointer-events: none;
+    }
+
+    .pawikan-companion-img {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 16px rgba(34, 197, 94, 0.30));
+      animation: mascotFloat 5s ease-in-out infinite;
+      transition: transform var(--duration-base) var(--ease-spring);
+      pointer-events: auto;
+      cursor: default;
+    }
+
+    /* Collapsed sidebar hides mascot text */
+    @media (max-width: 1024px) {
+      .sidebar-mascot-img {
+        width: 36px;
+        height: 36px;
+      }
+
+      .sidebar-mascot-name {
+        display: none;
+      }
+
+      .sidebar-mascot-bubble {
+        left: 60px;
+        bottom: 0;
+        transform: none;
+      }
+
+      .sidebar-mascot-bubble::after {
+        left: -6px;
+        bottom: 10px;
+        transform: rotate(135deg);
+      }
+
+      .pawikan-companion {
+        display: none;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .pawikan-companion {
+        display: none;
+      }
+    }
+
+    /* Mascot animations */
+    @keyframes mascotFloat {
+
+      0%,
+      100% {
+        transform: translateY(0px) rotate(0deg);
+      }
+
+      33% {
+        transform: translateY(-6px) rotate(-2deg);
+      }
+
+      66% {
+        transform: translateY(-3px) rotate(1deg);
+      }
+    }
+
+    @keyframes mascotSleep {
+
+      0%,
+      100% {
+        transform: translateY(0) scale(1);
+      }
+
+      50% {
+        transform: translateY(-4px) scale(1.02);
+      }
+    }
+  </style>
+
+  <!-- Firebase Import Map -->
+  <script type="importmap">
+    {
+      "imports": {
+        "firebase/app": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
+      }
+    }
+  </script>
+
+
+</head>
+
+<body>
+
+  <!-- ============================================================
+       LOGIN OVERLAY
+       ============================================================ -->
+  <div class="login-overlay active" id="login-overlay">
+
+    <div class="login-container">
+      <!-- Left Column: Mascot -->
+      <div class="login-col-left">
+        <img src="pawi-welcome.png" alt="Pawi Mascot" class="login-mascot" id="login-mascot-img"
+          style="cursor: pointer;" title="Click to read Pawi's Story!">
+      </div>
+
+      <!-- Center Column: Login Card -->
+      <div class="login-col-center">
+        <div class="login-card">
+          <div class="login-logo-wrapper">
+            <img src="pawi-app-icon.png" alt="Pawi Logo" class="login-logo">
+          </div>
+          <h1 class="login-title">Welcome to Pawi</h1>
+          <p class="login-subtitle">Your private, offline-first financial tracker.</p>
+
+          <button class="btn" id="google-signin-btn"
+            style="width: 100%; justify-content: center; background: white; color: black; border: 1px solid #d1d5db; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-radius: 8px; padding: 12px 16px; margin-bottom: 24px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20"
+              style="margin-right: 8px;">
+              <path fill="#FFC107"
+                d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
+              <path fill="#FF3D00"
+                d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
+              <path fill="#4CAF50"
+                d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
+              <path fill="#1976D2"
+                d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
+            </svg>
+            <span style="font-weight: 500;">Continue with Google</span>
+          </button>
+
+          <div class="login-tip-divider"><span>TIP</span></div>
+
+          <div class="login-tip-container"
+            style="background: #F0FDF4; border-radius: 12px; padding: 16px; margin-top: 16px; display: flex; align-items: flex-start; text-align: left;">
+            <div class="tip-icon" style="margin-right: 12px; color: #15803D;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18h6" />
+                <path d="M10 22h4" />
+                <path d="M12 2v1" />
+                <path d="M15.09 5.09l.71-.71" />
+                <path d="M18.91 18.91l-.71-.71" />
+                <path d="M22 12h-1" />
+                <path d="M5.09 15.09l-.71.71" />
+                <path d="M8.91 8.91l-.71-.71" />
+                <path d="M2 12h1" />
+                <path
+                  d="M12 7a5 5 0 1 0 5 5c0 1.5-1 2.8-2 3.5V17a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-1.5c-1-.7-2-2-2-3.5a5 5 0 0 1 5-5z" />
+              </svg>
+            </div>
+            <p class="tip-text" style="color: #166534; font-size: 13px; margin: 0; line-height: 1.5;"><strong>Track
+                every expense, no matter how small.</strong><br><span style="color: #15803D; opacity: 0.8;">Small leaks
+                can sink a great ship.</span></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Text & Tips -->
+      <div class="login-col-right" style="white-space: nowrap;">
+        <div class="welcome-badge"><span class="badge-dot"></span> Welcome to Pawi</div>
+        <h1 class="hero-text" style="white-space: normal;">Save smarter,<br><span style="color: #15803D;">slow and
+            steady.</span></h1>
+        <p class="hero-subtext" style="white-space: normal;">Your private, offline-first financial tracker.<br>Every
+          peso counts—Pawi helps you watch<br>them all grow.</p>
+
+        <div class="hero-tip-card" style="white-space: normal; transition: opacity 0.3s ease;" id="hero-tip-card">
+          <div class="hero-tip-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18h6" />
+              <path d="M10 22h4" />
+              <path d="M12 2v1" />
+              <path d="M15.09 5.09l.71-.71" />
+              <path d="M18.91 18.91l-.71-.71" />
+              <path d="M22 12h-1" />
+              <path d="M5.09 15.09l-.71.71" />
+              <path d="M8.91 8.91l-.71-.71" />
+              <path d="M2 12h1" />
+              <path
+                d="M12 7a5 5 0 1 0 5 5c0 1.5-1 2.8-2 3.5V17a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-1.5c-1-.7-2-2-2-3.5a5 5 0 0 1 5-5z" />
+            </svg>
+          </div>
+          <div class="hero-tip-content">
+            <strong id="hero-tip-title">Pay yourself first</strong>
+            <p id="hero-tip-desc">Set aside savings the moment<br>money comes in—before you spend<br>a single peso.</p>
+          </div>
+        </div>
+
+        <div class="carousel-dots" id="hero-tip-dots">
+          <div class="dot active"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
+
+        <script>
+          const heroTips = [
+            {
+              title: "Pay yourself first",
+              desc: "Set aside savings the moment<br>money comes in—before you spend<br>a single peso."
+            },
+            {
+              title: "Track everything",
+              desc: "Every expense matters.<br>Tracking helps you spot trends<br>and stop small leaks."
+            },
+            {
+              title: "The 50/30/20 Rule",
+              desc: "Allocate 50% for needs,<br>30% for your wants, and<br>20% strictly for savings."
+            },
+            {
+              title: "Emergency Fund",
+              desc: "Aim to build a cushion<br>of 3 to 6 months of expenses<br>for unexpected events."
+            }
+          ];
+          let currentHeroTip = 0;
+
+          setInterval(() => {
+            const card = document.getElementById('hero-tip-card');
+            const title = document.getElementById('hero-tip-title');
+            const desc = document.getElementById('hero-tip-desc');
+            const dots = document.querySelectorAll('#hero-tip-dots .dot');
+
+            if (!card) return;
+
+            card.style.opacity = '0';
+
+            setTimeout(() => {
+              currentHeroTip = (currentHeroTip + 1) % heroTips.length;
+              title.innerHTML = heroTips[currentHeroTip].title;
+              desc.innerHTML = heroTips[currentHeroTip].desc;
+
+              dots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentHeroTip);
+              });
+
+              card.style.opacity = '1';
+            }, 300);
+          }, 5000);
+        </script>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       APP SHELL
+       ============================================================ -->
+  <div class="app-shell" id="app-shell" style="display: none;">
+
+    <!-- ============================================================
+         SIDEBAR NAVIGATION
+         ============================================================ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <img src="pawikan-logo.png?v=1" alt="Pawi Logo" style="object-fit:contain;background:transparent">
+        </div>
+        <span class="sidebar-brand">Pawi</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Main</div>
+
+        <button class="nav-item active" data-view="dashboard" id="nav-dashboard">
+          <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="7" height="9" x="3" y="3" rx="1" />
+            <rect width="7" height="5" x="14" y="3" rx="1" />
+            <rect width="7" height="9" x="14" y="12" rx="1" />
+            <rect width="7" height="5" x="3" y="16" rx="1" />
+          </svg>
+          <span class="nav-label">Dashboard</span>
+        </button>
+
+        <button class="nav-item" data-view="wallets" id="nav-wallets">
+          <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+            <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+            <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+          </svg>
+          <span class="nav-label">Wallets</span>
+        </button>
+
+        <button class="nav-item" data-view="plan" id="nav-plan">
+          <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+            <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+            <path d="M9 15h6" />
+            <path d="M9 11h6" />
+          </svg>
+          <span class="nav-label">Plan</span>
+        </button>
+
+        <button class="nav-item" data-view="history" id="nav-history">
+          <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          <span class="nav-label">History</span>
+        </button>
+
+        <div class="nav-section-label" style="margin-top:var(--space-4)">Tools</div>
+
+        <button class="nav-item" data-view="wrap" id="nav-wrap">
+          <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          <span class="nav-label">Monthly Wrap</span>
+        </button>
+
+        <button class="nav-item" id="open-settings">
+          <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path
+              d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          <span class="nav-label">Settings</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <!-- Pawi Mascot -->
+        <div class="sidebar-mascot" id="sidebar-mascot">
+          <div class="sidebar-mascot-bubble" id="mascot-bubble">Keeping your savings safe! 🌊</div>
+          <div style="position: relative; display: inline-block;">
+            <img class="sidebar-mascot-img" src="pawikan-2.png" alt="Pawi mascot" id="sidebar-mascot-img">
+            <div id="pawi-level-badge" style="position: absolute; bottom: 5px; right: -5px; background: var(--accent-green); color: #0f1117; font-size: 10px; font-weight: bold; border-radius: 10px; padding: 2px 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 2;">Lv 1</div>
+          </div>
+          <span class="sidebar-mascot-name" style="margin-bottom: 4px; margin-top: -2px;">Pawi</span>
+          <div style="width: 60px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;" title="XP Progress">
+            <div id="pawi-xp-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--accent-green), var(--accent-teal)); transition: width 0.5s ease-out;"></div>
+          </div>
+        </div>
+
+        <!-- Theme Toggle -->
+        <div class="theme-toggle-group" id="theme-toggle-group">
+          <button class="theme-toggle-btn dark-btn active" id="theme-dark-btn" title="Premium Dark Mode">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+            </svg>
+            <span>Dark</span>
+          </button>
+          <button class="theme-toggle-btn light-btn" id="theme-light-btn" title="Premium Light Mode">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2" />
+              <path d="M12 20v2" />
+              <path d="m4.93 4.93 1.41 1.41" />
+              <path d="m17.66 17.66 1.41 1.41" />
+              <path d="M2 12h2" />
+              <path d="M20 12h2" />
+              <path d="m6.34 17.66-1.41 1.41" />
+              <path d="m19.07 4.93-1.41 1.41" />
+            </svg>
+            <span>Light</span>
+          </button>
+        </div>
+        <!-- Chat with Pawi AI Primary Button -->
+        <button class="quick-log-sidebar-btn chat-pawi-btn" id="open-pawi-chat"
+          style="background: linear-gradient(135deg, var(--accent-green), var(--accent-teal)); border: none; margin-bottom: var(--space-2);">
+          <img src="pawikan-2.png" alt="Pawi"
+            style="width: 20px; height: 20px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">
+          <span class="quick-log-sidebar-label">Chat with Pawi</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ============================================================
+         MAIN CONTENT AREA
+         ============================================================ -->
+    <main class="main-content" id="main-content">
+      <div class="view-container" id="view-container">
+        <!-- Views are rendered here by app.js -->
+        <div class="empty-state" style="min-height:60vh">
+          <div class="mascot-loading">
+            <img class="mascot-loading-img" src="pawikan-sleeping.png" alt="Pawi sleeping while loading">
+            <div class="mascot-loading-text">Loading Pawi...</div>
+            <p class="mascot-loading-sub">Pawi is waking up your finances 🐢</p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ============================================================
+       MOBILE BOTTOM NAVIGATION
+       ============================================================ -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="bottom-nav-item active" data-view="dashboard">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect width="7" height="9" x="3" y="3" rx="1" />
+        <rect width="7" height="5" x="14" y="3" rx="1" />
+        <rect width="7" height="9" x="14" y="12" rx="1" />
+        <rect width="7" height="5" x="3" y="16" rx="1" />
+      </svg>
+      <span>Home</span>
+    </button>
+    <button class="bottom-nav-item" data-view="wallets">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+        <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+        <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+      </svg>
+      <span>Wallet</span>
+    </button>
+    <button class="bottom-nav-item" data-view="plan">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+        <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+        <path d="M9 15h6" />
+        <path d="M9 11h6" />
+      </svg>
+      <span>Plan</span>
+    </button>
+    <button class="bottom-nav-item" data-view="history">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+      <span>History</span>
+    </button>
+  </nav>
+
+  <!-- ============================================================
+       FLOATING ACTION BUTTON — Quick Log
+       ============================================================ -->
+  <button class="fab-quick-log" id="fab-quick-log" title="Quick Log (Ctrl+K)">
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m15 10-4 4 6 3-16-7 10-2" />
+    </svg>
+    <span class="fab-label">Quick Log</span>
+  </button>
+
+  <!-- ============================================================
+       Pawi COMPANION — Floating desktop mascot
+       ============================================================ -->
+  <div class="pawikan-companion" id="pawikan-companion">
+    <img class="pawikan-companion-img" src="pawikan-2.png" alt="Pawi companion" id="pawikan-companion-img"
+      title="Hi! I'm Pawi 🐢">
+  </div>
+
+  <!-- ============================================================
+       COMMAND BAR OVERLAY
+       ============================================================ -->
+  <div class="command-overlay" id="command-overlay">
+    <div class="command-bar">
+      <div class="command-input-wrapper">
+        <svg class="command-input-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m15 10-4 4 6 3-16-7 10-2" />
+        </svg>
+        <input type="text" class="command-input" id="command-input"
+          placeholder="Type a transaction... e.g., &quot;Spent 250 on lunch&quot;" autocomplete="off"
+          spellcheck="false">
+        <button class="command-scan-btn" id="command-scan-btn" title="Scan Receipt with Pawi AI 📸">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+            <circle cx="12" cy="13" r="3" />
+          </svg>
+          <span>Scan Receipt</span>
+        </button>
+        <input type="file" id="receipt-file-input" accept="image/*" capture="environment" style="display:none">
+        <button class="command-close-btn" id="command-close-btn">
+          <span class="kbd">ESC</span>
+        </button>
+      </div>
+      <div class="command-scan-status" id="command-scan-status"></div>
+      <div class="command-preview" id="command-preview"></div>
+      <div class="command-success" id="command-success"></div>
+      <div class="command-recent" id="command-recent"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       CAMERA MODAL — Receipt Scanner
+       ============================================================ -->
+  <div class="camera-overlay" id="camera-overlay">
+    <div class="camera-modal">
+      <div class="camera-header">
+        <div class="camera-title">
+          <img src="pawikan-logo.png" alt="Pawi" style="width:24px;height:24px;">
+          <span>Pawi Receipt Scanner</span>
+        </div>
+        <button class="camera-close-btn" id="camera-close-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="camera-viewfinder-wrap">
+        <video id="camera-video" class="camera-video" autoplay playsinline muted></video>
+        <canvas id="camera-canvas" style="display:none"></canvas>
+        <!-- Scanner overlay frame -->
+        <div class="camera-frame">
+          <div class="camera-frame-corner tl"></div>
+          <div class="camera-frame-corner tr"></div>
+          <div class="camera-frame-corner bl"></div>
+          <div class="camera-frame-corner br"></div>
+          <div class="camera-scan-line"></div>
+        </div>
+        <p class="camera-hint">Point camera at your receipt</p>
+      </div>
+
+      <div class="camera-controls">
+        <button class="camera-upload-btn" id="camera-upload-btn" title="Upload from gallery instead">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+            <circle cx="9" cy="9" r="2" />
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+          </svg>
+          Gallery
+        </button>
+        <button class="camera-capture-btn" id="camera-capture-btn">
+          <div class="camera-capture-ring"></div>
+        </button>
+        <div style="width:80px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       TOAST NOTIFICATION CONTAINER
+       ============================================================ -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- ============================================================
+       SETTINGS MODAL
+       ============================================================ -->
+  <div class="modal-overlay" id="settings-modal-overlay">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-header">
+        <h3 class="modal-title">Settings</h3>
+        <button class="modal-close" id="settings-modal-close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <label class="input-label">Your Name</label>
+          <input type="text" class="input" id="settings-name" placeholder="User">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Payday (Day of Month)</label>
+          <input type="number" class="input" id="settings-payday" min="1" max="31" value="15">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Default Currency</label>
+          <select class="input" id="settings-currency">
+            <option value="PHP" selected>PHP (₱)</option>
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="GBP">GBP (£)</option>
+            <option value="JPY">JPY (¥)</option>
+          </select>
+        </div>
+
+
+        <div class="divider"></div>
+
+        <h4 style="font-size:var(--text-md);margin-bottom:var(--space-3)">Data Management</h4>
+        <p style="font-size:var(--text-sm);color:var(--text-tertiary);margin-bottom:var(--space-4)">
+          Your data is safely stored in the cloud under your Google account. You can still export it locally.
+        </p>
+
+        <div class="settings-data-actions">
+          <button class="btn btn-secondary" id="export-json">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" x2="12" y1="15" y2="3" />
+            </svg>
+            Export JSON
+          </button>
+          <button class="btn btn-secondary" id="import-json">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" x2="12" y1="3" y2="15" />
+            </svg>
+            Import JSON
+          </button>
+          <button class="btn btn-secondary" id="export-csv">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            Export CSV
+          </button>
+          <button class="btn btn-secondary" id="import-csv">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            Import CSV
+          </button>
+        </div>
+
+        <div class="divider"></div>
+        <h4 style="font-size:var(--text-md);margin-bottom:var(--space-3);color:var(--accent-red)">Danger Zone</h4>
+        <p style="font-size:var(--text-sm);color:var(--text-tertiary);margin-bottom:var(--space-4)">
+          Permanently delete all data associated with your account. This action cannot be undone.
+        </p>
+
+        <button class="btn btn-danger" id="clear-data" style="width:100%;justify-content:center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18" />
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+          </svg>
+          Wipe Account Data
+        </button>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; width: 100%;">
+        <button class="btn" id="logout-btn"
+          style="background: var(--bg-card); color: var(--accent-red); border: 1px solid var(--border-subtle);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            style="margin-right: 6px;">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          Sign Out
+        </button>
+        <div style="display: flex; gap: var(--space-3);">
+          <button class="btn btn-secondary" id="settings-cancel">Cancel</button>
+          <button class="btn btn-primary" id="settings-save">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       PAWI BACKSTORY MODAL
+       ============================================================ -->
+  <div class="modal-overlay" id="pawi-story-overlay" style="z-index: 10000;">
+    <div class="modal"
+      style="max-width:640px; padding: var(--space-6); background: var(--surface); color: var(--text-primary); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-2xl); border-radius: var(--radius-xl);">
+      <div class="modal-header" style="border-bottom: none; padding-bottom: 0;">
+        <h3 class="modal-title"
+          style="font-size: var(--text-2xl); margin-bottom: var(--space-4); display: flex; align-items: center; gap: var(--space-3); line-height: 1.2;">
+          <img src="pawikan-logo.png" alt="Pawi" style="width: 48px; height: 48px; object-fit: contain;">
+          Meet Pawi: The Turtle Who Outsmarted Lifestyle Creep
+        </h3>
+        <button class="modal-close" id="pawi-story-close"
+          style="position: absolute; right: var(--space-4); top: var(--space-4);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body"
+        style="max-height: 70vh; overflow-y: auto; padding-right: var(--space-2); font-size: var(--text-base); line-height: 1.6;">
+        <p style="margin-bottom: var(--space-4); font-size: var(--text-lg); line-height: 1.5;"><strong>Most sea turtles
+            live for about 100 years. Do you know what's terrifying? Being broke for a century.</strong></p>
+
+        <p style="margin-bottom: var(--space-4); color: var(--text-secondary);">Pawi learned this the hard way. A few
+          years ago, he was just your average, easygoing marine reptile. But underneath that calm exterior, his finances
+          were a disaster. He was dropping his entire monthly salary on overpriced artisanal seaweed, subscribing to
+          ocean-streaming services he never used, and he completely lost his savings in a highly volatile "crypto-coral"
+          investment.</p>
+
+        <p style="margin-bottom: var(--space-6); color: var(--text-secondary);">He realized that living a long life
+          means absolutely nothing if you're swimming paycheck to paycheck.</p>
+
+        <h4 style="font-size: var(--text-lg); margin-bottom: var(--space-2); color: var(--text-primary);">The Turning
+          Point</h4>
+        <p style="margin-bottom: var(--space-4); color: var(--text-secondary);">Sick of wondering where his money was
+          floating off to, Pawi decided to get smart. Instead of swimming aimlessly, he started analyzing the ocean
+          currents—essentially becoming a self-taught master of Big Data. He realized that wealth isn't about moving
+          fast; it's about navigating the flow. He built a mental ledger, an impenetrable, completely private shell to
+          track every single <em style="color:var(--accent-green)">sentimo</em> that came in and went out.</p>
+
+        <p
+          style="margin-bottom: var(--space-6); font-weight: 500; font-size: var(--text-lg); color: var(--text-primary); border-left: 3px solid var(--accent-green); padding-left: var(--space-3);">
+          No leaks. No forgotten subscriptions. No lifestyle creep.</p>
+
+        <h4 style="font-size: var(--text-lg); margin-bottom: var(--space-2); color: var(--text-primary);">Your Personal
+          Financial Guardian</h4>
+        <p style="margin-bottom: var(--space-4); color: var(--text-secondary);">Pawi saw that humans were drowning in
+          their own expenses, so he volunteered to be the guardian of your digital wallet.</p>
+
+        <p style="margin-bottom: var(--space-4); color: var(--text-secondary);">When you log a transaction with Pawi,
+          he's doing the heavy lifting in the background. He's offline, he respects your privacy (what happens under the
+          shell stays under the shell), and he is endlessly patient.</p>
+
+        <ul
+          style="margin-bottom: var(--space-6); color: var(--text-secondary); padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2);">
+          <li><strong>Will he judge you for buying an iced coffee when you have food at home?</strong> A little bit,
+            yes.</li>
+          <li><strong>Will he keep your data 100% secure?</strong> Absolutely.</li>
+          <li><strong>Will he help you build a massive stash for the future?</strong> That's his life's mission.</li>
+        </ul>
+
+        <div
+          style="background: var(--accent-green-bg); padding: var(--space-4); border-radius: var(--radius-lg); text-align: center; border: 1px solid var(--border-subtle);">
+          <p style="font-weight: 600; color: var(--accent-green); font-size: var(--text-lg); margin: 0;">Let Pawi handle
+            the data. You just focus on the journey.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       GLOBAL CONFIRM MODAL
+       ============================================================ -->
+  <div class="modal-overlay" id="confirm-modal-overlay" style="z-index: 10000;">
+    <div class="modal" style="max-width:400px; text-align: center; padding: var(--space-6);">
+      <div id="confirm-modal-icon-container" style="margin-bottom: var(--space-4); color: var(--accent-red);">
+        <svg id="confirm-modal-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          style="margin: 0 auto;">
+          <path d="M3 6h18" />
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+          <line x1="10" x2="10" y1="11" y2="17" />
+          <line x1="14" x2="14" y1="11" y2="17" />
+        </svg>
+      </div>
+      <h3 class="modal-title" id="confirm-modal-title"
+        style="margin-bottom: var(--space-2); font-size: var(--text-xl);">Are you sure?</h3>
+      <p id="confirm-modal-message" style="color: var(--text-secondary); margin-bottom: var(--space-6);">This action
+        cannot be undone.</p>
+      <div style="display: flex; gap: var(--space-3); justify-content: center;">
+        <button class="btn btn-secondary" id="confirm-modal-cancel" style="flex: 1;">Cancel</button>
+        <button class="btn btn-danger" id="confirm-modal-delete" style="flex: 1;">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       PAWI AI CHAT MODAL
+       ============================================================ -->
+  <div class="modal-overlay" id="pawi-chat-modal">
+    <div class="modal" style="max-width: 450px; height: 75vh; display: flex; flex-direction: column; padding: 0;">
+      <div class="modal-header"
+        style="padding: var(--space-4); border-bottom: 1px solid var(--border-subtle); background: var(--bg-card); border-radius: var(--radius-xl) var(--radius-xl) 0 0;">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 12px; font-size: var(--text-lg);">
+          <img src="pawikan-logo.png" alt="Pawi" style="width: 28px; height: 28px;">
+          Chat with Pawi AI
+        </h3>
+        <button class="modal-close" id="close-pawi-chat">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="pawi-chat-body"
+        style="flex: 1; overflow-y: auto; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); background: var(--bg-primary);">
+        <!-- Initial AI Message -->
+        <div class="chat-message ai-message" style="display: flex; gap: 12px; align-items: flex-start;">
+          <img src="pawikan-2.png" alt="Pawi"
+            style="width: 36px; height: 36px; border-radius: 50%; background: var(--accent-green-bg); padding: 4px; border: 1px solid var(--accent-green);">
+          <div
+            style="background: var(--bg-card); padding: 12px 16px; border-radius: 0 16px 16px 16px; border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: var(--text-sm); line-height: 1.5; max-width: 85%;">
+            Hello! I'm Pawi, your personal finance AI buddy. How can I help you today? 🐢
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer"
+        style="padding: var(--space-4); border-top: 1px solid var(--border-subtle); background: var(--bg-card); border-radius: 0 0 var(--radius-xl) var(--radius-xl);">
+        <form id="pawi-chat-form" style="display: flex; gap: var(--space-2); width: 100%;">
+          <input type="text" id="pawi-chat-input" class="input" placeholder="Ask Pawi anything..."
+            style="flex: 1; border-radius: var(--radius-full); padding-left: var(--space-4);" autocomplete="off">
+          <button type="submit" class="btn btn-primary"
+            style="border-radius: var(--radius-full); width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+              style="margin-left: -2px;">
+              <path d="m22 2-7 20-4-9-9-4Z" />
+              <path d="M22 2 11 13" />
+            </svg>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       APPLICATION LOGIC
+       ============================================================ -->
+  <script type="module" src="js/app.js?v=17"></script>
+
+
+
+  <!-- Pawikan Mascot Interaction Script -->
+  <script>
+    (function () {
+      const tips = [
+        "Keeping your savings safe! 🌊",
+        "Track every peso, big or small! 💰",
+        "You're doing amazing! Keep it up! 🐢",
+        "Saving today = freedom tomorrow! ✨",
+        "Every centavo counts! 🌿",
+        "Slow and steady wins the race! 🏆",
+        "I believe in your financial goals! 💪",
+        "Budget wisely, live freely! 🌺",
+        "Your wallet is in good hands! 🐢💚",
+      ];
+
+      let tipIndex = 0;
+
+      const mascotArea = document.getElementById('sidebar-mascot');
+      const mascotImg = document.getElementById('sidebar-mascot-img');
+      const bubble = document.getElementById('mascot-bubble');
+      const companion = document.getElementById('pawikan-companion-img');
+
+      if (mascotArea && bubble && mascotImg) {
+        // Rotate tips on hover enter
+        mascotArea.addEventListener('mouseenter', () => {
+          tipIndex = (tipIndex + 1) % tips.length;
+          bubble.textContent = tips[tipIndex];
+        });
+
+        // Click makes mascot do a happy bounce and open story
+        mascotImg.addEventListener('click', () => {
+          mascotImg.style.animation = 'none';
+          mascotImg.style.transform = 'scale(1.3) rotate(-10deg)';
+
+          // Open the story modal!
+          const storyOverlay = document.getElementById('pawi-story-overlay');
+          if (storyOverlay) {
+            storyOverlay.classList.add('active');
+          }
+
+          setTimeout(() => {
+            mascotImg.style.transform = '';
+            mascotImg.style.animation = 'mascotFloat 4s ease-in-out infinite';
+          }, 350);
+          // Also bounce the companion
+          if (companion) {
+            companion.style.animation = 'none';
+            companion.style.transform = 'scale(1.2) rotate(8deg)';
+            setTimeout(() => {
+              companion.style.transform = '';
+              companion.style.animation = 'mascotFloat 5s ease-in-out infinite';
+            }, 400);
+          }
+        });
+      }
+
+      // Handle Pawi Companion Click to open Story Modal
+      const companionContainer = document.getElementById('pawikan-companion');
+      const loginMascot = document.getElementById('login-mascot-img');
+      const storyOverlay = document.getElementById('pawi-story-overlay');
+      const storyClose = document.getElementById('pawi-story-close');
+
+      if (companionContainer && storyOverlay && storyClose) {
+        companionContainer.addEventListener('click', () => {
+          storyOverlay.classList.add('active');
+        });
+
+        if (loginMascot) {
+          loginMascot.addEventListener('click', () => {
+            storyOverlay.classList.add('active');
+          });
+        }
+
+        storyClose.addEventListener('click', () => {
+          storyOverlay.classList.remove('active');
+        });
+
+        storyOverlay.addEventListener('click', (e) => {
+          if (e.target === storyOverlay) {
+            storyOverlay.classList.remove('active');
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+
+</html>

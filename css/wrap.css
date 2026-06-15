@@ -1,0 +1,280 @@
+/* ============================================================
+   PAWI — Monthly Wrap Styles
+   Immersive, Spotify-wrapped inspired layout
+   ============================================================ */
+
+.wrap-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-body);
+  z-index: 1000; /* Ensure it covers everything inside view-container */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+}
+
+.wrap-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: var(--space-4);
+}
+
+.wrap-loading-img {
+  width: 120px;
+  height: 120px;
+  margin-bottom: var(--space-6);
+  animation: float 3s ease-in-out infinite;
+  filter: drop-shadow(0 10px 20px rgba(0,0,0,0.2));
+}
+
+.wrap-loading-text {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.wrap-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: background-color 0.5s ease;
+}
+
+/* Themes - Hardcoded vibrant gradients for the immersive experience */
+.wrap-content.bg-teal { background: linear-gradient(135deg, #0d9488, #0f172a); color: white; }
+.wrap-content.bg-purple { background: linear-gradient(135deg, #7c3aed, #0f172a); color: white; }
+.wrap-content.bg-orange { background: linear-gradient(135deg, #ea580c, #0f172a); color: white; }
+.wrap-content.bg-dark { background: linear-gradient(135deg, #1e293b, #0f1117); color: white; }
+
+/* Force text to be white inside the wrap content */
+.wrap-content h2, 
+.wrap-content p, 
+.wrap-content span, 
+.wrap-content div {
+  color: white !important;
+}
+
+/* Close Button */
+.wrap-close-btn {
+  position: absolute;
+  top: var(--space-6);
+  right: var(--space-6);
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  font-weight: bold;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: background 0.2s;
+  pointer-events: auto;
+}
+
+.wrap-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Decorative elements */
+.wrap-trivia {
+  margin-top: var(--space-8);
+  font-size: var(--text-sm);
+  font-style: italic;
+  opacity: 0.7;
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: var(--space-4);
+}
+
+.wrap-floating-icon {
+  font-size: 4rem;
+  opacity: 0.2;
+  position: absolute;
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Progress Bar */
+.wrap-progress-bar {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 10;
+}
+
+.wrap-progress-segment {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.wrap-progress-fill {
+  height: 100%;
+  background: white;
+  width: 0%;
+  transition: width 0.1s linear;
+}
+
+.wrap-progress-segment.active .wrap-progress-fill {
+  width: 100%;
+  transition: width 5s linear; /* Auto advance could be added here if we want */
+}
+
+.wrap-progress-segment.completed .wrap-progress-fill {
+  width: 100%;
+}
+
+/* Nav Zones */
+.wrap-nav-zones {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  z-index: 5;
+}
+
+.wrap-nav-left, .wrap-nav-right {
+  flex: 1;
+  height: 100%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Slide Content */
+.wrap-slide-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  z-index: 2; /* Below nav zones */
+  pointer-events: none; /* Let clicks pass through to nav zones */
+}
+
+.wrap-slide-content {
+  text-align: center;
+  max-width: 600px;
+  width: 100%;
+  pointer-events: auto; /* Re-enable clicks for links inside if any */
+}
+
+.wrap-title {
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-2);
+  line-height: 1.1;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.wrap-subtitle {
+  font-size: var(--text-lg);
+  opacity: 0.8;
+  margin-bottom: var(--space-8);
+}
+
+.wrap-stat-box {
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.wrap-stat-label {
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+  margin-bottom: var(--space-2);
+}
+
+.wrap-stat-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.wrap-hero-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.wrap-hero-category {
+  font-size: 3.5rem;
+  font-weight: 900;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.wrap-hero-amount {
+  font-size: 2rem;
+  font-weight: 800;
+  opacity: 0.9;
+  background: rgba(0,0,0,0.2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: 100px;
+}
+
+.wrap-hero-note {
+  font-size: var(--text-xl);
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.wrap-savings-rate {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: var(--space-6);
+}
+
+.wrap-ai-message {
+  font-size: var(--text-lg);
+  line-height: 1.6;
+  background: rgba(0, 0, 0, 0.3);
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  border-left: 4px solid var(--accent-green);
+  margin-bottom: var(--space-8);
+  font-style: italic;
+  box-shadow: var(--shadow-md);
+}
+
+.wrap-final-mascot {
+  width: 180px;
+  height: 180px;
+  animation: float 4s ease-in-out infinite;
+  filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));
+  margin-top: var(--space-4);
+}
+
+.slide-in-bottom {
+  animation: slideInBottom 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInBottom {
+  0% { transform: translateY(40px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}

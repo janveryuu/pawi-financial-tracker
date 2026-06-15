@@ -1,0 +1,7 @@
+node_modules/
+.firebase/
+*.zip
+.env*
+temp-login-interface/
+server/node_modules/
+server/.env

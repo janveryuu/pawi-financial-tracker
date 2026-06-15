@@ -1,0 +1,670 @@
+/* ============================================================
+   SENTIMO — Dashboard Styles
+   Three-panel layout: left (wallets), center (feed), right (analytics)
+   Insight banner, transaction list, summary cards.
+   ============================================================ */
+
+/* ============================================================
+   INSIGHT BANNER
+   ============================================================ */
+.insight-banner {
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(34, 197, 94, 0.05) 100%);
+  border: 1px solid var(--accent-green-bg);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  position: relative;
+  overflow: hidden;
+  animation: glowBorder 4s ease-in-out infinite;
+}
+
+.insight-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-green), var(--accent-teal), var(--accent-green));
+  background-size: 200% 100%;
+  animation: progressGradient 3s ease infinite;
+}
+
+.insight-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.insight-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--accent-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.insight-avatar svg {
+  width: 16px;
+  height: 16px;
+  color: var(--bg-primary);
+}
+
+.insight-name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--accent-green);
+}
+
+.insight-text {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.insight-text em {
+  color: var(--text-primary);
+  font-style: normal;
+  font-weight: var(--weight-semibold);
+}
+
+/* ============================================================
+   TODAY'S SUMMARY CARD
+   ============================================================ */
+.summary-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.summary-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.summary-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  margin-bottom: var(--space-2);
+}
+
+.summary-amount {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+}
+
+.summary-amount.income {
+  color: var(--accent-green);
+}
+
+.summary-amount.expense {
+  color: var(--accent-red);
+}
+
+.summary-count {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
+/* ============================================================
+   GREETING HERO (DASHBOARD CENTER) — with Pawikan mascot
+   ============================================================ */
+.greeting-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(34,197,94,0.07) 60%, rgba(45,212,191,0.05) 100%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6) var(--space-7);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: var(--space-2);
+}
+
+.greeting-hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-green), var(--accent-teal), var(--accent-green));
+  background-size: 200% 100%;
+  animation: progressGradient 4s ease infinite;
+}
+
+.greeting-hero-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.greeting-date {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--accent-green);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  margin-bottom: var(--space-2);
+}
+
+.greeting-text {
+  font-family: var(--font-heading);
+  font-size: clamp(1.5rem, 3vw, var(--text-3xl));
+  font-weight: var(--weight-extrabold);
+  line-height: 1.15;
+  margin-bottom: var(--space-2);
+}
+
+.greeting-name {
+  background: linear-gradient(135deg, var(--accent-green), var(--accent-teal));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.greeting-tip {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-4);
+  line-height: var(--leading-relaxed);
+}
+
+.greeting-pawikan-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--accent-green-bg);
+  border: 1px solid rgba(34,197,94,0.20);
+  border-radius: var(--radius-full);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--accent-green);
+}
+
+.pawikan-tip-icon {
+  font-size: 14px;
+}
+
+/* Mascot on the right */
+.greeting-hero-mascot {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.greeting-mascot-img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 24px rgba(34,197,94,0.35));
+  animation: mascotFloat 4s ease-in-out infinite;
+  transition: transform var(--duration-slow) var(--ease-spring);
+}
+
+.greeting-mascot-img:hover {
+  transform: scale(1.1) rotate(-5deg);
+  animation: none;
+}
+
+.greeting-mascot-wave {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  font-size: 22px;
+  animation: mascotWave 2s ease-in-out infinite;
+}
+
+@keyframes mascotWave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(20deg); }
+  75% { transform: rotate(-10deg); }
+}
+
+/* ============================================================
+   PAWIKAN PAGE BANNERS — for Wallets, History, etc.
+   ============================================================ */
+.pawikan-page-banner {
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(45,212,191,0.04) 100%);
+  border: 1px solid rgba(34,197,94,0.15);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+  position: relative;
+  overflow: hidden;
+}
+
+.pawikan-page-banner::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--accent-green), var(--accent-teal));
+  border-radius: var(--radius-full);
+}
+
+.pawikan-banner-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.pawikan-banner-img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 4px 12px rgba(34,197,94,0.30));
+  animation: mascotFloat 4s ease-in-out infinite;
+  transition: transform var(--duration-base) var(--ease-spring);
+}
+
+.pawikan-banner-img:hover {
+  transform: scale(1.1) rotate(-4deg);
+  animation: none;
+}
+
+.pawikan-history-banner .pawikan-banner-img {
+  animation: mascotSleep 3s ease-in-out infinite;
+}
+
+.pawikan-banner-text {
+  flex: 1;
+}
+
+.pawikan-banner-title {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--accent-green);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  margin-bottom: var(--space-1);
+}
+
+.pawikan-banner-msg {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+/* Responsive: hide greeting mascot on small screens */
+@media (max-width: 768px) {
+  .greeting-hero {
+    padding: var(--space-5) var(--space-5);
+  }
+  .greeting-mascot-img {
+    width: 80px;
+    height: 80px;
+  }
+  .greeting-text {
+    font-size: var(--text-xl);
+  }
+  .pawikan-banner-img {
+    width: 52px;
+    height: 52px;
+  }
+}
+
+@media (max-width: 480px) {
+  .greeting-hero-mascot {
+    display: none;
+  }
+}
+
+
+/* ============================================================
+   QUICK STAT PILLS
+   ============================================================ */
+.stat-pills {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.stat-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+}
+
+.stat-pill-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.stat-pill-icon.up { color: var(--accent-green); }
+.stat-pill-icon.down { color: var(--accent-red); }
+
+.stat-pill-value {
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.stat-pill-label {
+  color: var(--text-tertiary);
+}
+
+/* ============================================================
+   TRANSACTION LIST
+   ============================================================ */
+.transaction-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.transaction-date-header {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  padding: var(--space-3) 0 var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-top: var(--space-2);
+}
+
+.transaction-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-1);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background var(--duration-fast) var(--ease-out);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.transaction-item:hover {
+  background: var(--bg-card);
+}
+
+.transaction-item:last-child {
+  border-bottom: none;
+}
+
+.transaction-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.transaction-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.transaction-icon.income {
+  background: var(--accent-green-bg);
+  color: var(--accent-green);
+}
+
+.transaction-icon.expense {
+  background: var(--accent-red-bg);
+  color: var(--accent-red);
+}
+
+.transaction-icon.transfer {
+  background: var(--accent-blue-bg);
+  color: var(--accent-blue);
+}
+
+.transaction-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.transaction-name {
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transaction-meta {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.transaction-amount {
+  font-family: var(--font-heading);
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.transaction-amount.income {
+  color: var(--accent-green);
+}
+
+.transaction-amount.expense {
+  color: var(--accent-red);
+}
+
+.transaction-amount.transfer {
+  color: var(--accent-blue);
+}
+
+/* ============================================================
+   MINI 7-DAY BAR CHART SECTION
+   ============================================================ */
+.mini-chart-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.mini-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 80px;
+  padding: var(--space-2) 0;
+}
+
+.mini-bar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  background: var(--accent-green);
+  min-height: 4px;
+  transition: height var(--duration-slow) var(--ease-out);
+  position: relative;
+}
+
+.mini-bar.expense {
+  background: var(--accent-red);
+  opacity: 0.7;
+}
+
+.mini-bar-label {
+  position: absolute;
+  bottom: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: var(--weight-medium);
+}
+
+.mini-chart-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-5);
+}
+
+.mini-chart-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: var(--weight-medium);
+}
+
+/* ============================================================
+   NET WORTH SIDEBAR CARD
+   ============================================================ */
+.net-worth-card {
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(34, 197, 94, 0.08) 100%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  overflow: hidden;
+}
+
+.net-worth-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  margin-bottom: var(--space-2);
+}
+
+.net-worth-amount {
+  font-family: var(--font-heading);
+  font-size: clamp(1.4rem, 4vw, var(--text-3xl));
+  font-weight: var(--weight-extrabold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+  word-break: break-all;
+  overflow: hidden;
+  line-height: 1.15;
+}
+
+.net-worth-change {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  flex-shrink: 0;
+}
+
+.net-worth-change.positive {
+  color: var(--accent-green);
+}
+
+.net-worth-change.negative {
+  color: var(--accent-red);
+}
+
+.net-worth-change svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ============================================================
+   QUICK ACCOUNT CARDS (SIDEBAR)
+   ============================================================ */
+.quick-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.quick-account-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.quick-account-item:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-card-hover);
+}
+
+.quick-account-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: white;
+  flex-shrink: 0;
+}
+
+.quick-account-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.quick-account-name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.quick-account-type {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.quick-account-balance {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  text-align: right;
+}
+
+/* ============================================================
+   VIEW ALL LINK
+   ============================================================ */
+.view-all-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--accent-green);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.view-all-link:hover {
+  background: var(--accent-green-bg);
+}
+
+.view-all-link svg {
+  width: 14px;
+  height: 14px;
+}

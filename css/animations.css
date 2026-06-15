@@ -1,0 +1,298 @@
+/* ============================================================
+   SENTIMO — Animations & Micro-interactions
+   Keyframes, entrance animations, hover effects, loading states
+   ============================================================ */
+
+/* ============================================================
+   KEYFRAMES
+   ============================================================ */
+
+/* Fade in from bottom */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade in from top */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade in with scale */
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Simple fade */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Slide down (command bar) */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Pulse for success states */
+@keyframes pulse {
+  0%, 100% { 
+    transform: scale(1); 
+    box-shadow: 0 0 0 0 var(--accent-green-glow);
+  }
+  50% { 
+    transform: scale(1.03); 
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+
+/* Soft pulse for icons */
+@keyframes softPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Shimmer for loading / progress bars */
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Spin for loaders */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Bounce for attention */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Glow border animation (insight banner) */
+@keyframes glowBorder {
+  0% {
+    border-color: var(--accent-green-bg);
+    box-shadow: 0 0 8px var(--accent-green-bg);
+  }
+  50% {
+    border-color: var(--accent-green-glow);
+    box-shadow: 0 0 16px var(--accent-green-glow);
+  }
+  100% {
+    border-color: var(--accent-green-bg);
+    box-shadow: 0 0 8px var(--accent-green-bg);
+  }
+}
+
+/* Count up animation for numbers */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Wiggle for undo toast */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-2deg); }
+  75% { transform: rotate(2deg); }
+}
+
+/* Progress bar gradient movement */
+@keyframes progressGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ============================================================
+   ENTRANCE ANIMATION CLASSES
+   ============================================================ */
+.animate-in {
+  animation: fadeInUp var(--duration-slow) var(--ease-out) both;
+}
+
+.animate-in-scale {
+  animation: fadeInScale var(--duration-base) var(--ease-spring) both;
+}
+
+.animate-in-down {
+  animation: fadeInDown var(--duration-base) var(--ease-out) both;
+}
+
+.animate-fade {
+  animation: fadeIn var(--duration-base) var(--ease-out) both;
+}
+
+/* Staggered entrance delays for list items */
+.stagger-1 { animation-delay: 50ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 250ms; }
+.stagger-6 { animation-delay: 300ms; }
+.stagger-7 { animation-delay: 350ms; }
+.stagger-8 { animation-delay: 400ms; }
+
+/* ============================================================
+   INTERACTIVE MICRO-ANIMATIONS
+   ============================================================ */
+
+/* Hover lift effect for cards */
+.hover-lift {
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Hover scale for small interactive items */
+.hover-scale {
+  transition: transform var(--duration-fast) var(--ease-spring);
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+.hover-scale:active {
+  transform: scale(0.97);
+}
+
+/* Glow effect for active/selected states */
+.glow-green {
+  box-shadow: var(--shadow-glow-green);
+}
+
+.glow-red {
+  box-shadow: var(--shadow-glow-red);
+}
+
+.glow-violet {
+  box-shadow: var(--shadow-glow-violet);
+}
+
+/* Success pulse */
+.success-pulse {
+  animation: pulse 0.6s var(--ease-out);
+}
+
+/* Loading spinner */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-subtle);
+  border-top-color: var(--accent-green);
+  border-radius: var(--radius-full);
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner-lg {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+/* Typing indicator dots */
+.typing-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  background: var(--text-tertiary);
+  border-radius: var(--radius-full);
+  animation: bounce 1.2s infinite;
+}
+
+.typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+/* ============================================================
+   TRANSITION UTILITIES
+   ============================================================ */
+.transition-all {
+  transition: all var(--duration-base) var(--ease-out);
+}
+
+.transition-colors {
+  transition: color var(--duration-fast) var(--ease-out),
+              background-color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+.transition-transform {
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+/* ============================================================
+   DRAG AND DROP STATES
+   ============================================================ */
+.dragging {
+  opacity: 0.5;
+  transform: scale(0.98) rotate(1deg);
+  cursor: grabbing !important;
+}
+
+.drag-over {
+  border-color: var(--accent-green) !important;
+  background: var(--accent-green-bg) !important;
+  box-shadow: inset 0 0 0 2px var(--accent-green-glow);
+}
+
+.drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.drag-handle:hover {
+  color: var(--text-secondary);
+}
+
+/* ============================================================
+   REDUCED MOTION SUPPORT
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
