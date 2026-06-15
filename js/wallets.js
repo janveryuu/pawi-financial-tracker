@@ -109,6 +109,7 @@ export function renderWallets(container) {
     <div class="wallet-filters">
       <div class="tab-group" id="wallet-filter-tabs">
         <button class="tab-item active" data-filter="all">All</button>
+        <button class="tab-item" data-filter="cash">Cash</button>
         <button class="tab-item" data-filter="debit">Debit</button>
         <button class="tab-item" data-filter="credit">Credit</button>
       </div>
@@ -136,6 +137,7 @@ export function renderWallets(container) {
           <div class="input-group">
             <label class="input-label">Type</label>
             <select class="input" id="account-type">
+              <option value="cash">Cash</option>
               <option value="debit">Debit (Bank / E-Wallet)</option>
               <option value="credit">Credit Card</option>
             </select>
@@ -184,7 +186,7 @@ export function renderWallets(container) {
 
 function renderWalletsNetWorth(accounts) {
   const defaultCurrency = store.getSettingValue('defaultCurrency', 'PHP');
-  const debitTotal = accounts.filter((a) => a.type === 'debit').reduce((s, a) => s + convertCurrencySync(a.balance, a.currency || 'PHP', defaultCurrency), 0);
+  const debitTotal = accounts.filter((a) => a.type !== 'credit').reduce((s, a) => s + convertCurrencySync(a.balance, a.currency || 'PHP', defaultCurrency), 0);
   const creditUsed = accounts.filter((a) => a.type === 'credit').reduce((s, a) => s + convertCurrencySync(a.creditLimit - a.balance, a.currency || 'PHP', defaultCurrency), 0);
   const netWorth = debitTotal - creditUsed;
 
@@ -209,6 +211,7 @@ function renderWalletsNetWorth(accounts) {
 
 function renderAccountCards(accounts, filter) {
   let filtered = accounts;
+  if (filter === 'cash') filtered = accounts.filter((a) => a.type === 'cash');
   if (filter === 'debit') filtered = accounts.filter((a) => a.type === 'debit');
   if (filter === 'credit') filtered = accounts.filter((a) => a.type === 'credit');
 
@@ -240,7 +243,7 @@ function renderAccountCards(accounts, filter) {
             </div>
             <div>
               <div class="account-card-name">${account.name}</div>
-              <div class="account-card-type-badge">${isCredit ? 'Credit' : 'Debit'} · ${account.currency}</div>
+              <div class="account-card-type-badge">${isCredit ? 'Credit' : (account.type === 'cash' ? 'Cash' : 'Debit')} · ${account.currency}</div>
             </div>
           </div>
           <button class="account-card-menu" data-account-id="${account.id}">
