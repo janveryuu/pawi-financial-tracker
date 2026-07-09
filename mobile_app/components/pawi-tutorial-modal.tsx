@@ -33,7 +33,7 @@ const steps: TutorialStep[] = [
     title: "Welcome to Pawi! 🐢",
     subtitle: "Your personal, private financial guide",
     icon: <Sparkles className="h-5 w-5 text-primary" />,
-    image: "/pawikan-2.png",
+    image: "/pawi-happy.png",
     speech:
       "Hello there! I'm Pawi, your sea turtle financial companion. Slow and steady wins the race! I'm here to help you track every treasure, grow your net worth, and build stress-free money habits.",
     tip: "Everything is private, offline-first, and completely under your control.",
@@ -50,7 +50,7 @@ const steps: TutorialStep[] = [
     title: "Multi-Currency Wallets 💳",
     subtitle: "Cash, GCash, Bank Cards & Savings",
     icon: <Wallet className="h-5 w-5 text-primary" />,
-    image: "/pawikan-logo.png",
+    image: "/pawi-holding-wallet.png",
     speech:
       "Keep your pockets organized! Whether you have USD Cash, PHP GCash, or bank cards, Pawi tracks your balances across currencies with automatic conversions.",
     tip: "Keep your Emergency Fund in a dedicated Savings wallet so you aren't tempted to spend it!",
@@ -59,7 +59,7 @@ const steps: TutorialStep[] = [
     title: "Smart Goals & Budgets 🎯",
     subtitle: "Plan ahead for rainy days",
     icon: <Target className="h-5 w-5 text-primary" />,
-    image: "/Pawikan-Original.png",
+    image: "/pawi-darting.png",
     speech:
       "Head over to the 'Plan' tab to set monthly budgets for Food, Transport, or Bills. You can also create savings targets for your dream vacation or a new gadget!",
   },
@@ -67,7 +67,7 @@ const steps: TutorialStep[] = [
     title: "Ask Pawi AI Assistant 🤖",
     subtitle: "Personal financial wisdom on demand",
     icon: <Bot className="h-5 w-5 text-primary" />,
-    image: "/pawikan-sleeping.png",
+    image: "/pawi-playing-with-robot.png",
     speech:
       "Got a question about your spending trends or need advice on saving up? Tap the 'Chat' tab in the bottom bar to chat with me anytime. I'm always awake to help!",
   },
@@ -75,7 +75,7 @@ const steps: TutorialStep[] = [
     title: "You're Ready to Swim! 🌊",
     subtitle: "Begin your financial journey today",
     icon: <CheckCircle2 className="h-5 w-5 text-primary" />,
-    image: "/pawikan-2.png",
+    image: "/pawi-excited.png",
     speech:
       "You're all set! Remember: a peso saved today is a treasure grown tomorrow. Let's start by logging your first expense or exploring your wallets!",
   },
