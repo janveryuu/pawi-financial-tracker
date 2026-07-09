@@ -17,7 +17,7 @@ export function PawiHeader() {
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-primary/15 ring-1 ring-primary/20">
             <Image
-              src="/pawikan-logo.png"
+              src="/pawi-happy.png"
               alt="Pawi the turtle mascot"
               width={32}
               height={32}

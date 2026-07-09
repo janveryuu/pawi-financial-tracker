@@ -26,7 +26,7 @@ export function PawiMascot() {
         }}
       >
         <Image 
-          src="/pawikan-logo.png" 
+          src="/pawi-happy.png" 
           alt="Pawi" 
           width={40} 
           height={40} 
