@@ -85,7 +85,7 @@ export default function Page() {
           <GoalsPreview onAddGoal={() => setTab("plan")} />
           <div className="-mx-5">
             <PawiTip
-              image="/Pawikan-Original.png"
+              image="/pawi-dashboard-clean.png"
               tip="Consistency is key! Logging even your smallest expenses helps you see the bigger picture."
               trivia="Did you know turtles don't have teeth? That's right! Good thing too, because biting off more debt than you can chew is a terrible idea."
             />
