@@ -70,11 +70,11 @@ export function ChatScreen() {
         <div className="flex flex-col gap-4">
           {messages.map((msg, i) => (
             <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full overflow-hidden ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-primary/15"}`}>
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-primary/15"}`}>
                 {msg.role === "user" ? (
-                  <User className="h-4 w-4" />
+                  <User className="h-5 w-5" />
                 ) : (
-                  <Image src="/pawi-robot.png" alt="Pawi AI" width={28} height={28} className="h-7 w-7 object-contain" />
+                  <Image src="/pawi-robot.png" alt="Pawi AI" width={36} height={36} className="h-9 w-9 object-contain scale-110" />
                 )}
               </div>
               <div className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm ${msg.role === "user" ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-secondary text-foreground rounded-tl-sm"}`}>
@@ -84,8 +84,8 @@ export function ChatScreen() {
           ))}
           {isLoading && (
             <div className="flex gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full overflow-hidden bg-primary/15">
-                <Image src="/pawi-robot.png" alt="Pawi AI" width={28} height={28} className="h-7 w-7 object-contain" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-primary/15">
+                <Image src="/pawi-robot.png" alt="Pawi AI" width={36} height={36} className="h-9 w-9 object-contain scale-110" />
               </div>
               <div className="max-w-[75%] rounded-2xl bg-secondary px-4 py-2 text-sm text-foreground rounded-tl-sm">
                 <span className="animate-pulse">Thinking...</span>
