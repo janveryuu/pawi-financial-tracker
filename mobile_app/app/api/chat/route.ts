@@ -91,20 +91,15 @@ export async function POST(req: Request) {
     const validChatHistory = firstUserIndex >= 0 ? chatHistory.slice(firstUserIndex) : chatHistory;
     const latestUserMessage = validChatHistory[validChatHistory.length - 1]?.content || "";
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
 
-    // If Gemini API Key is missing, respond gracefully with our smart conversational Pawi engine
+    // If no API Key is set, respond gracefully with our smart conversational Pawi engine
     if (!apiKey) {
       const reply = getSmartLocalReply(latestUserMessage, context, validChatHistory.length);
       return NextResponse.json({ reply });
     }
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
-
-    const geminiContents = validChatHistory.map((msg: any, index: number) => {
-      let text = msg.content;
-      if (index === validChatHistory.length - 1 && msg.role === 'user') {
-        text = `You are Pawi, an exciting, charismatic, and wise sea turtle personal finance companion! 🐢✨
+    const systemPrompt = `You are Pawi, an exciting, charismatic, and wise sea turtle personal finance companion! 🐢✨
 
 CRITICAL RULES FOR PAWI'S PERSONALITY & BEHAVIOR:
 1. NEVER repeatedly state or announce the user's Net Worth unless the user explicitly asks about their net worth, total balance, or overall wealth! Do not start messages with their net worth.
@@ -117,31 +112,81 @@ CRITICAL MATH RULES (ONLY IF USER ASKS ABOUT NET WORTH):
 2. Rates relative to USD: USD=1, PHP=57, EUR=0.92, GBP=0.78, JPY=155.5.
 
 Live context:
-${JSON.stringify(context || {}, null, 2)}
+${JSON.stringify(context || {}, null, 2)}`;
 
-User's actual message: "${text}"`;
+    const isGroq = apiKey.startsWith("gsk_") || Boolean(process.env.GROQ_API_KEY);
+
+    // 1. Try Groq Llama 3 (llama-3.3-70b-versatile)
+    if (isGroq) {
+      try {
+        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...validChatHistory.map((m: any) => ({
+                role: m.role,
+                content: m.content
+              }))
+            ],
+            temperature: 0.7,
+            max_tokens: 400
+          })
+        });
+
+        if (groqRes.ok) {
+          const groqData = await groqRes.json();
+          const reply = groqData.choices?.[0]?.message?.content;
+          if (reply) {
+            return NextResponse.json({ reply });
+          }
+        }
+      } catch (err) {
+        console.error("Groq API error:", err);
       }
-      return {
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text }]
-      };
-    });
-
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: geminiContents })
-    });
-
-    if (!response.ok) {
-      // Graceful fallback when rate limited or network error
-      const reply = getSmartLocalReply(latestUserMessage, context, validChatHistory.length);
-      return NextResponse.json({ reply });
     }
 
-    const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || getSmartLocalReply(latestUserMessage, context, validChatHistory.length);
+    // 2. Try Gemini API (if apiKey is Google AI key)
+    if (!isGroq) {
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
 
+        const geminiContents = validChatHistory.map((msg: any, index: number) => {
+          let text = msg.content;
+          if (index === validChatHistory.length - 1 && msg.role === 'user') {
+            text = `${systemPrompt}\n\nUser's actual message: "${text}"`;
+          }
+          return {
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text }]
+          };
+        });
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: geminiContents })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (reply) {
+            return NextResponse.json({ reply });
+          }
+        }
+      } catch (err) {
+        console.error("Gemini API error:", err);
+      }
+    }
+
+    // 3. Graceful fallback when rate limited or network error
+    const reply = getSmartLocalReply(latestUserMessage, context, validChatHistory.length);
     return NextResponse.json({ reply });
   } catch (error) {
     console.error('Chat API Error:', error);
