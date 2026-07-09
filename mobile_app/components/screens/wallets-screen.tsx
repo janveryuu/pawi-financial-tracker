@@ -102,7 +102,7 @@ export function WalletsScreen() {
 
       <div className="-mx-5 mt-2">
         <PawiTip
-          image="/pawikan-2.png"
+          image="/pawi-holding-wallet.png"
           tip="Keep your emergency fund in a separate Savings wallet so you're not tempted to spend it!"
         />
       </div>

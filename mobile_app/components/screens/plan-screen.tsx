@@ -66,7 +66,7 @@ export function PlanScreen() {
       
       <div className="-mx-5 -my-2">
         <PawiTip
-          image="/pawikan-sleeping.png"
+          image="/pawi-darting.png"
           tip="A goal without a plan is just a wish. Keep tracking your progress to make it a reality!"
           trivia="Turtles are famous for taking it slow. Remember the Tortoise and the Hare? Slow, steady, compound interest always wins the financial race!"
         />

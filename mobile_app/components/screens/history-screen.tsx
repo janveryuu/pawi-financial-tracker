@@ -28,7 +28,7 @@ export function HistoryScreen() {
     <div className="flex flex-col gap-5 px-5 pt-4 pb-24">
       <div className="-mx-5 -mt-2">
         <PawiTip
-          image="/Pawikan-Original.png"
+          image="/pawi-dashboard-clean.png"
           tip="Reviewing your history regularly helps you spot patterns and small leaks in your spending!"
           trivia="Sea turtles have a built-in GPS using the Earth's magnetic field to find their way home. You have Pawi to track your past expenses so your money never gets lost!"
         />
