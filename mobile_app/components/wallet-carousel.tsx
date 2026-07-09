@@ -12,7 +12,7 @@ const icons: Record<WalletType, typeof Banknote> = {
 
 const brandLogos: Record<string, string> = {
   cash: "/cash-logo.png",
-  gcash: "/gcash.jpg",
+  gcash: "/gcash.png",
   paymaya: "/Paymaya-logo.png",
   paypal: "/Paypal-logo.png",
 }
@@ -48,10 +48,10 @@ export function WalletCarousel({ onViewAll }: WalletCarouselProps = {}) {
               <div className="flex items-center justify-between">
                 <div
                   className="relative flex h-9 w-9 overflow-hidden items-center justify-center rounded-xl text-white"
-                  style={{ backgroundColor: brandLogo ? "white" : wallet.accent }}
+                  style={{ backgroundColor: brandLogo ? "transparent" : wallet.accent }}
                 >
                   {brandLogo ? (
-                    <Image src={brandLogo} alt={wallet.name} fill className="object-cover" />
+                    <Image src={brandLogo} alt={wallet.name} fill className="object-contain" />
                   ) : (
                     <Icon className="h-[18px] w-[18px]" />
                   )}

@@ -25,7 +25,7 @@ const icons: Record<WalletType, typeof Banknote> = {
 
 const brandLogos: Record<string, string> = {
   cash: "/cash-logo.png",
-  gcash: "/gcash.jpg",
+  gcash: "/gcash.png",
   paymaya: "/Paymaya-logo.png",
   paypal: "/Paypal-logo.png",
 }
@@ -73,10 +73,10 @@ export function WalletsScreen() {
             >
               <div
                 className="relative flex h-11 w-11 shrink-0 items-center overflow-hidden justify-center rounded-xl text-white"
-                style={{ backgroundColor: brandLogo ? "white" : wallet.accent }}
+                style={{ backgroundColor: brandLogo ? "transparent" : wallet.accent }}
               >
                 {brandLogo ? (
-                  <Image src={brandLogo} alt={wallet.name} fill className="object-cover" />
+                  <Image src={brandLogo} alt={wallet.name} fill className="object-contain" />
                 ) : (
                   <Icon className="h-5 w-5" />
                 )}
