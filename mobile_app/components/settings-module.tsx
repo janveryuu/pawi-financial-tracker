@@ -1,9 +1,5 @@
 import { useState } from "react"
 import {
-  Download,
-  Upload,
-  FileJson,
-  FileSpreadsheet,
   AlertTriangle,
   WifiOff,
   Sun,
@@ -12,21 +8,11 @@ import {
   Sparkles,
   Activity,
   Printer,
-  CheckCircle2,
-  TrendingUp,
-  ShieldCheck,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useStore } from "@/lib/store"
 
 import { StoryOfPawiModal } from "./story-of-pawi-modal"
-
-const dataActions = [
-  { label: "Export JSON", icon: FileJson, kind: "export" as const },
-  { label: "Import JSON", icon: FileJson, kind: "import" as const },
-  { label: "Export CSV", icon: FileSpreadsheet, kind: "export" as const },
-  { label: "Import CSV", icon: FileSpreadsheet, kind: "import" as const },
-]
 
 export interface SettingsModuleProps {
   onStartTutorial?: () => void
@@ -169,41 +155,6 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
             </span>
           </span>
         </button>
-      </div>
-
-      {/* Data Management Actions */}
-      <div className="flex items-center justify-between mt-1">
-        <h3 className="text-sm font-semibold text-foreground">
-          Backup & Restore
-        </h3>
-        <span className="text-xs text-muted-foreground">JSON & CSV</span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2.5">
-        {dataActions.map((action) => {
-          const Icon = action.icon
-          const Arrow = action.kind === "export" ? Download : Upload
-          return (
-            <button
-              key={action.label}
-              type="button"
-              className="flex items-center gap-2.5 rounded-2xl border border-border/70 bg-card p-3 text-left transition-colors hover:bg-secondary"
-            >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
-                <Icon className="h-4 w-4" />
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-xs font-semibold text-foreground">
-                  {action.label}
-                </span>
-                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                  <Arrow className="h-3 w-3" />
-                  {action.kind === "export" ? "Save locally" : "Restore data"}
-                </span>
-              </span>
-            </button>
-          )
-        })}
       </div>
 
       {/* Danger Zone */}
