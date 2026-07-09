@@ -166,4 +166,7 @@
   html {
     @apply font-sans;
   }
+  button {
+    @apply transition-all duration-200 ease-out active:scale-95 cursor-pointer;
+  }
 }
