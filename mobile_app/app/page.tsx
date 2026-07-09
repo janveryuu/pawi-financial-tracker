@@ -19,6 +19,8 @@ import { BottomNav, type TabId } from "@/components/bottom-nav"
 import { QuickLogModal } from "@/components/quick-log-modal"
 import { PawiMascot } from "@/components/pawi-mascot"
 import { PawiTip } from "@/components/pawi-tip"
+import { PawiTutorialModal } from "@/components/pawi-tutorial-modal"
+import { PawiTutorialBanner } from "@/components/pawi-tutorial-banner"
 
 const titles: Record<TabId, string> = {
   dashboard: "Dashboard",
@@ -34,12 +36,26 @@ export default function Page() {
   const router = useRouter()
   const [logOpen, setLogOpen] = useState(false)
   const [tab, setTab] = useState<TabId>("dashboard")
+  const [tutorialOpen, setTutorialOpen] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login")
     }
   }, [user, loading, router])
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("pawi_has_seen_tutorial") !== "true") {
+        const timer = setTimeout(() => {
+          setTutorialOpen(true)
+        }, 1200)
+        return () => clearTimeout(timer)
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
 
   if (loading || !user) {
     return (
@@ -61,6 +77,7 @@ export default function Page() {
 
       {tab === "dashboard" && (
         <div className="flex flex-col gap-5 px-5 pt-4">
+          <PawiTutorialBanner onStartTour={() => setTutorialOpen(true)} />
           <GreetingCard />
           <NetWorthCard />
           <WalletCarousel onViewAll={() => setTab("wallets")} />
@@ -82,7 +99,7 @@ export default function Page() {
       {tab === "chat" && <ChatScreen />}
       {tab === "settings" && (
         <div className="px-5 pt-4">
-          <SettingsModule />
+          <SettingsModule onStartTutorial={() => setTutorialOpen(true)} />
         </div>
       )}
 
@@ -100,6 +117,7 @@ export default function Page() {
 
       <BottomNav active={tab} onChange={setTab} />
       <QuickLogModal open={logOpen} onClose={() => setLogOpen(false)} />
+      <PawiTutorialModal open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
       
       <PawiMascot />
     </main>

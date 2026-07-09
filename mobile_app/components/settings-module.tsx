@@ -14,6 +14,7 @@ import { useTheme } from "next-themes"
 import { useStore } from "@/lib/store"
 
 import { StoryOfPawiModal } from "./story-of-pawi-modal"
+import { Sparkles } from "lucide-react"
 
 const dataActions = [
   { label: "Export JSON", icon: FileJson, kind: "export" as const },
@@ -22,7 +23,11 @@ const dataActions = [
   { label: "Import CSV", icon: FileSpreadsheet, kind: "import" as const },
 ]
 
-export function SettingsModule() {
+export interface SettingsModuleProps {
+  onStartTutorial?: () => void
+}
+
+export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
   const { theme, setTheme } = useTheme()
   const { defaultCurrency, setDefaultCurrency } = useStore()
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
@@ -46,6 +51,24 @@ export function SettingsModule() {
           </div>
         </div>
       </button>
+
+      {/* Replay Pawi's Interactive Tour */}
+      {onStartTutorial && (
+        <button
+          onClick={onStartTutorial}
+          className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-primary/15 via-primary/10 to-card p-5 text-left shadow-sm transition-all hover:shadow-md hover:scale-[1.02]"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/25 text-primary">
+              <Sparkles className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-foreground">Interactive Tour with Pawi</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">Replay Pawi&apos;s guided onboarding tutorial.</p>
+            </div>
+          </div>
+        </button>
+      )}
 
       <div className="flex items-center gap-2 mt-2">
         <WifiOff className="h-4 w-4 text-primary" />
