@@ -16,6 +16,15 @@ export function convertCurrency(amount: number, from: CurrencyCode, to: Currency
   return amountInUSD * EXCHANGE_RATES[to];
 }
 
+export function getWalletBrandLogo(name: string): string | undefined {
+  const lower = name.toLowerCase()
+  if (lower === "cash" || (lower.includes("cash") && !lower.includes("gcash"))) return "/cash-logo.png"
+  if (lower.includes("gcash")) return "/gcash.png"
+  if (lower.includes("maya") || lower.includes("paymaya")) return "/Paymaya-logo.png"
+  if (lower.includes("paypal")) return "/Paypal-logo.png"
+  return undefined
+}
+
 export interface Wallet {
   id: string
   name: string

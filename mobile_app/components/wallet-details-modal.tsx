@@ -2,8 +2,9 @@
 
 import { useEffect } from "react"
 import { X, ArrowDownRight, ArrowUpRight, Banknote, Smartphone, CreditCard, PiggyBank } from "lucide-react"
+import Image from "next/image"
 import { useStore } from "@/lib/store"
-import { Wallet, formatMoney, WalletType } from "@/lib/pawi-data"
+import { Wallet, formatMoney, WalletType, getWalletBrandLogo } from "@/lib/pawi-data"
 import { cn } from "@/lib/utils"
 
 interface WalletDetailsModalProps {
@@ -38,6 +39,7 @@ export function WalletDetailsModal({ wallet, open, onClose }: WalletDetailsModal
   if (!open || !wallet) return null
 
   const Icon = icons[wallet.type] || Banknote
+  const brandLogo = getWalletBrandLogo(wallet.name)
   const walletTransactions = transactions.filter(t => t.account === wallet.name)
 
   return (
@@ -54,10 +56,14 @@ export function WalletDetailsModal({ wallet, open, onClose }: WalletDetailsModal
         <div className="mb-6 flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white"
-              style={{ backgroundColor: wallet.accent }}
+              className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-white"
+              style={{ backgroundColor: brandLogo ? "transparent" : wallet.accent }}
             >
-              <Icon className="h-6 w-6" />
+              {brandLogo ? (
+                <Image src={brandLogo} alt={wallet.name} fill className="object-contain" />
+              ) : (
+                <Icon className="h-6 w-6" />
+              )}
             </div>
             <div>
               <h2 className="text-xl font-bold text-foreground">{wallet.name}</h2>

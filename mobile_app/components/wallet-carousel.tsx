@@ -1,6 +1,6 @@
 import { Banknote, Smartphone, CreditCard, PiggyBank } from "lucide-react"
 import Image from "next/image"
-import { formatMoney, type WalletType } from "@/lib/pawi-data"
+import { formatMoney, getWalletBrandLogo, type WalletType } from "@/lib/pawi-data"
 import { useStore } from "@/lib/store"
 
 const icons: Record<WalletType, typeof Banknote> = {
@@ -8,13 +8,6 @@ const icons: Record<WalletType, typeof Banknote> = {
   ewallet: Smartphone,
   card: CreditCard,
   savings: PiggyBank,
-}
-
-const brandLogos: Record<string, string> = {
-  cash: "/cash-logo.png",
-  gcash: "/gcash.png",
-  paymaya: "/Paymaya-logo.png",
-  paypal: "/Paypal-logo.png",
 }
 
 interface WalletCarouselProps {
@@ -38,7 +31,7 @@ export function WalletCarousel({ onViewAll }: WalletCarouselProps = {}) {
       <div className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {wallets.map((wallet) => {
           const Icon = icons[wallet.type]
-          const brandLogo = brandLogos[wallet.name.toLowerCase()]
+          const brandLogo = getWalletBrandLogo(wallet.name)
 
           return (
             <div

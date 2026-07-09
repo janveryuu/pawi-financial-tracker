@@ -10,7 +10,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 import Image from "next/image"
-import { formatMoney, type WalletType, type Wallet } from "@/lib/pawi-data"
+import { formatMoney, getWalletBrandLogo, type WalletType, type Wallet } from "@/lib/pawi-data"
 import { useStore } from "@/lib/store"
 import { AddWalletModal } from "../add-wallet-modal"
 import { WalletDetailsModal } from "../wallet-details-modal"
@@ -21,13 +21,6 @@ const icons: Record<WalletType, typeof Banknote> = {
   ewallet: Smartphone,
   card: CreditCard,
   savings: PiggyBank,
-}
-
-const brandLogos: Record<string, string> = {
-  cash: "/cash-logo.png",
-  gcash: "/gcash.png",
-  paymaya: "/Paymaya-logo.png",
-  paypal: "/Paypal-logo.png",
 }
 
 export function WalletsScreen() {
@@ -62,7 +55,7 @@ export function WalletsScreen() {
       <section className="flex flex-col gap-3">
         {wallets.map((wallet) => {
           const Icon = icons[wallet.type] || Banknote
-          const brandLogo = brandLogos[wallet.name.toLowerCase()]
+          const brandLogo = getWalletBrandLogo(wallet.name)
 
           return (
             <button
