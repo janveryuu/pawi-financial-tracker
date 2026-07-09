@@ -6,7 +6,7 @@ interface PawiTipProps {
   image?: string
 }
 
-export function PawiTip({ tip, trivia, image = "/pawi-turtle.png" }: PawiTipProps) {
+export function PawiTip({ tip, trivia, image = "/pawi-dashboard-clean.png" }: PawiTipProps) {
   return (
     <div className="mx-5 mb-5 mt-2 flex items-start gap-4 rounded-3xl bg-primary/10 p-5 shadow-sm">
       <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-card ring-4 ring-primary/20 shadow-md">

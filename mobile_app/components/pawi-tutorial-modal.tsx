@@ -42,7 +42,7 @@ const steps: TutorialStep[] = [
     title: "Dashboard Snapshot 📊",
     subtitle: "At-a-glance financial health",
     icon: <LayoutDashboard className="h-5 w-5 text-primary" />,
-    image: "/pawi-turtle.png",
+    image: "/pawi-dashboard-clean.png",
     speech:
       "Your Dashboard shows your Total Net Worth, Monthly Spending progress, and recent transactions all in one place. Use the glowing Quick Log button at the bottom anytime to record expenses in seconds!",
   },
