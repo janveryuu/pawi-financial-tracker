@@ -24,12 +24,133 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const [showStoryModal, setShowStoryModal] = useState(false)
   const [showAuditModal, setShowAuditModal] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
 
   // Calculate quick health metrics
   const totalWalletsCount = wallets?.length || 0
   const totalBalance = (wallets || []).reduce((sum, w) => sum + (w.balance || 0), 0)
+  const totalGoalsSaved = (goals || []).reduce((sum, g) => sum + (g.saved || 0), 0)
   const overBudgetCount = (budgets || []).filter(b => b.spent > b.limit).length
   const healthScore = overBudgetCount === 0 ? 95 : Math.max(60, 95 - overBudgetCount * 15)
+
+  const symbolMap: Record<string, string> = { PHP: "₱", USD: "$", EUR: "€", GBP: "£", JPY: "¥" }
+  const currSym = symbolMap[defaultCurrency] || "₱"
+
+  const handlePrintPDF = () => {
+    const formattedTotal = `${currSym}${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    const printWin = window.open("", "_blank")
+    if (!printWin) {
+      alert("Please allow popups to print or save your PDF report.")
+      return
+    }
+
+    const walletRows = (wallets || []).map(w => {
+      const share = totalBalance > 0 ? ((w.balance / totalBalance) * 100).toFixed(1) : "0.0"
+      return `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; font-weight: 600;">${w.name}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; color: #4b5563;">${w.subtitle || w.type}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold;">${currSym}${(w.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; color: #059669; font-weight: 600;">${share}%</td>
+        </tr>
+      `
+    }).join("")
+
+    const goalRows = (goals || []).map(g => {
+      const prog = g.target > 0 ? Math.min(100, Math.round((g.saved / g.target) * 100)) : 0
+      return `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; font-weight: 600;">${g.name}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; color: #4b5563;">${g.category}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold;">${currSym}${(g.saved || 0).toLocaleString()}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${currSym}${(g.target || 0).toLocaleString()}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600; color: #059669;">${prog}%</td>
+        </tr>
+      `
+    }).join("")
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Pawi Wealth & Savings Report</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1f2937; padding: 40px; max-width: 800px; margin: 0 auto; }
+          .header { border-bottom: 2px solid #10b981; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
+          .title { font-size: 24px; font-weight: 800; color: #065f46; margin: 0; }
+          .subtitle { font-size: 13px; color: #6b7280; margin-top: 4px; }
+          .summary-card { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 24px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
+          .summary-label { font-size: 12px; font-weight: 700; color: #047857; text-transform: uppercase; letter-spacing: 0.5px; }
+          .summary-val { font-size: 30px; font-weight: 800; color: #065f46; margin-top: 4px; }
+          .section-title { font-size: 17px; font-weight: 700; color: #111827; margin-top: 30px; margin-bottom: 12px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px; }
+          th { background: #f3f4f6; text-align: left; padding: 12px 10px; font-weight: 700; color: #374151; border-bottom: 2px solid #e5e7eb; }
+          .footer { text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 40px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <h1 class="title">PAWI FINANCIAL AUDIT & WEALTH SUMMARY</h1>
+            <div class="subtitle">Personal Savings, Wallets & Net Worth Statement • Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</div>
+          </div>
+          <div style="font-size: 28px;">🐢</div>
+        </div>
+
+        <div class="summary-card">
+          <div>
+            <div class="summary-label">Total Liquid Net Worth</div>
+            <div class="summary-val">${formattedTotal}</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="summary-label">Active Savings Accounts</div>
+            <div style="font-size: 22px; font-weight: 700; color: #047857; margin-top: 4px;">${wallets?.length || 0} Wallets</div>
+          </div>
+        </div>
+
+        <div class="section-title">Wallet Savings Breakdown</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Wallet Account</th>
+              <th>Category</th>
+              <th style="text-align: right;">Balance (${defaultCurrency})</th>
+              <th style="text-align: right;">% of Net Worth</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${walletRows || '<tr><td colspan="4" style="padding: 12px; text-align: center; color: #9ca3af;">No active wallets found</td></tr>'}
+          </tbody>
+        </table>
+
+        <div class="section-title">Savings Goals Progress</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Goal Name</th>
+              <th>Category</th>
+              <th style="text-align: right;">Saved</th>
+              <th style="text-align: right;">Target</th>
+              <th style="text-align: right;">Progress</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${goalRows || '<tr><td colspan="5" style="padding: 12px; text-align: center; color: #9ca3af;">No savings goals found</td></tr>'}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          Official Financial Summary Statement generated by Pawi Personal Finance Tracker • Secure Offline & Cloud Audit
+        </div>
+      </body>
+      </html>
+    `)
+    printWin.document.close()
+    printWin.focus()
+    setTimeout(() => {
+      printWin.print()
+    }, 250)
+  }
 
   return (
     <section className="flex flex-col gap-4 pb-24">
@@ -140,7 +261,7 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
 
         <button
           type="button"
-          onClick={() => window.print()}
+          onClick={() => setShowReportModal(true)}
           className="flex items-center gap-2.5 rounded-2xl border border-border/70 bg-card p-3.5 text-left transition-colors hover:bg-secondary"
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
@@ -270,6 +391,99 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
             >
               Done
             </button>
+          </div>
+        </div>
+      )}
+
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200 rounded-3xl border border-border bg-card p-6 shadow-2xl scrollbar-hide">
+            <div className="flex items-center justify-between border-b border-border/40 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/20 text-primary">
+                  <Printer className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">Savings & Net Worth</h3>
+                  <p className="text-xs text-muted-foreground">Pawi Wealth Summary Statement</p>
+                </div>
+              </div>
+              <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-bold text-primary">
+                {wallets?.length || 0} Wallets
+              </span>
+            </div>
+
+            {/* Total Net Worth Box */}
+            <div className="mt-4 rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/15 to-primary/5 p-4 text-center">
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">Total Liquid Net Worth</p>
+              <p className="mt-1 text-2xl font-extrabold text-foreground">
+                {currSym}{totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+
+            {/* Wallet Savings Table */}
+            <div className="mt-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Wallet Savings Breakdown</h4>
+              <div className="space-y-2">
+                {(wallets || []).map((w) => {
+                  const share = totalBalance > 0 ? ((w.balance / totalBalance) * 100).toFixed(1) : "0.0"
+                  return (
+                    <div key={w.id} className="flex items-center justify-between rounded-xl bg-secondary/60 px-3.5 py-2.5">
+                      <div>
+                        <p className="text-sm font-bold text-foreground">{w.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{w.subtitle || w.type}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-foreground">{currSym}{(w.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                        <p className="text-[11px] font-semibold text-primary">{share}% of total</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Goals Savings Table */}
+            {(goals && goals.length > 0) && (
+              <div className="mt-4">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Savings Goals Progress</h4>
+                <div className="space-y-2">
+                  {goals.map((g) => {
+                    const prog = g.target > 0 ? Math.min(100, Math.round((g.saved / g.target) * 100)) : 0
+                    return (
+                      <div key={g.id} className="flex items-center justify-between rounded-xl bg-secondary/60 px-3.5 py-2.5">
+                        <div>
+                          <p className="text-sm font-bold text-foreground">{g.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{g.category}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-foreground">{currSym}{(g.saved || 0).toLocaleString()} / {currSym}{(g.target || 0).toLocaleString()}</p>
+                          <p className="text-[11px] font-semibold text-primary">{prog}% saved</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                className="flex-1 rounded-2xl border border-border bg-card py-3 text-sm font-bold text-foreground transition-colors hover:bg-secondary"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handlePrintPDF}
+                className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                <Printer className="h-4 w-4" />
+                Print / Save PDF
+              </button>
+            </div>
           </div>
         </div>
       )}
