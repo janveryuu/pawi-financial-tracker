@@ -25,6 +25,9 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
   const [showStoryModal, setShowStoryModal] = useState(false)
   const [showAuditModal, setShowAuditModal] = useState(false)
   const [showReportModal, setShowReportModal] = useState(false)
+  const [showWipeDialog, setShowWipeDialog] = useState(false)
+  const [showWipeSuccessModal, setShowWipeSuccessModal] = useState(false)
+  const [showPopupWarningModal, setShowPopupWarningModal] = useState(false)
 
   // Calculate quick health metrics
   const totalWalletsCount = wallets?.length || 0
@@ -40,7 +43,7 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
     const formattedTotal = `${currSym}${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     const printWin = window.open("", "_blank")
     if (!printWin) {
-      alert("Please allow popups to print or save your PDF report.")
+      setShowPopupWarningModal(true)
       return
     }
 
@@ -292,13 +295,8 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
         </p>
         <button
           type="button"
-          onClick={async () => {
-            if (confirm("⚠️ DANGER: Are you sure you want to permanently delete all data associated with your account? This action cannot be undone.")) {
-              await resetAccountData?.()
-              alert("All account data has been permanently wiped.")
-            }
-          }}
-          className="mt-3 w-full rounded-2xl bg-destructive py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          onClick={() => setShowWipeDialog(true)}
+          className="mt-3 w-full rounded-2xl bg-destructive py-3 text-sm font-bold text-white shadow-md shadow-destructive/20 transition-all hover:bg-destructive/90 active:scale-95"
         >
           Wipe Account Data
         </button>
@@ -484,6 +482,85 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
                 Print / Save PDF
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Luxury Wipe Confirmation Modal */}
+      {showWipeDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-sm animate-in zoom-in-95 duration-200 rounded-3xl border border-destructive/40 bg-card p-6 shadow-2xl text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-destructive/15 border border-destructive/30 text-destructive shadow-lg shadow-destructive/20">
+              <AlertTriangle className="h-8 w-8" />
+            </div>
+            <h3 className="text-xl font-black text-foreground">Wipe All Account Data?</h3>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              You are about to permanently reset all wallets, transactions, savings goals, and budgets. <span className="font-bold text-destructive">This action cannot be undone.</span>
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowWipeDialog(false)}
+                className="flex-1 rounded-2xl border border-border bg-secondary/80 py-3.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await resetAccountData?.()
+                  setShowWipeDialog(false)
+                  setShowWipeSuccessModal(true)
+                }}
+                className="flex-1 rounded-2xl bg-destructive py-3.5 text-xs font-bold text-white shadow-lg shadow-destructive/25 transition-all hover:bg-destructive/90 active:scale-95"
+              >
+                Yes, Wipe Clean
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Luxury Wipe Success Modal */}
+      {showWipeSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-sm animate-in zoom-in-95 duration-200 rounded-3xl border border-emerald-500/40 bg-card p-6 shadow-2xl text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 shadow-lg shadow-emerald-500/20">
+              <CheckCircle2 className="h-8 w-8" />
+            </div>
+            <h3 className="text-xl font-black text-foreground">Account Cleaned!</h3>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              All financial records have been wiped cleanly. Your Pawi tracker is ready for a fresh start!
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowWipeSuccessModal(false)}
+              className="mt-6 w-full rounded-2xl bg-primary py-3.5 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-opacity hover:opacity-90"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Popup Warning Modal */}
+      {showPopupWarningModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-sm animate-in zoom-in-95 duration-200 rounded-3xl border border-amber-500/40 bg-card p-6 shadow-2xl text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-amber-500/15 border border-amber-500/30 text-amber-500 shadow-lg shadow-amber-500/20">
+              <AlertTriangle className="h-8 w-8" />
+            </div>
+            <h3 className="text-xl font-black text-foreground">Popups Blocked</h3>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Please allow browser popups on this site to print or download your PDF financial report.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowPopupWarningModal(false)}
+              className="mt-6 w-full rounded-2xl bg-primary py-3.5 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              Got It
+            </button>
           </div>
         </div>
       )}
