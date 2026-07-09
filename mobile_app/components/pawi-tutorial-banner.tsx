@@ -37,7 +37,7 @@ export function PawiTutorialBanner({ onStartTour }: PawiTutorialBannerProps) {
       <div className="flex items-start gap-3.5">
         <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-card ring-2 ring-primary/30 shadow-sm">
           <Image
-            src="/pawikan-2.png"
+            src="/pawi-excited.png"
             alt="Pawi Mascot"
             width={40}
             height={40}
