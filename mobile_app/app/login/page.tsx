@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signInAnonymously, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -39,10 +39,36 @@ export default function LoginPage() {
     setError("");
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
       await signInWithPopup(auth, provider);
       router.push("/");
     } catch (err: any) {
-      setError(err.message || "Google authentication failed");
+      const msg = String(err?.message || "");
+      if (msg.includes("storage") || msg.includes("initial state") || msg.includes("popup") || msg.includes("partitioned")) {
+        setError("Safari iOS blocks cross-site Google login. Tap 'Continue as Guest' below for instant access!");
+      } else {
+        setError(msg || "Google authentication failed");
+      }
+    }
+  };
+
+  const handleGuestAuth = async () => {
+    setError("");
+    try {
+      await signInAnonymously(auth);
+      router.push("/");
+    } catch {
+      try {
+        await signInWithEmailAndPassword(auth, "demo@pawi.app", "pawidemo2026");
+        router.push("/");
+      } catch {
+        try {
+          await createUserWithEmailAndPassword(auth, "demo@pawi.app", "pawidemo2026");
+          router.push("/");
+        } catch (err: any) {
+          setError("Could not launch demo session. Please sign up with an email above!");
+        }
+      }
     }
   };
 
@@ -156,6 +182,14 @@ export default function LoginPage() {
             />
           </svg>
           Google
+        </button>
+
+        <button
+          type="button"
+          onClick={handleGuestAuth}
+          className="inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-primary/50 bg-primary/10 px-4 py-2 text-sm font-bold text-primary shadow-sm transition-colors hover:bg-primary/20 focus-visible:outline-none"
+        >
+          🐢 Continue as Guest (Instant Access)
         </button>
       </div>
     </div>
