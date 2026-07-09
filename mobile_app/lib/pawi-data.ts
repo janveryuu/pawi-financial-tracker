@@ -22,7 +22,7 @@ export function getWalletBrandLogo(name: string): string | undefined {
   if (lower.includes("gcash")) return "/gcash.png"
   if (lower.includes("maya") || lower.includes("paymaya")) return "/Paymaya-logo.png"
   if (lower.includes("paypal")) return "/Paypal-logo.png"
-  if (lower.includes("rcbc")) return "/RCBC.jpg"
+  if (lower.includes("rcbc")) return "/RCBC2.png"
   return undefined
 }
 
