@@ -28,6 +28,8 @@ interface StoreContextType extends State {
   addFundsToGoal: (goalId: string, amount: number) => void
   setChatMessages: (msgs: ChatMessage[]) => void
   setDefaultCurrency: (currency: CurrencyCode) => void
+  resetAccountData: () => Promise<void>
+  loadSampleData: () => Promise<void>
 }
 
 const StoreContext = createContext<StoreContextType | null>(null)
@@ -63,17 +65,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
         setState(data)
       } else {
-        // Initialize with default template data for new users
-        const defaultState = {
-          wallets: defaultWallets,
-          transactions: defaultTransactions,
-          goals: defaultGoals,
-          budgets: defaultBudgets,
+        // Initialize with clean, empty state for new users
+        const cleanState: State = {
+          wallets: [
+            {
+              id: "cash",
+              name: "Cash",
+              subtitle: "Default · PHP",
+              balance: 0,
+              currency: "PHP",
+              type: "cash",
+              accent: "oklch(0.7 0.13 145)",
+            }
+          ],
+          transactions: [],
+          goals: [],
+          budgets: [],
           chatMessages: [{ role: "assistant", content: "Hi! I'm Pawi 🐢. I can help you analyze your spending, answer financial questions, or just chat about your goals. What's on your mind?" }],
           defaultCurrency: "PHP"
         }
-        setDoc(docRef, defaultState)
-        setState(defaultState)
+        setDoc(docRef, cleanState)
+        setState(cleanState)
       }
     })
 
@@ -195,8 +207,46 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await setDoc(doc(db, "users", user.uid), newState, { merge: true })
   }
 
+  const resetAccountData = async () => {
+    if (!user) return
+    const cleanState: State = {
+      wallets: [
+        {
+          id: "cash",
+          name: "Cash",
+          subtitle: "Default · PHP",
+          balance: 0,
+          currency: "PHP",
+          type: "cash",
+          accent: "oklch(0.7 0.13 145)",
+        }
+      ],
+      transactions: [],
+      goals: [],
+      budgets: [],
+      chatMessages: [{ role: "assistant", content: "Hi! I'm Pawi 🐢. I can help you analyze your spending, answer financial questions, or just chat about your goals. What's on your mind?" }],
+      defaultCurrency: "PHP"
+    }
+    setState(cleanState)
+    await setDoc(doc(db, "users", user.uid), cleanState)
+  }
+
+  const loadSampleData = async () => {
+    if (!user) return
+    const sampleState: State = {
+      wallets: defaultWallets,
+      transactions: defaultTransactions,
+      goals: defaultGoals,
+      budgets: defaultBudgets,
+      chatMessages: [{ role: "assistant", content: "Hi! I'm Pawi 🐢. I can help you analyze your spending, answer financial questions, or just chat about your goals. What's on your mind?" }],
+      defaultCurrency: "PHP"
+    }
+    setState(sampleState)
+    await setDoc(doc(db, "users", user.uid), sampleState)
+  }
+
   return (
-    <StoreContext.Provider value={{ ...state, addTransaction, addWallet, addGoal, addBudget, addFundsToGoal, setChatMessages, setDefaultCurrency }}>
+    <StoreContext.Provider value={{ ...state, addTransaction, addWallet, addGoal, addBudget, addFundsToGoal, setChatMessages, setDefaultCurrency, resetAccountData, loadSampleData }}>
       {children}
     </StoreContext.Provider>
   )

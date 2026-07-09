@@ -9,12 +9,14 @@ import {
   Sun,
   Moon,
   BookOpen,
+  Sparkles,
+  RefreshCw,
+  Database,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useStore } from "@/lib/store"
 
 import { StoryOfPawiModal } from "./story-of-pawi-modal"
-import { Sparkles } from "lucide-react"
 
 const dataActions = [
   { label: "Export JSON", icon: FileJson, kind: "export" as const },
@@ -29,7 +31,7 @@ export interface SettingsModuleProps {
 
 export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
   const { theme, setTheme } = useTheme()
-  const { defaultCurrency, setDefaultCurrency } = useStore()
+  const { defaultCurrency, setDefaultCurrency, resetAccountData, loadSampleData } = useStore()
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const [showStoryModal, setShowStoryModal] = useState(false)
 
@@ -142,6 +144,55 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
             </button>
           )
         })}
+      </div>
+
+      {/* Reset & Sample Data Management */}
+      <div className="grid grid-cols-2 gap-3 mt-1">
+        <button
+          type="button"
+          onClick={async () => {
+            if (confirm("Reset account database to a clean empty state? All transactions and goals will be cleared.")) {
+              await resetAccountData?.()
+              alert("Account reset to clean state successfully!")
+            }
+          }}
+          className="flex items-center gap-2.5 rounded-2xl border border-red-500/30 bg-red-500/10 p-3.5 text-left transition-colors hover:bg-red-500/20"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-500/20 text-red-500">
+            <RefreshCw className="h-[18px] w-[18px]" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-bold text-red-500">
+              Reset Clean
+            </span>
+            <span className="block text-[11px] text-red-500/80">
+              Wipe sample data
+            </span>
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            if (confirm("Load Pawi sample demo data (wallets, goals, transactions)?")) {
+              await loadSampleData?.()
+              alert("Sample demo data loaded successfully!")
+            }
+          }}
+          className="flex items-center gap-2.5 rounded-2xl border border-border/70 bg-card p-3.5 text-left transition-colors hover:bg-secondary"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+            <Database className="h-[18px] w-[18px]" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-bold text-foreground">
+              Demo Data
+            </span>
+            <span className="block text-[11px] text-muted-foreground">
+              Load sample items
+            </span>
+          </span>
+        </button>
       </div>
 
       <div className="rounded-3xl border border-destructive/30 bg-destructive/8 p-4">
