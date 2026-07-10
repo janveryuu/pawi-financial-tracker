@@ -33,8 +33,15 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
     if (!value.trim()) return
     
     const lowerValue = value.toLowerCase()
-    const amountMatch = value.match(/\d+(\.\d+)?/)
-    const amount = amountMatch ? parseFloat(amountMatch[0]) : 0
+    const cleanNumText = value.replace(/,/g, "")
+    const amountMatch = cleanNumText.match(/(\d+(?:\.\d+)?)\s*(k|m)?/i)
+    let amount = 0
+    if (amountMatch) {
+      amount = parseFloat(amountMatch[1])
+      const unit = amountMatch[2]?.toLowerCase()
+      if (unit === "k") amount *= 1000
+      if (unit === "m") amount *= 1000000
+    }
     
     // Determine Income/Expense
     const isIncome = lowerValue.includes("salary") || lowerValue.includes("income") || lowerValue.includes("received")

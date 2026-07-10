@@ -118,14 +118,39 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
     
-    // Update wallet balance
-    const updatedWallets = state.wallets.map(w => {
-      if (w.name === tx.account) {
-        const adjustment = tx.kind === "income" ? tx.amount : -tx.amount
+    // Update wallet balance flexibly (case-insensitive & substring)
+    const adjustment = tx.kind === "income" ? tx.amount : -tx.amount
+    let matched = false
+    let updatedWallets = state.wallets.map(w => {
+      const wName = w.name.toLowerCase()
+      const txAcc = tx.account.toLowerCase()
+      if (wName === txAcc || wName.includes(txAcc) || txAcc.includes(wName)) {
+        matched = true
         return { ...w, balance: w.balance + adjustment }
       }
       return w
     })
+
+    if (!matched) {
+      if (state.wallets.length === 1 && state.wallets[0].name.toLowerCase() === "cash") {
+        const newWallet: Wallet = {
+          id: "w_" + Date.now(),
+          name: tx.account,
+          subtitle: "Auto-created · PHP",
+          balance: adjustment,
+          currency: tx.currency || "PHP",
+          type: tx.account.toLowerCase().includes("card") ? "card" : "wallet",
+          accent: "oklch(0.6 0.15 220)"
+        }
+        updatedWallets = [...updatedWallets, newWallet]
+      } else if (state.wallets.length > 0) {
+        // Fallback: deduct from the default first wallet if account name not explicitly tracked
+        updatedWallets = state.wallets.map((w, index) => {
+          if (index === 0) return { ...w, balance: w.balance + adjustment }
+          return w
+        })
+      }
+    }
 
     const newState = {
       ...state,
