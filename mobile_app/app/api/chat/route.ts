@@ -8,7 +8,14 @@ function getSmartLocalReply(userMessage: string, context: any, historyLength: nu
   // Helper to format currency
   const fmt = (num: number) => `${symbol}${num.toLocaleString(undefined, { minimumFractionDigits: defaultCurrency === 'JPY' ? 0 : 2, maximumFractionDigits: defaultCurrency === 'JPY' ? 0 : 2 })}`;
 
-  // 1. Typos / Gibberish / Very short unknown input (e.g., 'sda', 'efsa', 'asdf')
+  // 1. Clear / remove conversation
+  const hasClearVerb = /\b(remove|clear|delete|reset|erase|wipe)\b/.test(text);
+  const hasChatTarget = /\b(message|messages|conversation|chat|history|everything)\b/.test(text);
+  if (hasClearVerb && hasChatTarget && !/\b(transaction|wallet|budget|goal|expense|income)\b/.test(text)) {
+    return "Cowabunga! 🌊 All messages and conversation history have been cleared! We have a fresh new slate. What would you like to ask Pawi today? 🐢✨";
+  }
+
+  // 2. Typos / Gibberish / Very short unknown input (e.g., 'sda', 'efsa', 'asdf')
   if (text.length <= 4 && !['hi', 'hey', 'hello', 'help', 'tips', 'goal', 'cash', 'chat'].includes(text)) {
     const typoReplies = [
       "Haha, looks like your fingers did a quick splash on the keyboard! 🐢💦 Ask me anything about your budgets, wallets, or ways to grow your savings!",

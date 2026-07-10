@@ -2,12 +2,60 @@
 
 import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
-import { Send, Bot, User } from "lucide-react"
+import { Send, Bot, User, Trash2 } from "lucide-react"
 import { useStore } from "@/lib/store"
 
 interface Message {
   role: "user" | "assistant"
   content: string
+}
+
+function isClearChatCommand(text: string): boolean {
+  const lower = text.trim().toLowerCase()
+
+  const directCommands = [
+    "clear chat",
+    "clear conversation",
+    "clear messages",
+    "clear all messages",
+    "clear history",
+    "clear everything",
+    "remove chat",
+    "remove conversation",
+    "remove messages",
+    "remove all messages",
+    "remove all the message",
+    "remove all the messages",
+    "remove history",
+    "remove everything",
+    "delete chat",
+    "delete conversation",
+    "delete messages",
+    "delete all messages",
+    "delete history",
+    "delete everything",
+    "reset chat",
+    "reset conversation",
+    "reset messages",
+    "erase chat",
+    "erase conversation",
+    "erase messages",
+  ]
+
+  if (directCommands.some((cmd) => lower === cmd || lower.startsWith(cmd))) {
+    return true
+  }
+
+  const hasClearVerb = /\b(remove|clear|delete|reset|erase|wipe)\b/.test(lower)
+  const hasChatTarget = /\b(message|messages|conversation|chat|history|everything)\b/.test(lower)
+
+  if (hasClearVerb && hasChatTarget) {
+    if (!/\b(transaction|wallet|budget|goal|expense|income)\b/.test(lower)) {
+      return true
+    }
+  }
+
+  return false
 }
 
 export function ChatScreen() {
@@ -26,11 +74,25 @@ export function ChatScreen() {
     scrollToBottom()
   }, [messages])
 
+  const handleClearChat = () => {
+    setChatMessages([
+      {
+        role: "assistant",
+        content: "Cowabunga! 🌊 All messages and conversation history have been cleared! We have a fresh new slate. What would you like to ask Pawi today? 🐢✨",
+      },
+    ])
+  }
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
     
     const userMessage = input.trim()
     setInput("")
+
+    if (isClearChatCommand(userMessage)) {
+      handleClearChat()
+      return
+    }
     
     const newMessages = [...messages, { role: "user" as const, content: userMessage }]
     setChatMessages(newMessages)
@@ -66,6 +128,36 @@ export function ChatScreen() {
 
   return (
     <div className="flex h-[calc(100vh-140px)] flex-col px-5 pt-4">
+      {/* Top Bar with Clear Chat button */}
+      <div className="mb-3 flex items-center justify-between rounded-2xl border border-border/60 bg-card/90 px-4 py-2.5 shadow-xs backdrop-blur-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 overflow-hidden">
+            <Image src="/pawi-robot.png" alt="Pawi AI" width={28} height={28} className="h-7 w-7 object-contain scale-110" />
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-foreground">Ask Pawi</span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Online
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Ask Pawi anything or say &quot;clear chat&quot;</p>
+          </div>
+        </div>
+        
+        {messages.length > 1 && (
+          <button
+            onClick={handleClearChat}
+            title="Clear conversation"
+            className="flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/60 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all active:scale-95"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Clear Chat</span>
+          </button>
+        )}
+      </div>
+
       <div className="flex-1 overflow-y-auto rounded-3xl border border-border/60 bg-card p-4 shadow-sm scrollbar-hide">
         <div className="flex flex-col gap-4">
           {messages.map((msg, i) => (
@@ -91,7 +183,7 @@ export function ChatScreen() {
                 <span className="animate-pulse">Thinking...</span>
               </div>
             </div>
-          )}
+          ))}
           <div ref={messagesEndRef} />
         </div>
       </div>

@@ -93,10 +93,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [user])
 
   const setChatMessages = async (msgs: ChatMessage[]) => {
+    setState((prev) => ({ ...prev, chatMessages: msgs }))
     if (!user) return
-    const newState = { ...state, chatMessages: msgs }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), { chatMessages: msgs }, { merge: true })
+    try {
+      await setDoc(doc(db, "users", user.uid), { chatMessages: msgs }, { merge: true })
+    } catch (error) {
+      console.error("Failed to sync chat messages:", error)
+    }
   }
 
   const setDefaultCurrency = async (currency: CurrencyCode) => {
