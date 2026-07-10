@@ -1,14 +1,26 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { PawiStoryModal } from "./pawi-story-modal"
 
 export function PawiMascot({ hidden }: { hidden?: boolean } = {}) {
   const [open, setOpen] = useState(false)
   const [bouncing, setBouncing] = useState(false)
+  const [isChatActive, setIsChatActive] = useState(false)
 
-  if (hidden) return null
+  useEffect(() => {
+    const checkChat = () => {
+      const chatEl = document.getElementById("chat-screen-container")
+      setIsChatActive(!!chatEl)
+    }
+    checkChat()
+    const observer = new MutationObserver(checkChat)
+    observer.observe(document.body, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [])
+
+  if (hidden || isChatActive) return null
 
   const handleClick = () => {
     setBouncing(true)
