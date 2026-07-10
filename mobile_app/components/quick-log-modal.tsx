@@ -43,8 +43,14 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
       if (unit === "m") amount *= 1000000
     }
     
-    // Determine Income/Expense
-    const isIncome = lowerValue.includes("salary") || lowerValue.includes("income") || lowerValue.includes("received")
+    // Determine Income/Expense comprehensive keywords
+    const incomeKeywords = [
+      "salary", "income", "receive", "received", "receiving",
+      "add", "added", "gain", "gained", "allowance",
+      "bonus", "freelance", "payout", "paycheck", "deposit",
+      "dividend", "refund", "gift", "cash in", "cashin", "earned", "earn"
+    ]
+    const isIncome = incomeKeywords.some(kw => lowerValue.includes(kw))
     
     // Determine Account
     let account = "Cash"
@@ -54,11 +60,18 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
     
     // Determine Category
     let category = isIncome ? "Income" : "General"
-    if (lowerValue.includes("lunch") || lowerValue.includes("food") || lowerValue.includes("dinner") || lowerValue.includes("breakfast") || lowerValue.includes("coffee")) category = "Food & Dining"
-    if (lowerValue.includes("groceries") || lowerValue.includes("supermarket")) category = "Groceries"
-    if (lowerValue.includes("ride") || lowerValue.includes("grab") || lowerValue.includes("taxi") || lowerValue.includes("transport")) category = "Transport"
-    if (lowerValue.includes("netflix") || lowerValue.includes("game") || lowerValue.includes("movie")) category = "Entertainment"
-    if (lowerValue.includes("shopping") || lowerValue.includes("uniqlo") || lowerValue.includes("zara")) category = "Shopping"
+    if (isIncome) {
+      if (lowerValue.includes("freelance")) category = "Freelance"
+      else if (lowerValue.includes("salary")) category = "Salary"
+      else if (lowerValue.includes("allowance")) category = "Allowance"
+      else if (lowerValue.includes("bonus")) category = "Bonus"
+    } else {
+      if (lowerValue.includes("lunch") || lowerValue.includes("food") || lowerValue.includes("dinner") || lowerValue.includes("breakfast") || lowerValue.includes("coffee")) category = "Food & Dining"
+      if (lowerValue.includes("groceries") || lowerValue.includes("supermarket")) category = "Groceries"
+      if (lowerValue.includes("ride") || lowerValue.includes("grab") || lowerValue.includes("taxi") || lowerValue.includes("transport")) category = "Transport"
+      if (lowerValue.includes("netflix") || lowerValue.includes("game") || lowerValue.includes("movie")) category = "Entertainment"
+      if (lowerValue.includes("shopping") || lowerValue.includes("uniqlo") || lowerValue.includes("zara")) category = "Shopping"
+    }
 
     addTransaction({
       label: value.trim(),
