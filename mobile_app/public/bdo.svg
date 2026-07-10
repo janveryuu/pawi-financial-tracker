@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="bdoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#003EBA" />
+      <stop offset="100%" stop-color="#002366" />
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="28" fill="url(#bdoGrad)"/>
+  <text x="60" y="73" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="44" fill="#FDB813" text-anchor="middle" letter-spacing="-1">BDO</text>
+</svg>

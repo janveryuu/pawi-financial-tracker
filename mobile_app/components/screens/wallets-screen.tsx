@@ -24,6 +24,16 @@ const icons: Record<WalletType, typeof Banknote> = {
   savings: PiggyBank,
 }
 
+function getWalletMonogram(name: string): string | null {
+  const generic = ["cash", "savings", "ewallet", "card", "wallet", "my wallet"]
+  if (generic.includes(name.trim().toLowerCase())) return null
+  const words = name.trim().split(/\s+/)
+  if (words.length > 1) {
+    return (words[0][0] + words[1][0]).toUpperCase()
+  }
+  return name.slice(0, 2).toUpperCase()
+}
+
 export function WalletsScreen() {
   const { wallets, deleteWallet } = useStore()
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -57,6 +67,7 @@ export function WalletsScreen() {
         {wallets.map((wallet) => {
           const Icon = icons[wallet.type] || Banknote
           const brandLogo = getWalletBrandLogo(wallet.name)
+          const monogram = !brandLogo ? getWalletMonogram(wallet.name) : null
 
           return (
             <button
@@ -66,11 +77,13 @@ export function WalletsScreen() {
               className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-4 text-left shadow-sm transition-colors hover:bg-accent/40"
             >
               <div
-                className="relative flex h-11 w-11 shrink-0 items-center overflow-hidden justify-center rounded-xl text-white"
+                className="relative flex h-11 w-11 shrink-0 items-center overflow-hidden justify-center rounded-xl text-white font-black text-sm tracking-wide shadow-sm"
                 style={{ backgroundColor: brandLogo ? "transparent" : wallet.accent }}
               >
                 {brandLogo ? (
                   <Image src={brandLogo} alt={wallet.name} fill className="object-contain" />
+                ) : monogram ? (
+                  <span>{monogram}</span>
                 ) : (
                   <Icon className="h-5 w-5" />
                 )}

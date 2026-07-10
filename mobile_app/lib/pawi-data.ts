@@ -23,6 +23,12 @@ export function getWalletBrandLogo(name: string): string | undefined {
   if (lower.includes("maya") || lower.includes("paymaya")) return "/Paymaya-logo.png"
   if (lower.includes("paypal")) return "/Paypal-logo.png"
   if (lower.includes("rcbc")) return "/RCBC2.png"
+  if (lower.includes("bdo")) return "/bdo.svg"
+  if (lower.includes("bpi")) return "/bpi.svg"
+  if (lower.includes("union")) return "/unionbank.svg"
+  if (lower.includes("metro")) return "/metrobank.svg"
+  if (lower.includes("gotyme") || lower.includes("tyme")) return "/gotyme.svg"
+  if (lower.includes("sea")) return "/seabank.svg"
   return undefined
 }
 

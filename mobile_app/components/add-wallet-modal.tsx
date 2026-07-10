@@ -2,8 +2,20 @@
 
 import { useEffect, useState } from "react"
 import { Wallet, X } from "lucide-react"
+import Image from "next/image"
 import { useStore } from "@/lib/store"
+import { getWalletBrandLogo } from "@/lib/pawi-data"
 import { cn } from "@/lib/utils"
+
+function getWalletMonogram(name: string): string | null {
+  const generic = ["cash", "savings", "ewallet", "card", "wallet", "my wallet"]
+  if (generic.includes(name.trim().toLowerCase())) return null
+  const words = name.trim().split(/\s+/)
+  if (words.length > 1) {
+    return (words[0][0] + words[1][0]).toUpperCase()
+  }
+  return name.slice(0, 2).toUpperCase()
+}
 
 interface AddWalletModalProps {
   open: boolean
@@ -96,7 +108,26 @@ export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Wallet Name</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Wallet Name</label>
+              {name.trim() && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span>Icon preview:</span>
+                  <div
+                    className="relative flex h-6 w-6 items-center justify-center overflow-hidden rounded-md text-[10px] font-black text-white"
+                    style={{ backgroundColor: getWalletBrandLogo(name) ? "transparent" : accent }}
+                  >
+                    {getWalletBrandLogo(name) ? (
+                      <Image src={getWalletBrandLogo(name)!} alt={name} fill className="object-contain" />
+                    ) : getWalletMonogram(name) ? (
+                      <span>{getWalletMonogram(name)}</span>
+                    ) : (
+                      <Wallet className="h-3.5 w-3.5" />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <input
               type="text"
               value={name}

@@ -20,6 +20,16 @@ const icons: Record<WalletType, typeof Banknote> = {
   savings: PiggyBank,
 }
 
+function getWalletMonogram(name: string): string | null {
+  const generic = ["cash", "savings", "ewallet", "card", "wallet", "my wallet"]
+  if (generic.includes(name.trim().toLowerCase())) return null
+  const words = name.trim().split(/\s+/)
+  if (words.length > 1) {
+    return (words[0][0] + words[1][0]).toUpperCase()
+  }
+  return name.slice(0, 2).toUpperCase()
+}
+
 export function WalletDetailsModal({ wallet, open, onClose }: WalletDetailsModalProps) {
   const { transactions, deleteWallet } = useStore()
 
@@ -40,6 +50,7 @@ export function WalletDetailsModal({ wallet, open, onClose }: WalletDetailsModal
 
   const Icon = icons[wallet.type] || Banknote
   const brandLogo = getWalletBrandLogo(wallet.name)
+  const monogram = !brandLogo ? getWalletMonogram(wallet.name) : null
   const walletTransactions = transactions.filter(t => t.account === wallet.name)
 
   return (
@@ -56,11 +67,13 @@ export function WalletDetailsModal({ wallet, open, onClose }: WalletDetailsModal
         <div className="mb-6 flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div
-              className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-white"
+              className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-white font-black text-base tracking-wide shadow-sm"
               style={{ backgroundColor: brandLogo ? "transparent" : wallet.accent }}
             >
               {brandLogo ? (
                 <Image src={brandLogo} alt={wallet.name} fill className="object-contain" />
+              ) : monogram ? (
+                <span>{monogram}</span>
               ) : (
                 <Icon className="h-6 w-6" />
               )}
