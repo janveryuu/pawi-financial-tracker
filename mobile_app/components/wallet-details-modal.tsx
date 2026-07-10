@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { X, ArrowDownRight, ArrowUpRight, Banknote, Smartphone, CreditCard, PiggyBank } from "lucide-react"
+import { X, ArrowDownRight, ArrowUpRight, Banknote, Smartphone, CreditCard, PiggyBank, Trash2 } from "lucide-react"
 import Image from "next/image"
 import { useStore } from "@/lib/store"
 import { Wallet, formatMoney, WalletType, getWalletBrandLogo } from "@/lib/pawi-data"
@@ -21,7 +21,7 @@ const icons: Record<WalletType, typeof Banknote> = {
 }
 
 export function WalletDetailsModal({ wallet, open, onClose }: WalletDetailsModalProps) {
-  const { transactions } = useStore()
+  const { transactions, deleteWallet } = useStore()
 
   useEffect(() => {
     if (!open) return
@@ -136,6 +136,20 @@ export function WalletDetailsModal({ wallet, open, onClose }: WalletDetailsModal
               })
             )}
           </div>
+        </div>
+
+        <div className="mt-4 border-t border-border/40 pt-4">
+          <button
+            type="button"
+            onClick={() => {
+              deleteWallet(wallet.id)
+              onClose()
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 py-3 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/20"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete Wallet
+          </button>
         </div>
 
       </div>

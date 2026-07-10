@@ -23,6 +23,7 @@ interface State {
 interface StoreContextType extends State {
   addTransaction: (tx: Omit<Transaction, "id" | "time">) => void
   addWallet: (wallet: Omit<Wallet, "id">) => void
+  deleteWallet: (walletId: string) => Promise<void>
   addGoal: (goal: Omit<Goal, "id">) => void
   addBudget: (budget: Omit<Budget, "id">) => void
   addFundsToGoal: (goalId: string, amount: number) => void
@@ -185,6 +186,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await setDoc(doc(db, "users", user.uid), newState, { merge: true })
   }
 
+  const deleteWallet = async (walletId: string) => {
+    if (!user) return
+    const newState = {
+      ...state,
+      wallets: state.wallets.filter(w => w.id !== walletId)
+    }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
   const addGoal = async (goal: Omit<Goal, "id">) => {
     if (!user) return
 
@@ -274,7 +285,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <StoreContext.Provider value={{ ...state, addTransaction, addWallet, addGoal, addBudget, addFundsToGoal, setChatMessages, setDefaultCurrency, resetAccountData, loadSampleData }}>
+    <StoreContext.Provider value={{ ...state, addTransaction, addWallet, deleteWallet, addGoal, addBudget, addFundsToGoal, setChatMessages, setDefaultCurrency, resetAccountData, loadSampleData }}>
       {children}
     </StoreContext.Provider>
   )

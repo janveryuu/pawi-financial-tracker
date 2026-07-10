@@ -8,6 +8,7 @@ import {
   PiggyBank,
   Plus,
   ChevronRight,
+  Trash2,
 } from "lucide-react"
 import Image from "next/image"
 import { formatMoney, getWalletBrandLogo, type WalletType, type Wallet } from "@/lib/pawi-data"
@@ -24,7 +25,7 @@ const icons: Record<WalletType, typeof Banknote> = {
 }
 
 export function WalletsScreen() {
-  const { wallets } = useStore()
+  const { wallets, deleteWallet } = useStore()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null)
   
@@ -82,9 +83,20 @@ export function WalletsScreen() {
                   {wallet.subtitle}
                 </p>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <span className="text-sm font-bold tabular-nums text-foreground">
                   {formatMoney(wallet.balance, wallet.currency)}
+                </span>
+                <span
+                  role="button"
+                  aria-label="Remove wallet"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    deleteWallet(wallet.id)
+                  }}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </span>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
