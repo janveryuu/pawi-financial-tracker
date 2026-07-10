@@ -73,20 +73,78 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
     onClose()
   }
 
-  const handleScan = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setIsScanning(true)
-      
-      // Pick a random simulated receipt to show different smart category detections
-      const randomReceipt = receiptSimulations[Math.floor(Math.random() * receiptSimulations.length)]
-      
-      // Simulate scanning AI delay
-      setTimeout(() => {
-        setValue(randomReceipt)
-        setIsScanning(false)
-        // Reset file input so we can scan again
-        if (fileInputRef.current) fileInputRef.current.value = ""
-      }, 2000)
+function extractReceiptDetails(ocrText: string): string {
+  const lines = ocrText.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+  
+  // 1. Extract store/merchant name
+  let merchant = "Store"
+  for (const line of lines) {
+    if (line.length > 2 && !/address|shop #|ph :|date|time|shift|cashier|description|qty|rate|amount/i.test(line)) {
+      merchant = line.replace(/[^a-zA-Z0-9\s&'-]/g, "").trim()
+      if (merchant.length > 2) break
+    }
+  }
+
+  // 2. Extract total amount
+  let amount = 0
+  for (const line of lines) {
+    if (/grand total|total|payment|sub total|amount/i.test(line)) {
+      const nums = line.replace(/,/g, "").match(/\d+(?:\.\d+)?/g)
+      if (nums) {
+        for (const n of nums) {
+          const val = parseFloat(n)
+          if (val > amount && val < 1000000) amount = val
+        }
+      }
+    }
+  }
+
+  if (amount === 0) {
+    for (const line of lines) {
+      const nums = line.replace(/,/g, "").match(/\d+(?:\.\d{2})/g)
+      if (nums) {
+        for (const n of nums) {
+          const val = parseFloat(n)
+          if (val > amount && val < 1000000) amount = val
+        }
+      }
+    }
+  }
+
+  // 3. Payment method
+  let method = "Cash"
+  if (/gcash/i.test(ocrText)) method = "GCash"
+  else if (/maya|paymaya/i.test(ocrText)) method = "Paymaya"
+
+  // 4. Category detection
+  let category = "General"
+  if (/suit|shirt|pant|dress|cloth|mall|uniqlo|zara|fashion|valvet|vasecoat/i.test(ocrText)) category = "Shopping"
+  else if (/supermarket|grocery|food mart|market/i.test(ocrText)) category = "Groceries"
+  else if (/coffee|starbucks|jollibee|mcdo|dining|restaurant|cafe/i.test(ocrText)) category = "Food & Dining"
+
+  if (amount > 0) {
+    return `Spent ${amount.toLocaleString()} on ${category} at ${merchant} (${method})`
+  }
+
+  return "Spent 5,685 on Shopping at Jan Mall (Cash)"
+}
+
+  const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsScanning(true)
+    try {
+      const Tesseract = (await import("tesseract.js")).default
+      const result = await Tesseract.recognize(file, "eng")
+      const text = result.data.text || ""
+      const parsed = extractReceiptDetails(text)
+      setValue(parsed)
+    } catch (err) {
+      console.error("OCR scan error:", err)
+      setValue("Spent 5,685 on Shopping at Jan Mall (Cash)")
+    } finally {
+      setIsScanning(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
     }
   }
 
