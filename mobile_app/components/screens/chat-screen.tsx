@@ -183,7 +183,7 @@ export function ChatScreen() {
                 <span className="animate-pulse">Thinking...</span>
               </div>
             </div>
-          ))}
+          )}
           <div ref={messagesEndRef} />
         </div>
       </div>
