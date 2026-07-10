@@ -115,7 +115,7 @@ export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
                   <span>Icon preview:</span>
                   <div
                     className="relative flex h-6 w-6 items-center justify-center overflow-hidden rounded-md text-[10px] font-black text-white"
-                    style={{ backgroundColor: getWalletBrandLogo(name) ? "transparent" : accent }}
+                    style={{ backgroundColor: getWalletBrandLogo(name) ? "transparent" : accents[0] }}
                   >
                     {getWalletBrandLogo(name) ? (
                       <Image src={getWalletBrandLogo(name)!} alt={name} fill className="object-contain" />
