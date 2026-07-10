@@ -117,7 +117,7 @@ export default function Page() {
       <QuickLogModal open={logOpen} onClose={() => setLogOpen(false)} />
       <PawiTutorialModal open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
       
-      <PawiMascot />
+      {tab !== "chat" && <PawiMascot />}
     </main>
   )
 }
