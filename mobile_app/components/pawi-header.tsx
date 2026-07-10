@@ -7,9 +7,16 @@ import { NotificationsPanel, useSmartNotifications } from "./notifications-panel
 
 export function PawiHeader() {
   const [notifOpen, setNotifOpen] = useState(false)
+  const [seenCount, setSeenCount] = useState(0)
   const notifications = useSmartNotifications()
   
-  const unreadCount = notifications.filter(n => n.id !== "all-good").length
+  const totalAlerts = notifications.filter(n => n.id !== "all-good").length
+  const hasUnread = totalAlerts > seenCount
+
+  const handleOpenNotifs = () => {
+    setSeenCount(totalAlerts)
+    setNotifOpen(true)
+  }
 
   return (
     <>
@@ -31,11 +38,11 @@ export function PawiHeader() {
         <button
           type="button"
           aria-label="Notifications"
-          onClick={() => setNotifOpen(true)}
+          onClick={handleOpenNotifs}
           className="relative flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition-colors hover:bg-accent"
         >
           <Bell className="h-[18px] w-[18px]" />
-          {unreadCount > 0 && (
+          {hasUnread && (
             <span className="absolute right-0 top-0 flex h-3 w-3 items-center justify-center rounded-full bg-destructive ring-2 ring-background">
             </span>
           )}

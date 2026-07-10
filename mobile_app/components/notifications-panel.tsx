@@ -20,6 +20,38 @@ export function useSmartNotifications() {
   return useMemo(() => {
     const items: NotificationItem[] = []
 
+    // 1. Negative wallet balances
+    wallets.forEach(w => {
+      if (w.balance < 0) {
+        items.push({
+          id: `neg-bal-${w.id}`,
+          title: "Negative Wallet Balance",
+          message: `Your ${w.name} wallet balance is below zero (${formatMoney(w.balance, w.currency)}). Check if any deposit or salary was missed!`,
+          icon: AlertCircle,
+          color: "destructive"
+        })
+      }
+    })
+
+    // 2. Duplicate wallet detection
+    const nameCounts = wallets.reduce<Record<string, number>>((acc, w) => {
+      const n = w.name.trim().toLowerCase()
+      acc[n] = (acc[n] || 0) + 1
+      return acc
+    }, {})
+    Object.entries(nameCounts).forEach(([name, count]) => {
+      if (count > 1) {
+        items.push({
+          id: `dup-wallet-${name}`,
+          title: "Duplicate Wallet Detected",
+          message: `You have ${count} wallets named '${name}'. You can remove duplicate wallets on the Wallets screen.`,
+          icon: AlertCircle,
+          color: "secondary"
+        })
+      }
+    })
+
+    // 3. Budgets
     budgets.forEach(b => {
       if (b.spent >= b.limit) {
         items.push({
@@ -41,6 +73,7 @@ export function useSmartNotifications() {
       }
     })
 
+    // 4. Goals
     goals.forEach(g => {
       if (g.saved >= g.target) {
         items.push({
@@ -71,12 +104,13 @@ export function useSmartNotifications() {
       }
     })
 
+    // 5. Idle Cash
     wallets.forEach(w => {
-      if (w.type === "cash" && w.balance >= 10000) {
+      if (w.type === "cash" && w.balance >= 15000) {
         items.push({
           id: `insight-cash-${w.id}`,
           title: "Pawi's Insight 💡",
-          message: `You have ${formatMoney(w.balance, w.currency)} sitting idle in ${w.name}. Consider moving some to a high-yield savings wallet to earn interest!`,
+          message: `You have ${formatMoney(w.balance, w.currency)} in ${w.name}. Consider placing a portion in high-yield savings to grow your wealth!`,
           icon: Lightbulb,
           color: "accent"
         })
@@ -87,7 +121,7 @@ export function useSmartNotifications() {
       items.push({
         id: "all-good",
         title: "All Good!",
-        message: "You have no new alerts. Your finances are looking great!",
+        message: "You have no urgent financial alerts. Keep building steady habits!",
         icon: Bell,
         color: "primary"
       })
