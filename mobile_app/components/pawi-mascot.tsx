@@ -4,9 +4,11 @@ import { useState } from "react"
 import Image from "next/image"
 import { PawiStoryModal } from "./pawi-story-modal"
 
-export function PawiMascot() {
+export function PawiMascot({ hidden }: { hidden?: boolean } = {}) {
   const [open, setOpen] = useState(false)
   const [bouncing, setBouncing] = useState(false)
+
+  if (hidden) return null
 
   const handleClick = () => {
     setBouncing(true)
@@ -19,6 +21,7 @@ export function PawiMascot() {
   return (
     <>
       <button
+        id="pawi-mascot-btn"
         onClick={handleClick}
         className={`fixed bottom-24 left-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary/20 shadow-lg backdrop-blur-sm transition-transform ${bouncing ? "scale-125 rotate-12" : "hover:scale-110"}`}
         style={{

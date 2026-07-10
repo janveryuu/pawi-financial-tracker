@@ -128,6 +128,14 @@ export function ChatScreen() {
 
   return (
     <div className="flex h-[calc(100vh-140px)] flex-col px-5 pt-4">
+      <style jsx global>{`
+        #pawi-mascot-btn {
+          display: none !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          visibility: hidden !important;
+        }
+      `}</style>
       {/* Top Bar with Clear Chat button */}
       <div className="mb-3 flex items-center justify-between rounded-2xl border border-border/60 bg-card/90 px-4 py-2.5 shadow-xs backdrop-blur-sm">
         <div className="flex items-center gap-2.5">
