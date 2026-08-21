@@ -23,6 +23,9 @@ import {
   Wallet as WalletIcon,
   ArrowUpRight,
   ArrowDownLeft,
+  PieChart,
+  CalendarCheck,
+  Filter,
 } from "lucide-react"
 import { formatMoney, Transaction, formatMoney as fmt } from "@/lib/pawi-data"
 import { useStore } from "@/lib/store"
@@ -31,6 +34,7 @@ import { cn } from "@/lib/utils"
 const CATEGORY_ICON_MAP: Record<string, { icon: any; bg: string; text: string }> = {
   Food: { icon: Utensils, bg: "bg-orange-500/10", text: "text-orange-600" },
   "Dining Out": { icon: Utensils, bg: "bg-orange-500/10", text: "text-orange-600" },
+  "Food & Dining": { icon: Utensils, bg: "bg-orange-500/10", text: "text-orange-600" },
   "Online Selling": { icon: Store, bg: "bg-amber-500/10", text: "text-amber-600" },
   "Side Hustle": { icon: Store, bg: "bg-amber-500/10", text: "text-amber-600" },
   Entertainment: { icon: Gamepad2, bg: "bg-emerald-500/10", text: "text-emerald-600" },
@@ -48,7 +52,10 @@ export function HistoryScreen() {
   const [searchQuery, setSearchQuery] = useState("")
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all")
   const [selectedAccount, setSelectedAccount] = useState<string>("all")
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>("all")
   const [showFilters, setShowFilters] = useState(false)
+  const [showCalendarModal, setShowCalendarModal] = useState(false)
+  const [showStatsModal, setShowStatsModal] = useState(false)
   const [activeMenuTx, setActiveMenuTx] = useState<Transaction | null>(null)
   const [deleteConfirmTx, setDeleteConfirmTx] = useState<Transaction | null>(null)
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
@@ -61,6 +68,19 @@ export function HistoryScreen() {
     return transactions.filter((t) => {
       if (filterType !== "all" && t.kind !== filterType) return false
       if (selectedAccount !== "all" && t.account.toLowerCase() !== selectedAccount.toLowerCase()) return false
+
+      if (selectedDateFilter !== "all") {
+        if (selectedDateFilter === "today") {
+          const isToday = t.dateHeader?.toLowerCase().includes("today") || t.date?.includes("APRIL 20")
+          if (!isToday) return false
+        } else if (selectedDateFilter === "yesterday") {
+          const isYesterday = t.dateHeader?.toLowerCase().includes("yesterday") || t.date?.includes("APRIL 19")
+          if (!isYesterday) return false
+        } else if (selectedDateFilter === "month") {
+          const isApril = t.date?.includes("APRIL") || t.dateHeader?.includes("April")
+          if (!isApril) return false
+        }
+      }
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
@@ -75,9 +95,37 @@ export function HistoryScreen() {
       }
       return true
     })
-  }, [transactions, filterType, selectedAccount, searchQuery])
+  }, [transactions, filterType, selectedAccount, selectedDateFilter, searchQuery])
 
-  // Group by date header (e.g. Today, Yesterday, or custom date)
+  // Statistics calculation for Stats Modal
+  const stats = useMemo(() => {
+    const totalIncome = filtered
+      .filter((t) => t.kind === "income")
+      .reduce((s, t) => s + t.amount, 0)
+    const totalExpense = filtered
+      .filter((t) => t.kind === "expense")
+      .reduce((s, t) => s + t.amount, 0)
+    const netCashflow = totalIncome - totalExpense
+
+    const categoryMap: Record<string, number> = {}
+    filtered
+      .filter((t) => t.kind === "expense")
+      .forEach((t) => {
+        categoryMap[t.category] = (categoryMap[t.category] || 0) + t.amount
+      })
+
+    const categories = Object.entries(categoryMap)
+      .map(([name, amount]) => ({
+        name,
+        amount,
+        percent: totalExpense > 0 ? Math.round((amount / totalExpense) * 100) : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount)
+
+    return { totalIncome, totalExpense, netCashflow, categories }
+  }, [filtered])
+
+  // Group by date header
   const groupedTransactions = useMemo(() => {
     const groups: {
       header: string
@@ -137,39 +185,74 @@ export function HistoryScreen() {
   }
 
   return (
-    <div className="flex flex-col gap-3.5 px-4 pt-2 pb-28 min-h-screen bg-background">
-      {/* Top Header (Image 2) */}
+    <div className="flex flex-col gap-3.5 px-4 pt-2 pb-28 min-h-screen bg-background text-foreground">
+      {/* Top Header */}
       <div className="flex items-center justify-between py-1">
-        <h1 className="text-2xl font-black tracking-tight text-foreground">History</h1>
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-foreground">History</h1>
+          <p className="text-xs text-muted-foreground font-semibold">Track and review past transactions</p>
+        </div>
         <div className="flex items-center gap-2">
+          {/* 1. Statistics & Analytics Button */}
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-border/70 bg-card text-[#3D784E] hover:bg-secondary transition-colors"
-            title="Statistics"
+            onClick={() => setShowStatsModal(true)}
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-2xl border transition-all shadow-2xs",
+              showStatsModal
+                ? "border-[#3D784E] bg-[#3D784E] text-white"
+                : "border-border/70 bg-card text-[#3D784E] hover:bg-secondary"
+            )}
+            title="Spending Analytics"
           >
             <BarChart2 className="h-4 w-4" />
           </button>
+
+          {/* 2. Calendar Date Filter Button */}
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-border/70 bg-card text-[#3D784E] hover:bg-secondary transition-colors"
-            title="Calendar View"
+            onClick={() => setShowCalendarModal(true)}
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-2xl border transition-all shadow-2xs",
+              selectedDateFilter !== "all" || showCalendarModal
+                ? "border-[#3D784E] bg-[#3D784E] text-white"
+                : "border-border/70 bg-card text-[#3D784E] hover:bg-secondary"
+            )}
+            title="Calendar Filter"
           >
             <CalendarIcon className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {/* Search Bar (Image 2) */}
+      {/* Active Date Filter Chip Banner (if active) */}
+      {selectedDateFilter !== "all" && (
+        <div className="flex items-center justify-between rounded-2xl border border-[#3D784E]/30 bg-[#3D784E]/10 px-3.5 py-2 text-xs font-bold text-[#3D784E]">
+          <span className="flex items-center gap-1.5">
+            <CalendarCheck className="h-4 w-4" />
+            Filtered by: <span className="capitalize font-black">{selectedDateFilter}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedDateFilter("all")}
+            className="flex items-center gap-1 text-[10px] font-black underline hover:opacity-80"
+          >
+            Reset
+          </button>
+        </div>
+      )}
+
+      {/* Search Bar */}
       <div className="relative flex items-center rounded-3xl border border-border/80 bg-card px-3.5 py-2.5 shadow-xs">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-emerald-600 mr-2">
-          <CheckCircle className="h-5 w-5 text-emerald-600/80" />
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#3D784E] mr-2">
+          <CheckCircle className="h-5 w-5 text-[#3D784E]" />
         </div>
         <Search className="h-4 w-4 text-muted-foreground mr-2 shrink-0" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search notes, categories, or accounts"
+          placeholder="Search notes, categories, or accounts..."
           className="w-full bg-transparent text-xs font-semibold text-foreground placeholder:text-muted-foreground/70 outline-none"
         />
         {searchQuery && (
@@ -183,7 +266,7 @@ export function HistoryScreen() {
         )}
       </div>
 
-      {/* Collapsible FILTERS Accordion (Image 2) */}
+      {/* Collapsible FILTERS Accordion */}
       <div>
         <button
           type="button"
@@ -203,7 +286,7 @@ export function HistoryScreen() {
                 onClick={() => setFilterType("all")}
                 className={cn(
                   "rounded-full px-3 py-1 text-[11px] font-black transition-all",
-                  filterType === "all" ? "bg-[#3D784E] text-white" : "bg-secondary text-muted-foreground"
+                  filterType === "all" ? "bg-[#3D784E] text-white shadow-2xs" : "bg-secondary text-muted-foreground"
                 )}
               >
                 All
@@ -213,141 +296,125 @@ export function HistoryScreen() {
                 onClick={() => setFilterType("income")}
                 className={cn(
                   "rounded-full px-3 py-1 text-[11px] font-black transition-all",
-                  filterType === "income" ? "bg-emerald-600 text-white" : "bg-secondary text-muted-foreground"
+                  filterType === "income" ? "bg-[#3D784E] text-white shadow-2xs" : "bg-secondary text-muted-foreground"
                 )}
               >
-                Inflow
+                Income
               </button>
               <button
                 type="button"
                 onClick={() => setFilterType("expense")}
                 className={cn(
                   "rounded-full px-3 py-1 text-[11px] font-black transition-all",
-                  filterType === "expense" ? "bg-rose-600 text-white" : "bg-secondary text-muted-foreground"
+                  filterType === "expense" ? "bg-[#3D784E] text-white shadow-2xs" : "bg-secondary text-muted-foreground"
                 )}
               >
-                Outflow
+                Expense
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Grouped Transactions List (Image 2) */}
-      <div className="space-y-6">
-        {groupedTransactions.length > 0 ? (
-          groupedTransactions.map((group, gIdx) => (
-            <div key={gIdx} className="space-y-3">
-              {/* Group Header */}
-              <div className="flex items-center justify-between px-1">
-                <div>
-                  <h2 className="text-base font-black tracking-tight text-foreground">
-                    {group.header}
-                  </h2>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {group.dateSubtitle}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  {group.totalExpense > 0 && (
-                    <span className="rounded-full bg-rose-500/10 px-2.5 py-0.5 text-xs font-black text-rose-600">
-                      -{formatMoney(group.totalExpense)}
-                    </span>
-                  )}
-                  {group.totalIncome > 0 && (
-                    <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-black text-emerald-600">
-                      +{formatMoney(group.totalIncome)}
-                    </span>
-                  )}
-                </div>
+      {/* Transaction History List Grouped by Date */}
+      <div className="space-y-4">
+        {groupedTransactions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-muted-foreground mb-2">
+              <Search className="h-6 w-6" />
+            </div>
+            <p className="text-sm font-black text-foreground">No transactions found</p>
+            <p className="text-xs text-muted-foreground">Try clearing your filters or search query.</p>
+          </div>
+        ) : (
+          groupedTransactions.map((group) => (
+            <div key={group.header} className="space-y-1.5">
+              {/* Date Group Header */}
+              <div className="flex items-center justify-between px-1 text-[11px] font-black text-muted-foreground">
+                <span className="uppercase tracking-wider">{group.header}</span>
+                <span className="text-[10px] text-muted-foreground/80 font-bold">{group.dateSubtitle}</span>
               </div>
 
-              {/* Transactions Timeline */}
-              <div className="relative space-y-3.5 pl-3">
-                {/* Vertical Timeline Guide Line */}
-                <div className="absolute left-[17px] top-3 bottom-3 w-[1.5px] bg-border/60" />
-
+              {/* Transactions in Group */}
+              <div className="rounded-3xl border border-border/80 bg-card overflow-hidden divide-y divide-border/40 shadow-xs">
                 {group.items.map((tx) => {
-                  const isIncome = tx.kind === "income"
-                  const iconCfg = CATEGORY_ICON_MAP[tx.category] ||
-                    CATEGORY_ICON_MAP[tx.label] || {
-                      icon: isIncome ? ArrowUpRight : ArrowDownLeft,
-                      bg: "bg-secondary",
-                      text: isIncome ? "text-emerald-600" : "text-rose-500",
-                    }
-                  const IconComp = iconCfg.icon
+                  const categoryMeta = CATEGORY_ICON_MAP[tx.category] || {
+                    icon: Utensils,
+                    bg: "bg-[#3D784E]/10",
+                    text: "text-[#3D784E]",
+                  }
+                  const IconComp = categoryMeta.icon
 
                   return (
-                    <div key={tx.id} className="relative space-y-1">
-                      {/* Timestamp above */}
-                      <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground pl-6">
-                        {/* Timeline Colored Dot */}
+                    <div
+                      key={tx.id}
+                      className="flex items-center justify-between p-3.5 hover:bg-secondary/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
                         <div
                           className={cn(
-                            "absolute left-0 top-1 h-2.5 w-2.5 rounded-full ring-4 ring-background",
-                            isIncome ? "bg-emerald-500" : "bg-rose-500"
+                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
+                            categoryMeta.bg,
+                            categoryMeta.text
                           )}
-                        />
-                        <span>{tx.time || "12:00 PM"}</span>
+                        >
+                          <IconComp className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-foreground leading-tight">{tx.label}</p>
+                          <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
+                            {tx.account} · {tx.category}
+                          </p>
+                        </div>
                       </div>
 
-                      {/* Transaction Card */}
-                      <div className="ml-5 flex items-center justify-between rounded-3xl border border-border/70 bg-card p-3.5 shadow-xs transition-colors hover:bg-secondary/30">
-                        {/* Left: Icon + Category + Tag + Note */}
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <p
                             className={cn(
-                              "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
-                              iconCfg.bg,
-                              iconCfg.text
+                              "text-xs font-black tabular-nums tracking-tight",
+                              tx.kind === "income" ? "text-[#3D784E]" : "text-foreground"
                             )}
                           >
-                            <IconComp className="h-5 w-5" />
-                          </div>
-
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-xs font-black text-foreground">
-                                {tx.label || tx.category}
-                              </span>
-                              {tx.tag && (
-                                <span className="inline-flex items-center gap-0.5 rounded-full bg-secondary px-2 py-0.5 text-[9px] font-bold text-muted-foreground">
-                                  🏷️ {tx.tag}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[11px] text-muted-foreground font-medium truncate mt-0.5">
-                              {tx.note || tx.category}
-                            </p>
-                          </div>
+                            {tx.kind === "income" ? "+" : "-"}
+                            {formatMoney(tx.amount, tx.currency)}
+                          </p>
+                          <p className="text-[9px] text-muted-foreground font-medium">{tx.time}</p>
                         </div>
 
-                        {/* Right: Amount + Account Pill + Options */}
-                        <div className="flex items-center gap-2.5 shrink-0 ml-2">
-                          <div className="text-right">
-                            <p
-                              className={cn(
-                                "text-xs font-black tabular-nums",
-                                isIncome ? "text-emerald-600" : "text-foreground"
-                              )}
-                            >
-                              {isIncome ? "+" : "-"}
-                              {formatMoney(tx.amount, tx.currency)}
-                            </p>
-                            <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-secondary/80 px-2 py-0.5 text-[9px] font-bold text-muted-foreground">
-                              💳 {tx.account}
-                            </span>
-                          </div>
-
-                          {/* ⋯ 3 dots menu button */}
+                        {/* Options Menu Trigger */}
+                        <div className="relative">
                           <button
                             type="button"
-                            onClick={() => setActiveMenuTx(tx)}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary transition-colors"
+                            onClick={() => setActiveMenuTx(activeMenuTx?.id === tx.id ? null : tx)}
+                            className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary"
                           >
                             <MoreHorizontal className="h-4 w-4" />
                           </button>
+
+                          {activeMenuTx?.id === tx.id && (
+                            <div className="absolute right-0 top-8 z-30 flex w-28 flex-col rounded-2xl border border-border/80 bg-card p-1 shadow-xl text-xs font-bold animate-in fade-in-50 zoom-in-95">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(tx)}
+                                className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-foreground hover:bg-secondary"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDeleteConfirmTx(tx)
+                                  setActiveMenuTx(null)
+                                }}
+                                className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-rose-600 hover:bg-rose-500/10"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -356,54 +423,143 @@ export function HistoryScreen() {
               </div>
             </div>
           ))
-        ) : (
-          <div className="rounded-3xl border border-border/70 bg-card p-10 text-center text-xs text-muted-foreground font-medium">
-            No transactions match your search or filter.
-          </div>
         )}
       </div>
 
-      {/* Transaction Options Modal (From ⋯ button) */}
-      {activeMenuTx && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-[2rem] border border-border bg-card p-5 shadow-2xl animate-in slide-in-from-bottom-5 duration-200">
+      {/* 📊 STATS & ANALYTICS MODAL */}
+      {showStatsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[2.5rem] border border-border/80 bg-card p-6 shadow-2xl text-foreground animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-black text-foreground">{activeMenuTx.label}</h3>
-                <p className="text-[11px] text-muted-foreground">
-                  {formatMoney(activeMenuTx.amount)} • {activeMenuTx.account}
-                </p>
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E]">
+                  <BarChart2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-foreground">Spending Breakdown</h3>
+                  <p className="text-[10px] text-muted-foreground font-semibold">Cashflow & category ratios</p>
+                </div>
               </div>
               <button
                 type="button"
-                onClick={() => setActiveMenuTx(null)}
-                className="rounded-full p-1 text-muted-foreground hover:bg-secondary"
+                onClick={() => setShowStatsModal(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:bg-accent"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="space-y-2">
+            {/* Cashflow Summary Pill */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="rounded-2xl border border-border/70 bg-secondary/40 p-3">
+                <p className="text-[9px] font-black uppercase text-muted-foreground">TOTAL IN</p>
+                <p className="text-sm font-black text-[#3D784E] tabular-nums mt-0.5">
+                  +{formatMoney(stats.totalIncome)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-secondary/40 p-3">
+                <p className="text-[9px] font-black uppercase text-muted-foreground">TOTAL OUT</p>
+                <p className="text-sm font-black text-rose-600 tabular-nums mt-0.5">
+                  -{formatMoney(stats.totalExpense)}
+                </p>
+              </div>
+            </div>
+
+            {/* Category Bars */}
+            <div className="space-y-2.5 max-h-52 overflow-y-auto pr-1">
+              {stats.categories.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No expense records found.</p>
+              ) : (
+                stats.categories.map((cat) => (
+                  <div key={cat.name} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span className="text-foreground">{cat.name}</span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {formatMoney(cat.amount)} ({cat.percent}%)
+                      </span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full rounded-full bg-[#3D784E] transition-all"
+                        style={{ width: `${cat.percent}%` }}
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowStatsModal(false)}
+              className="mt-5 w-full rounded-2xl bg-[#3D784E] py-3 text-xs font-black text-white shadow-md shadow-[#3D784E]/25 hover:bg-[#356B46]"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 📅 CALENDAR DATE PICKER MODAL */}
+      {showCalendarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[2.5rem] border border-border/80 bg-card p-6 shadow-2xl text-foreground animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E]">
+                  <CalendarIcon className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-foreground">Filter by Date</h3>
+                  <p className="text-[10px] text-muted-foreground font-semibold">Select range or specific cutoff</p>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => handleOpenEdit(activeMenuTx)}
-                className="flex w-full items-center gap-2.5 rounded-2xl bg-secondary/60 p-3 text-xs font-bold text-foreground hover:bg-secondary transition-colors"
+                onClick={() => setShowCalendarModal(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:bg-accent"
               >
-                <Edit2 className="h-4 w-4 text-[#3D784E]" />
-                Edit Transaction
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setDeleteConfirmTx(activeMenuTx)
-                  setActiveMenuTx(null)
-                }}
-                className="flex w-full items-center gap-2.5 rounded-2xl bg-rose-500/10 p-3 text-xs font-bold text-rose-600 hover:bg-rose-500/20 transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete & Reverse Balance
+                <X className="h-4 w-4" />
               </button>
             </div>
+
+            {/* Quick Presets */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {[
+                { id: "all", label: "All Time" },
+                { id: "today", label: "Today (Apr 20)" },
+                { id: "yesterday", label: "Yesterday (Apr 19)" },
+                { id: "month", label: "This Month (April)" },
+              ].map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedDateFilter(preset.id)
+                    setShowCalendarModal(false)
+                  }}
+                  className={cn(
+                    "rounded-2xl border p-3 text-xs font-bold transition-all text-left",
+                    selectedDateFilter === preset.id
+                      ? "border-[#3D784E] bg-[#3D784E]/15 text-[#3D784E]"
+                      : "border-border/70 bg-secondary/40 text-foreground hover:bg-secondary"
+                  )}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedDateFilter("all")
+                setShowCalendarModal(false)
+              }}
+              className="w-full rounded-2xl border border-border/80 bg-card py-2.5 text-xs font-bold text-muted-foreground hover:bg-secondary"
+            >
+              Reset to All Dates
+            </button>
           </div>
         </div>
       )}
@@ -412,39 +568,29 @@ export function HistoryScreen() {
       {editingTx && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
           <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-5 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-extrabold text-foreground">Edit Transaction</h3>
-              <button
-                type="button"
-                onClick={() => setEditingTx(null)}
-                className="rounded-full p-1 text-muted-foreground hover:bg-secondary"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3 mb-5">
+            <h3 className="text-base font-extrabold text-foreground">Edit Transaction</h3>
+            <div className="mt-3 space-y-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Label / Title
+                  Label
                 </label>
                 <input
                   type="text"
                   value={editLabel}
                   onChange={(e) => setEditLabel(e.target.value)}
-                  className="mt-1 flex h-11 w-full rounded-xl border border-border/70 bg-secondary/40 px-3.5 text-xs font-bold outline-none focus:ring-2 focus:ring-[#3D784E]"
+                  className="mt-1 flex h-11 w-full rounded-xl border border-border/70 bg-secondary/40 px-3.5 text-xs font-bold outline-none"
                 />
               </div>
 
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Amount (₱)
+                  Amount (PHP)
                 </label>
                 <input
                   type="number"
                   value={editAmount}
                   onChange={(e) => setEditAmount(e.target.value)}
-                  className="mt-1 flex h-11 w-full rounded-xl border border-border/70 bg-secondary/40 px-3.5 text-base font-black outline-none focus:ring-2 focus:ring-[#3D784E]"
+                  className="mt-1 flex h-11 w-full rounded-xl border border-border/70 bg-secondary/40 px-3.5 text-xs font-bold outline-none"
                 />
               </div>
 
@@ -461,7 +607,7 @@ export function HistoryScreen() {
               </div>
             </div>
 
-            <div className="flex gap-2.5">
+            <div className="mt-4 flex gap-2.5">
               <button
                 type="button"
                 onClick={() => setEditingTx(null)}
