@@ -11,6 +11,8 @@ import {
   Calendar,
   ArrowUpRight,
   ArrowDownLeft,
+  X,
+  Sparkles,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useStore } from "@/lib/store"
@@ -82,6 +84,7 @@ export function HomeScreen({
   const { user } = useAuth()
   const { streakDays, daysUntilPayday, paydayAmount, paydayDate, transactions } = useStore()
   const [timeFilter, setTimeFilter] = useState<"day" | "week" | "month">("day")
+  const [showCommunityModal, setShowCommunityModal] = useState(false)
 
   // Determine user name
   const rawName = user?.displayName?.split(" ")[0] || user?.email?.split("@")[0] || "Bryl"
@@ -211,6 +214,7 @@ export function HomeScreen({
           </button>
           <button
             type="button"
+            onClick={() => setShowCommunityModal(true)}
             className="flex h-9 w-9 items-center justify-center rounded-2xl bg-card border border-border/70 text-muted-foreground hover:bg-secondary transition-colors"
             aria-label="Community"
           >
@@ -497,6 +501,62 @@ export function HomeScreen({
           </div>
         </div>
       </div>
+
+      {/* Financial Community & Circles Modal */}
+      {showCommunityModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[2.5rem] border border-border/80 bg-card p-6 shadow-2xl text-foreground animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E]">
+                  <Users className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-foreground">Pawi Community</h3>
+                  <p className="text-[10px] text-muted-foreground font-semibold">Shared financial circles & paluwagan</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCommunityModal(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:bg-accent"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5 mb-5">
+              <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-secondary/40 p-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#3D784E]/20 text-[#3D784E] font-black text-xs">
+                  🏆
+                </div>
+                <div>
+                  <p className="text-xs font-black text-foreground">Tipid Challenge #4</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">1,420 members tracking ₱0 spend days</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-secondary/40 p-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-500/20 text-blue-600 font-black text-xs">
+                  🤝
+                </div>
+                <div>
+                  <p className="text-xs font-black text-foreground">Family & Partner Budget</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">Sync shared household expenses securely</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowCommunityModal(false)}
+              className="w-full rounded-2xl bg-[#3D784E] py-3 text-xs font-black text-white shadow-md shadow-[#3D784E]/25 hover:bg-[#356B46]"
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

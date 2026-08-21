@@ -1,41 +1,41 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Wallet, X } from "lucide-react"
+import { Wallet, X, Plus, CreditCard, Banknote, Smartphone, Landmark, ShieldCheck, Check } from "lucide-react"
 import Image from "next/image"
+import { motion, AnimatePresence } from "framer-motion"
 import { useStore } from "@/lib/store"
 import { getWalletBrandLogo } from "@/lib/pawi-data"
 import { cn } from "@/lib/utils"
-
-function getWalletMonogram(name: string): string | null {
-  const generic = ["cash", "savings", "ewallet", "card", "wallet", "my wallet"]
-  if (generic.includes(name.trim().toLowerCase())) return null
-  const words = name.trim().split(/\s+/)
-  if (words.length > 1) {
-    return (words[0][0] + words[1][0]).toUpperCase()
-  }
-  return name.slice(0, 2).toUpperCase()
-}
 
 interface AddWalletModalProps {
   open: boolean
   onClose: () => void
 }
 
-const accents = [
-  "oklch(0.7 0.13 145)",
-  "oklch(0.62 0.18 250)",
-  "oklch(0.68 0.16 162)",
-  "oklch(0.6 0.2 25)",
-  "oklch(0.7 0.15 25)",
+const PRESET_BANKS = [
+  { name: "Cash", type: "cash", group: "cash", icon: "cash", color: "#3D784E" },
+  { name: "GCash", type: "ewallet", group: "ewallet", icon: "gcash", color: "#007DFE" },
+  { name: "Maya", type: "ewallet", group: "ewallet", icon: "paymaya", color: "#22C55E" },
+  { name: "BDO", type: "savings", group: "bank", icon: "bdo", color: "#0033A0" },
+  { name: "BPI", type: "savings", group: "bank", icon: "bpi", color: "#B11116" },
+  { name: "UnionBank", type: "savings", group: "bank", icon: "unionbank", color: "#F37021" },
+  { name: "SeaBank", type: "savings", group: "bank", icon: "seabank", color: "#FF5722" },
+  { name: "RCBC", type: "savings", group: "bank", icon: "rcbc", color: "#0072CE" },
+  { name: "Credit Card", type: "card", group: "credit", icon: "card", color: "#7C3AED", isLiability: true },
 ]
 
 export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
   const [name, setName] = useState("")
   const [type, setType] = useState<"cash" | "ewallet" | "card" | "savings">("cash")
+  const [group, setGroup] = useState<"cash" | "ewallet" | "bank" | "credit" | "loan">("cash")
   const [currency, setCurrency] = useState<"PHP" | "USD">("PHP")
   const [balance, setBalance] = useState("")
-  
+  const [isLiability, setIsLiability] = useState(false)
+  const [color, setColor] = useState("#3D784E")
+  const [creditLimit, setCreditLimit] = useState("")
+  const [dueDay, setDueDay] = useState("15")
+
   const { addWallet } = useStore()
 
   // Reset form when opened
@@ -43,21 +43,46 @@ export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
     if (open) {
       setName("")
       setType("cash")
+      setGroup("cash")
       setCurrency("PHP")
       setBalance("")
+      setIsLiability(false)
+      setColor("#3D784E")
+      setCreditLimit("")
+      setDueDay("15")
     }
   }, [open])
+
+  const handleSelectPreset = (preset: (typeof PRESET_BANKS)[0]) => {
+    setName(preset.name)
+    setType(preset.type as any)
+    setGroup(preset.group as any)
+    setColor(preset.color)
+    if (preset.isLiability) {
+      setIsLiability(true)
+    } else {
+      setIsLiability(false)
+    }
+  }
 
   const handleAdd = () => {
     if (!name.trim()) return
 
+    const parsedBalance = parseFloat(balance) || 0
+    const parsedCreditLimit = parseFloat(creditLimit) || 0
+
     addWallet({
-      name,
+      name: name.trim(),
       subtitle: `${type.charAt(0).toUpperCase() + type.slice(1)} · ${currency}`,
-      balance: Number(balance) || 0,
+      balance: parsedBalance,
       currency,
       type,
-      accent: accents[Math.floor(Math.random() * accents.length)],
+      group,
+      accent: color,
+      isLiability,
+      creditLimit: isLiability ? parsedCreditLimit : undefined,
+      usedCredit: isLiability ? parsedBalance : undefined,
+      dueDay: isLiability ? parseInt(dueDay) || 15 : undefined,
     })
 
     onClose()
@@ -80,21 +105,36 @@ export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <button
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
       />
-      <div className="relative z-10 w-full max-w-md rounded-t-3xl bg-card p-5 shadow-2xl sm:rounded-3xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary">
-              <Wallet className="h-[18px] w-[18px]" />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.96 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        className="relative z-10 w-full max-w-md rounded-t-[2.5rem] bg-card p-6 text-foreground shadow-2xl sm:rounded-[2.5rem] border border-border/80 max-h-[90vh] overflow-y-auto"
+      >
+        {/* Header */}
+        <div className="mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E]">
+              <Wallet className="h-5 w-5" />
             </div>
-            <h2 className="text-base font-semibold text-foreground">
-              New Wallet
-            </h2>
+            <div>
+              <h2 className="text-lg font-black tracking-tight text-foreground">
+                Add New Account
+              </h2>
+              <p className="text-xs font-semibold text-muted-foreground">
+                Set up a bank, e-wallet, cash, or credit card
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -102,86 +142,209 @@ export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-accent"
           >
-            <X className="h-[18px] w-[18px]" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Wallet Name</label>
-              {name.trim() && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span>Icon preview:</span>
+        {/* Quick Presets Carousel */}
+        <div className="mb-4">
+          <label className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-1">
+            Quick Select Brand / Institution
+          </label>
+          <div className="mt-1.5 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {PRESET_BANKS.map((preset) => {
+              const brandLogo = getWalletBrandLogo(preset.name)
+              const isSelected = name.toLowerCase() === preset.name.toLowerCase()
+              return (
+                <button
+                  key={preset.name}
+                  type="button"
+                  onClick={() => handleSelectPreset(preset)}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-bold transition-all",
+                    isSelected
+                      ? "border-[#3D784E] bg-[#3D784E]/10 text-[#3D784E] shadow-xs"
+                      : "border-border/80 bg-secondary/40 text-foreground hover:bg-secondary"
+                  )}
+                >
                   <div
-                    className="relative flex h-6 w-6 items-center justify-center overflow-hidden rounded-md text-[10px] font-black text-white"
-                    style={{ backgroundColor: getWalletBrandLogo(name) ? "transparent" : accents[0] }}
+                    className="relative flex h-5 w-5 items-center justify-center overflow-hidden rounded-md text-[9px] font-black text-white"
+                    style={{ backgroundColor: preset.color }}
                   >
-                    {getWalletBrandLogo(name) ? (
-                      <Image src={getWalletBrandLogo(name)!} alt={name} fill className="object-contain" />
-                    ) : getWalletMonogram(name) ? (
-                      <span>{getWalletMonogram(name)}</span>
+                    {brandLogo ? (
+                      <Image src={brandLogo} alt={preset.name} fill className="object-contain" />
                     ) : (
-                      <Wallet className="h-3.5 w-3.5" />
+                      <span>{preset.name.slice(0, 2)}</span>
                     )}
                   </div>
-                </div>
+                  <span>{preset.name}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Account Classification Toggle: Asset vs Liability */}
+        <div className="mb-4">
+          <label className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-1">
+            Account Classification
+          </label>
+          <div className="mt-1.5 flex rounded-2xl bg-secondary/70 p-1 border border-border/60">
+            <button
+              type="button"
+              onClick={() => {
+                setIsLiability(false)
+                if (group === "credit" || group === "loan") setGroup("cash")
+              }}
+              className={cn(
+                "flex-1 rounded-xl py-2 text-xs font-black transition-all",
+                !isLiability
+                  ? "bg-card text-foreground shadow-xs border border-border/60"
+                  : "text-muted-foreground hover:text-foreground"
               )}
-            </div>
+            >
+              💰 Asset (Cash, Bank, Savings)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsLiability(true)
+                setType("card")
+                setGroup("credit")
+              }}
+              className={cn(
+                "flex-1 rounded-xl py-2 text-xs font-black transition-all",
+                isLiability
+                  ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 shadow-xs border border-rose-500/30 font-black"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              💳 Liability (Credit Card, Loan)
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-3.5">
+          {/* Account Name */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-1">
+              Account Name
+            </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., BDO Savings, Maya"
-              className="flex h-12 w-full rounded-xl border border-border/60 bg-secondary/40 px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              placeholder="e.g. BDO Savings, Maya Wallet, GCash"
+              required
+              className="h-12 w-full rounded-2xl border border-border/80 bg-secondary/30 px-4 text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Type</label>
+          {/* Type & Currency Row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-1">
+                Type
+              </label>
               <select
                 value={type}
-                onChange={(e) => setType(e.target.value as any)}
-                className="flex h-12 w-full rounded-xl border border-border/60 bg-secondary/40 px-4 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                onChange={(e) => {
+                  const newType = e.target.value as any
+                  setType(newType)
+                  if (newType === "card") {
+                    setGroup("credit")
+                  } else if (newType === "savings") {
+                    setGroup("bank")
+                  } else if (newType === "ewallet") {
+                    setGroup("ewallet")
+                  } else {
+                    setGroup("cash")
+                  }
+                }}
+                className="h-12 w-full rounded-2xl border border-border/80 bg-secondary/30 px-3 text-sm font-semibold text-foreground focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
               >
                 <option value="cash">Cash</option>
                 <option value="ewallet">E-Wallet</option>
-                <option value="card">Card</option>
-                <option value="savings">Savings</option>
+                <option value="savings">Bank Account</option>
+                <option value="card">Credit Card</option>
               </select>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Currency</label>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-1">
+                Currency
+              </label>
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value as any)}
-                className="flex h-12 w-full rounded-xl border border-border/60 bg-secondary/40 px-4 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                className="h-12 w-full rounded-2xl border border-border/80 bg-secondary/30 px-3 text-sm font-semibold text-foreground focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
               >
-                <option value="PHP">PHP (₱)</option>
-                <option value="USD">USD ($)</option>
+                <option value="PHP">₱ PHP (Philippine Peso)</option>
+                <option value="USD">$ USD (US Dollar)</option>
               </select>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Initial Balance</label>
-            <input
-              type="number"
-              value={balance}
-              onChange={(e) => setBalance(e.target.value)}
-              placeholder="0.00"
-              className="flex h-12 w-full rounded-xl border border-border/60 bg-secondary/40 px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            />
+          {/* Initial Balance */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-1">
+              {isLiability ? "Current Amount Owed / Used Credit" : "Current Balance"}
+            </label>
+            <div className="relative flex items-center">
+              <span className="absolute left-4 text-sm font-black text-muted-foreground">
+                {currency === "USD" ? "$" : "₱"}
+              </span>
+              <input
+                type="number"
+                step="any"
+                value={balance}
+                onChange={(e) => setBalance(e.target.value)}
+                placeholder="0.00"
+                className="h-12 w-full rounded-2xl border border-border/80 bg-secondary/30 pl-9 pr-4 text-base font-black text-foreground placeholder:text-muted-foreground/60 focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
+              />
+            </div>
           </div>
+
+          {/* Liability Specific Fields (Credit Limit & Due Day) */}
+          {isLiability && (
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-1">
+                  Credit Limit
+                </label>
+                <input
+                  type="number"
+                  value={creditLimit}
+                  onChange={(e) => setCreditLimit(e.target.value)}
+                  placeholder="50000"
+                  className="h-12 w-full rounded-2xl border border-border/80 bg-secondary/30 px-3 text-sm font-semibold text-foreground focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-1">
+                  Monthly Due Day
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={dueDay}
+                  onChange={(e) => setDueDay(e.target.value)}
+                  placeholder="15"
+                  className="h-12 w-full rounded-2xl border border-border/80 bg-secondary/30 px-3 text-sm font-semibold text-foreground focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* Action Buttons */}
         <div className="mt-6 flex gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-xl border border-border bg-card py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
+            className="flex-1 rounded-2xl border border-border/80 bg-card py-3 text-xs font-black text-foreground transition-colors hover:bg-secondary"
           >
             Cancel
           </button>
@@ -189,12 +352,13 @@ export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
             type="button"
             onClick={handleAdd}
             disabled={!name.trim()}
-            className="flex-1 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-opacity disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-2xl bg-[#3D784E] py-3 text-xs font-black text-white shadow-md shadow-[#3D784E]/20 transition-all hover:bg-[#356B46] active:scale-[0.98] disabled:opacity-50"
           >
-            Save Wallet
+            <Check className="h-4 w-4" />
+            <span>Save Account</span>
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }

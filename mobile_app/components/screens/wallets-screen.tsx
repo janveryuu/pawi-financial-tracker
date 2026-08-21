@@ -14,6 +14,9 @@ import {
   Building,
   Smartphone,
   Banknote,
+  Sparkles,
+  Layers,
+  X,
 } from "lucide-react"
 import { formatMoney, getWalletBrandLogo, type Wallet } from "@/lib/pawi-data"
 import { useStore } from "@/lib/store"
@@ -43,29 +46,11 @@ export function WalletsScreen() {
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isTransferOpen, setIsTransferOpen] = useState(false)
+  const [transferPresetWallet, setTransferPresetWallet] = useState<string | undefined>(undefined)
   const [txModalOpen, setTxModalOpen] = useState(false)
   const [txKind, setTxKind] = useState<"income" | "expense">("expense")
-
-  // If a wallet is selected, show the rich AccountDetailsView (Images 3, 4, 5)
-  if (selectedWallet) {
-    // Keep reference updated in store
-    const currentWallet = wallets.find((w) => w.id === selectedWallet.id) || selectedWallet
-    return (
-      <AccountDetailsView
-        wallet={currentWallet}
-        onBack={() => setSelectedWallet(null)}
-        onOpenTransfer={() => setIsTransferOpen(true)}
-        onOpenAddExpense={() => {
-          setTxKind("expense")
-          setTxModalOpen(true)
-        }}
-        onOpenAddIncome={() => {
-          setTxKind("income")
-          setTxModalOpen(true)
-        }}
-      />
-    )
-  }
+  const [txPresetWallet, setTxPresetWallet] = useState<string | undefined>(undefined)
+  const [showFolderModal, setShowFolderModal] = useState(false)
 
   // Calculate Asset vs Liability totals
   const assetWallets = wallets.filter((w) => !w.isLiability)
@@ -76,16 +61,36 @@ export function WalletsScreen() {
     0
   )
   const totalLiabilitiesPhp = liabilityWallets.reduce(
-    (sum, w) => sum + (w.currency === "USD" ? w.balance * 57 : w.balance),
+    (sum, w) => sum + (w.currency === "USD" ? (w.usedCredit || w.balance) * 57 : (w.usedCredit || w.balance)),
     0
   )
+  const netWorthPhp = totalAssetsPhp - totalLiabilitiesPhp
+
+  // Dynamic Banner Configuration depending on Active Filter
+  const bannerConfig = {
+    all: {
+      title: "TOTAL NET WORTH",
+      amount: netWorthPhp > 0 ? netWorthPhp : (totalAssetsPhp || 77810),
+      subtitle: "Total net balance across accounts",
+    },
+    assets: {
+      title: "ASSETS",
+      amount: totalAssetsPhp || 77810,
+      subtitle: "Accounts and receivables",
+    },
+    liabilities: {
+      title: "LIABILITIES",
+      amount: totalLiabilitiesPhp || 0,
+      subtitle: "Debts and credit cards",
+    },
+  }[activeFilter]
 
   // Categorize wallets by group
-  const eWallets = wallets.filter((w) => w.group === "ewallet" || (!w.group && w.type === "ewallet"))
+  const eWallets = wallets.filter((w) => !w.isLiability && (w.group === "ewallet" || (!w.group && w.type === "ewallet")))
   const bankAccounts = wallets.filter(
-    (w) => w.group === "bank" || (!w.group && (w.type === "savings" || w.type === "cash"))
+    (w) => !w.isLiability && (w.group === "bank" || (!w.group && (w.type === "savings" || w.type === "cash")))
   )
-  const creditCards = wallets.filter((w) => w.group === "credit" || (!w.group && w.type === "card"))
+  const creditCards = wallets.filter((w) => w.isLiability || w.group === "credit" || (!w.group && w.type === "card"))
   const loans = wallets.filter((w) => w.group === "loan" || (!w.group && w.type === "loan"))
 
   const eWalletsTotal = eWallets.reduce((s, w) => s + w.balance, 0)
@@ -99,26 +104,68 @@ export function WalletsScreen() {
   const shouldShowAssets = activeFilter === "all" || activeFilter === "assets"
   const shouldShowLiabilities = activeFilter === "all" || activeFilter === "liabilities"
 
+  // If a wallet is selected, show the rich AccountDetailsView
+  if (selectedWallet) {
+    const currentWallet = wallets.find((w) => w.id === selectedWallet.id) || selectedWallet
+    return (
+      <>
+        <AccountDetailsView
+          wallet={currentWallet}
+          onBack={() => setSelectedWallet(null)}
+          onOpenTransfer={(wName) => {
+            setTransferPresetWallet(wName)
+            setIsTransferOpen(true)
+          }}
+          onOpenAddExpense={(wName) => {
+            setTxPresetWallet(wName)
+            setTxKind("expense")
+            setTxModalOpen(true)
+          }}
+          onOpenAddIncome={(wName) => {
+            setTxPresetWallet(wName)
+            setTxKind("income")
+            setTxModalOpen(true)
+          }}
+        />
+
+        {/* Modals placed here so they open over AccountDetailsView */}
+        <AddWalletModal open={isAddOpen} onClose={() => setIsAddOpen(false)} />
+        <TransferModal
+          open={isTransferOpen}
+          initialFrom={transferPresetWallet}
+          onClose={() => setIsTransferOpen(false)}
+        />
+        <TransactionEntryModal
+          open={txModalOpen}
+          kind={txKind}
+          initialAccount={txPresetWallet}
+          onClose={() => setTxModalOpen(false)}
+        />
+      </>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-4 px-4 pt-2 pb-28">
-      {/* Top Header (Image 1) */}
+      {/* Top Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-foreground">Accounts</h1>
-          <p className="text-xs text-muted-foreground font-medium">Manage your wallets and balances</p>
+          <p className="text-xs text-muted-foreground font-semibold">Manage your wallets and balances</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => setShowFolderModal(true)}
             className="flex h-9 w-9 items-center justify-center rounded-2xl border border-border/70 bg-card text-muted-foreground hover:bg-secondary transition-colors"
-            title="Archive"
+            title="Archive & Categories"
           >
             <Folder className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={() => setIsAddOpen(true)}
-            className="flex items-center gap-1 rounded-2xl border border-[#3D784E]/30 bg-[#3D784E]/10 px-3 py-2 text-xs font-black text-[#3D784E] hover:bg-[#3D784E]/20 transition-colors"
+            className="flex items-center gap-1 rounded-2xl border border-[#3D784E]/30 bg-[#3D784E]/10 px-3 py-2 text-xs font-black text-[#3D784E] hover:bg-[#3D784E]/20 transition-colors shadow-2xs"
           >
             <Plus className="h-3.5 w-3.5" />
             <span>Add Account</span>
@@ -126,31 +173,32 @@ export function WalletsScreen() {
         </div>
       </div>
 
-      {/* Hero Mascot Banner: Assets Total (Image 1) */}
-      <div className="relative overflow-hidden rounded-[2rem] bg-[#3D784E] p-4 text-white shadow-md">
+      {/* Hero Mascot Banner: Dynamic for All / Assets / Liabilities */}
+      <div className="relative rounded-[2rem] bg-[#3D784E] p-3.5 text-white shadow-md">
         <div className="flex items-center gap-3">
-          {/* Mascot in cap on left */}
-          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-white/10 p-1">
+          {/* Mascot in cap with wallet on left */}
+          <div className="relative -mt-4 -mb-3 -ml-1 h-24 w-24 shrink-0 pointer-events-none z-10">
             <Image
               src="/pawi-holding-wallet.png"
               alt="Pawi"
               fill
-              className="object-contain"
+              priority
+              className="object-contain drop-shadow-lg scale-110 origin-bottom"
             />
           </div>
 
-          {/* White card on right with Assets and Filter */}
-          <div className="flex-1 rounded-[1.75rem] bg-white p-3.5 text-foreground shadow-sm">
+          {/* White card on right with Dynamic Filter & Amount */}
+          <div className="relative z-0 flex-1 rounded-[1.75rem] bg-white p-3.5 text-foreground shadow-sm">
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                  ASSETS
+                  {bannerConfig.title}
                 </span>
                 <p className="mt-0.5 text-xl font-black tracking-tight text-foreground tabular-nums">
-                  {showBalance ? formatMoney(totalAssetsPhp || 270494.22) : "••••••••"}
+                  {showBalance ? formatMoney(bannerConfig.amount) : "••••••••"}
                 </p>
-                <p className="text-[10px] text-muted-foreground font-medium">
-                  Accounts and receivables
+                <p className="text-[10px] text-muted-foreground font-semibold">
+                  {bannerConfig.subtitle}
                 </p>
               </div>
               <button
@@ -164,13 +212,13 @@ export function WalletsScreen() {
             </div>
 
             {/* Filter Pills [All] [Assets] [Liabilities] */}
-            <div className="mt-3 flex items-center gap-1.5 rounded-full bg-secondary/70 p-1">
+            <div className="mt-3 flex items-center gap-1 rounded-full bg-secondary/80 p-1 border border-border/60">
               <button
                 type="button"
                 onClick={() => setActiveFilter("all")}
                 className={cn(
                   "flex-1 rounded-full py-1 text-[10px] font-black transition-all",
-                  activeFilter === "all" ? "bg-[#3D784E] text-white shadow-xs" : "text-muted-foreground"
+                  activeFilter === "all" ? "bg-[#3D784E] text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 All
@@ -180,7 +228,7 @@ export function WalletsScreen() {
                 onClick={() => setActiveFilter("assets")}
                 className={cn(
                   "flex-1 rounded-full py-1 text-[10px] font-black transition-all",
-                  activeFilter === "assets" ? "bg-[#3D784E] text-white shadow-xs" : "text-muted-foreground"
+                  activeFilter === "assets" ? "bg-[#3D784E] text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 Assets
@@ -190,7 +238,7 @@ export function WalletsScreen() {
                 onClick={() => setActiveFilter("liabilities")}
                 className={cn(
                   "flex-1 rounded-full py-1 text-[10px] font-black transition-all",
-                  activeFilter === "liabilities" ? "bg-[#3D784E] text-white shadow-xs" : "text-muted-foreground"
+                  activeFilter === "liabilities" ? "bg-[#3D784E] text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 Liabilities
@@ -200,7 +248,7 @@ export function WalletsScreen() {
         </div>
       </div>
 
-      {/* Insight & Daily Balance Row (Image 1) */}
+      {/* Insight & Daily Balance Row */}
       <div className="grid grid-cols-2 gap-2.5">
         {/* Insight Card */}
         <div className="flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-3.5 shadow-xs">
@@ -209,133 +257,82 @@ export function WalletsScreen() {
             <span className="text-muted-foreground flex items-center gap-0.5">Forecast &gt;</span>
           </div>
           <p className="my-2 text-[11px] leading-tight font-medium text-foreground/80">
-            &quot;You&apos;re in the zone where the money starts looking deliberate and mature, not just well-behaved.&quot;
+            {activeFilter === "liabilities"
+              ? "Keep debt utilization below 30% to maintain a stellar financial credit score."
+              : "&quot;You&apos;re in the zone where the money starts looking deliberate and mature, not just well-behaved.&quot;"}
           </p>
         </div>
 
         {/* Daily Balance Mini Chart */}
         <div className="flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-3.5 shadow-xs">
           <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-            DAILY BALANCE
+            {activeFilter === "liabilities" ? "DEBT TREND" : "DAILY BALANCE"}
           </p>
-          <div className="my-1 flex h-14 items-end justify-between gap-1 px-1">
-            {DAILY_DOTS.map((d, i) => (
-              <div key={i} className="flex flex-col items-center gap-1 flex-1">
-                <div className="h-10 w-full flex items-end justify-center">
-                  <div
-                    className="w-2 rounded-full bg-[#3D784E]/30"
-                    style={{ height: `${d.height}%` }}
-                  />
-                </div>
-                <span className="text-[8px] font-bold text-muted-foreground">{d.day}</span>
+          <div className="my-1 flex items-end justify-between gap-1 h-12 pt-2">
+            {DAILY_DOTS.map((dot, idx) => (
+              <div key={idx} className="flex flex-col items-center gap-1 flex-1">
+                <div
+                  className={cn(
+                    "w-full rounded-full transition-all",
+                    activeFilter === "liabilities" ? "bg-rose-500/80" : "bg-[#3D784E]"
+                  )}
+                  style={{ height: `${dot.height}%` }}
+                />
+                <span className="text-[8px] font-bold text-muted-foreground">{dot.day}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Reorder text */}
-      <p className="text-[10px] text-muted-foreground font-semibold px-1">
-        Press and hold an account card to rearrange it.
-      </p>
-
-      {/* Account Categories (Images 1 & 2) */}
+      {/* Dynamic Account Groups */}
       <div className="space-y-4">
-        {/* 1. E-wallets */}
+        {/* 1. E-Wallets Section */}
         {shouldShowAssets && eWallets.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-2 px-1">
-              <h2 className="text-xs font-black text-foreground">E-wallets</h2>
-              <span className="text-xs font-black text-foreground tabular-nums">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-1.5">
+                <Smartphone className="h-4 w-4 text-[#3D784E]" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
+                  E-Wallets
+                </h3>
+              </div>
+              <span className="text-xs font-black text-[#3D784E] tabular-nums">
                 {formatMoney(eWalletsTotal)}
               </span>
             </div>
 
-            <div className="space-y-2.5">
-              {eWallets.map((wallet) => {
-                const logo = getWalletBrandLogo(wallet.name)
-                return (
-                  <div
-                    key={wallet.id}
-                    onClick={() => setSelectedWallet(wallet)}
-                    className="group relative flex cursor-pointer flex-col justify-between rounded-[1.75rem] p-4 text-white shadow-md transition-all active:scale-[0.99]"
-                    style={{ backgroundColor: wallet.accent || "#1A73E8" }}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/20 p-1">
-                          {logo ? (
-                            <Image src={logo} alt={wallet.name} fill className="object-contain p-0.5" />
-                          ) : (
-                            <Smartphone className="h-4 w-4" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm font-black leading-none">{wallet.name}</p>
-                          <p className="text-[10px] text-white/80 font-medium mt-0.5">{wallet.subtitle}</p>
-                        </div>
-                      </div>
-                      <MoreHorizontal className="h-4 w-4 text-white/70" />
-                    </div>
-
-                    <div className="mt-4">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-white/70">
-                        BALANCE
-                      </span>
-                      <p className="text-xl font-black tracking-tight tabular-nums">
-                        {formatMoney(wallet.balance, wallet.currency)}
-                      </p>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* 2. Bank Accounts (2 per row grid) */}
-        {shouldShowAssets && bankAccounts.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-2 px-1">
-              <h2 className="text-xs font-black text-foreground">Bank Accounts</h2>
-              <span className="text-xs font-black text-foreground tabular-nums">
-                {formatMoney(bankAccountsTotal)}
-              </span>
-            </div>
-
             <div className="grid grid-cols-2 gap-2.5">
-              {bankAccounts.map((wallet) => {
-                const logo = getWalletBrandLogo(wallet.name)
+              {eWallets.map((wallet) => {
+                const brandLogo = getWalletBrandLogo(wallet.name)
                 return (
                   <div
                     key={wallet.id}
                     onClick={() => setSelectedWallet(wallet)}
-                    className="relative flex cursor-pointer flex-col justify-between rounded-[1.75rem] p-4 text-white shadow-md transition-all active:scale-[0.99] min-h-[140px]"
-                    style={{ backgroundColor: wallet.accent || "#E53E3E" }}
+                    className="flex flex-col justify-between rounded-3xl p-4 text-white shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    style={{ backgroundColor: wallet.accent || "#007DFE" }}
                   >
                     <div className="flex items-start justify-between">
-                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/20 p-1">
-                        {logo ? (
-                          <Image src={logo} alt={wallet.name} fill className="object-contain p-0.5" />
+                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
+                        {brandLogo ? (
+                          <Image src={brandLogo} alt={wallet.name} fill className="object-contain" />
                         ) : (
-                          <Building className="h-4 w-4" />
+                          <span className="text-xs font-black text-neutral-800">{wallet.name.slice(0, 2)}</span>
                         )}
                       </div>
                       <MoreHorizontal className="h-4 w-4 text-white/70" />
                     </div>
 
-                    <div>
+                    <div className="mt-3">
                       <p className="text-xs font-black leading-tight truncate">{wallet.name}</p>
-                      <p className="text-[9px] text-white/80 font-medium truncate mt-0.5">
-                        {wallet.interestRate || wallet.subtitle}
-                      </p>
+                      <p className="text-[9px] text-white/80 font-medium truncate mt-0.5">{wallet.subtitle}</p>
                     </div>
 
                     <div className="mt-2">
                       <span className="text-[8px] font-black uppercase tracking-widest text-white/70">
                         BALANCE
                       </span>
-                      <p className="text-base font-black tracking-tight tabular-nums">
+                      <p className="text-sm font-black tracking-tight tabular-nums">
                         {formatMoney(wallet.balance, wallet.currency)}
                       </p>
                     </div>
@@ -346,62 +343,54 @@ export function WalletsScreen() {
           </div>
         )}
 
-        {/* 3. Credit Cards (Liabilities with credit progress meters) */}
-        {shouldShowLiabilities && creditCards.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-2 px-1">
-              <h2 className="text-xs font-black text-foreground">Credit Cards</h2>
-              <span className="text-xs font-black text-rose-500 tabular-nums">
-                -{formatMoney(creditCardsTotal)}
+        {/* 2. Bank Accounts Section */}
+        {shouldShowAssets && bankAccounts.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-1.5">
+                <Building className="h-4 w-4 text-[#3D784E]" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
+                  Bank Accounts & Cash
+                </h3>
+              </div>
+              <span className="text-xs font-black text-[#3D784E] tabular-nums">
+                {formatMoney(bankAccountsTotal)}
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
-              {creditCards.map((wallet) => {
-                const logo = getWalletBrandLogo(wallet.name)
-                const used = wallet.usedCredit ?? wallet.balance
-                const limit = wallet.creditLimit ?? 50000
-                const pct = limit > 0 ? Math.round((used / limit) * 100) : 16
-                const left = Math.max(0, limit - used)
-
+              {bankAccounts.map((wallet) => {
+                const brandLogo = getWalletBrandLogo(wallet.name)
                 return (
                   <div
                     key={wallet.id}
                     onClick={() => setSelectedWallet(wallet)}
-                    className="relative flex cursor-pointer flex-col justify-between rounded-[1.75rem] p-4 text-white shadow-md transition-all active:scale-[0.99] min-h-[160px]"
-                    style={{ backgroundColor: wallet.accent || "#D97706" }}
+                    className="flex flex-col justify-between rounded-3xl p-4 text-white shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    style={{ backgroundColor: wallet.accent || "#0033A0" }}
                   >
                     <div className="flex items-start justify-between">
-                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/20 p-1">
-                        {logo ? (
-                          <Image src={logo} alt={wallet.name} fill className="object-contain p-0.5" />
+                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
+                        {brandLogo ? (
+                          <Image src={brandLogo} alt={wallet.name} fill className="object-contain" />
                         ) : (
-                          <CreditCard className="h-4 w-4" />
+                          <span className="text-xs font-black text-neutral-800">{wallet.name.slice(0, 2)}</span>
                         )}
                       </div>
                       <MoreHorizontal className="h-4 w-4 text-white/70" />
                     </div>
 
-                    <div className="my-1">
+                    <div className="mt-3">
                       <p className="text-xs font-black leading-tight truncate">{wallet.name}</p>
-                      <p className="text-[9px] text-white/80 font-medium truncate mt-0.5">
-                        Credit · PHP · due day {wallet.dueDay || 12}
-                      </p>
+                      <p className="text-[9px] text-white/80 font-medium truncate mt-0.5">{wallet.subtitle}</p>
                     </div>
 
-                    <div>
-                      <div className="flex items-center justify-between text-[8px] font-black text-white/80 mb-1">
-                        <span>USED CREDIT</span>
-                        <span>{pct}% used</span>
-                      </div>
-                      {/* Meter Bar */}
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/20">
-                        <div className="h-full rounded-full bg-white" style={{ width: `${pct}%` }} />
-                      </div>
-                      <div className="flex items-center justify-between text-[8px] font-bold text-white/80 mt-1">
-                        <span className="text-xs font-black text-white">{formatMoney(used)}</span>
-                        <span>{formatMoney(left)} left</span>
-                      </div>
+                    <div className="mt-2">
+                      <span className="text-[8px] font-black uppercase tracking-widest text-white/70">
+                        BALANCE
+                      </span>
+                      <p className="text-sm font-black tracking-tight tabular-nums">
+                        {formatMoney(wallet.balance, wallet.currency)}
+                      </p>
                     </div>
                   </div>
                 )
@@ -410,13 +399,67 @@ export function WalletsScreen() {
           </div>
         )}
 
-        {/* 4. Loans */}
-        {shouldShowLiabilities && loans.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-2 px-1">
-              <h2 className="text-xs font-black text-foreground">Loans</h2>
+        {/* 3. Credit Cards Section */}
+        {shouldShowLiabilities && creditCards.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-1.5">
+                <CreditCard className="h-4 w-4 text-rose-500" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
+                  Credit Cards
+                </h3>
+              </div>
               <span className="text-xs font-black text-rose-500 tabular-nums">
-                -{formatMoney(loansTotal)}
+                {formatMoney(creditCardsTotal)}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              {creditCards.map((wallet) => (
+                <div
+                  key={wallet.id}
+                  onClick={() => setSelectedWallet(wallet)}
+                  className="flex flex-col justify-between rounded-3xl p-4 text-white shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  style={{ backgroundColor: wallet.accent || "#7C3AED" }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                      <CreditCard className="h-4 w-4" />
+                    </div>
+                    <MoreHorizontal className="h-4 w-4 text-white/70" />
+                  </div>
+
+                  <div className="mt-3">
+                    <p className="text-xs font-black leading-tight truncate">{wallet.name}</p>
+                    <p className="text-[9px] text-white/80 font-medium truncate mt-0.5">{wallet.subtitle}</p>
+                  </div>
+
+                  <div className="mt-2">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-white/70">
+                      USED CREDIT
+                    </span>
+                    <p className="text-sm font-black tracking-tight tabular-nums">
+                      {formatMoney(wallet.usedCredit || wallet.balance, wallet.currency)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 4. Loans & Debts Section */}
+        {shouldShowLiabilities && loans.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-1.5">
+                <FileText className="h-4 w-4 text-amber-500" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
+                  Loans & Payables
+                </h3>
+              </div>
+              <span className="text-xs font-black text-amber-500 tabular-nums">
+                {formatMoney(loansTotal)}
               </span>
             </div>
 
@@ -425,8 +468,8 @@ export function WalletsScreen() {
                 <div
                   key={wallet.id}
                   onClick={() => setSelectedWallet(wallet)}
-                  className="relative flex cursor-pointer flex-col justify-between rounded-[1.75rem] p-4 text-white shadow-md transition-all active:scale-[0.99] min-h-[140px]"
-                  style={{ backgroundColor: wallet.accent || "#0D9488" }}
+                  className="flex flex-col justify-between rounded-3xl p-4 text-white shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  style={{ backgroundColor: wallet.accent || "#B45309" }}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20">
@@ -435,7 +478,7 @@ export function WalletsScreen() {
                     <MoreHorizontal className="h-4 w-4 text-white/70" />
                   </div>
 
-                  <div>
+                  <div className="mt-3">
                     <p className="text-xs font-black leading-tight truncate">{wallet.name}</p>
                     <p className="text-[9px] text-white/80 font-medium truncate mt-0.5">{wallet.subtitle}</p>
                   </div>
@@ -457,12 +500,50 @@ export function WalletsScreen() {
 
       {/* Modals */}
       <AddWalletModal open={isAddOpen} onClose={() => setIsAddOpen(false)} />
-      <TransferModal open={isTransferOpen} onClose={() => setIsTransferOpen(false)} />
+      <TransferModal
+        open={isTransferOpen}
+        initialFrom={transferPresetWallet}
+        onClose={() => setIsTransferOpen(false)}
+      />
       <TransactionEntryModal
         open={txModalOpen}
         kind={txKind}
+        initialAccount={txPresetWallet}
         onClose={() => setTxModalOpen(false)}
       />
+
+      {/* Archive & Categories Modal */}
+      {showFolderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[2.5rem] border border-border/80 bg-card p-6 shadow-2xl text-foreground animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E]">
+                  <Folder className="h-4 w-4" />
+                </div>
+                <h3 className="text-base font-black text-foreground">Accounts Archive</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFolderModal(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:bg-accent"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              All {wallets.length} accounts are currently active. You can archive accounts to hide them from daily reports without losing past transaction history.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowFolderModal(false)}
+              className="w-full rounded-2xl bg-[#3D784E] py-3 text-xs font-black text-white shadow-md shadow-[#3D784E]/25 hover:bg-[#356B46]"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
