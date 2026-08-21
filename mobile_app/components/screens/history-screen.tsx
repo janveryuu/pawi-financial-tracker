@@ -66,20 +66,28 @@ export function HistoryScreen() {
 
   // Filter transactions
   const filtered = useMemo(() => {
+    const now = new Date()
+    const todayStr = now.toISOString().split("T")[0]
+    const yestDate = new Date()
+    yestDate.setDate(yestDate.getDate() - 1)
+    const yesterdayStr = yestDate.toISOString().split("T")[0]
+    const thisMonthPrefix = now.toISOString().substring(0, 7)
+
     return transactions.filter((t) => {
       if (filterType !== "all" && t.kind !== filterType) return false
       if (selectedAccount !== "all" && t.account.toLowerCase() !== selectedAccount.toLowerCase()) return false
 
       if (selectedDateFilter !== "all") {
+        const txIso = t.date ? (t.date.includes("T") ? t.date.split("T")[0] : t.date) : ""
         if (selectedDateFilter === "today") {
-          const isToday = t.dateHeader?.toLowerCase().includes("today") || t.date?.includes("APRIL 20")
+          const isToday = t.dateHeader?.toLowerCase().includes("today") || txIso.startsWith(todayStr)
           if (!isToday) return false
         } else if (selectedDateFilter === "yesterday") {
-          const isYesterday = t.dateHeader?.toLowerCase().includes("yesterday") || t.date?.includes("APRIL 19")
+          const isYesterday = t.dateHeader?.toLowerCase().includes("yesterday") || txIso.startsWith(yesterdayStr)
           if (!isYesterday) return false
         } else if (selectedDateFilter === "month") {
-          const isApril = t.date?.includes("APRIL") || t.dateHeader?.includes("April")
-          if (!isApril) return false
+          const isThisMonth = txIso.startsWith(thisMonthPrefix) || t.dateHeader?.includes(now.toLocaleDateString("en-US", { month: "long" }))
+          if (!isThisMonth) return false
         }
       }
 
@@ -128,6 +136,12 @@ export function HistoryScreen() {
 
   // Group by date header
   const groupedTransactions = useMemo(() => {
+    const now = new Date()
+    const todayStr = now.toISOString().split("T")[0]
+    const yestDate = new Date()
+    yestDate.setDate(yestDate.getDate() - 1)
+    const yesterdayStr = yestDate.toISOString().split("T")[0]
+
     const groups: {
       header: string
       dateSubtitle: string
@@ -137,8 +151,24 @@ export function HistoryScreen() {
     }[] = []
 
     filtered.forEach((tx) => {
-      const header = tx.dateHeader || (tx.date === "APRIL 20, 2026" ? "Today" : tx.date ? tx.date : "Recent")
-      const dateSub = tx.date || "APRIL 20, 2026"
+      const txIso = tx.date ? (tx.date.includes("T") ? tx.date.split("T")[0] : tx.date) : ""
+      let header = tx.dateHeader
+      if (!header) {
+        if (txIso.startsWith(todayStr)) {
+          header = "Today"
+        } else if (txIso.startsWith(yesterdayStr)) {
+          header = "Yesterday"
+        } else if (tx.date) {
+          const d = new Date(tx.date)
+          header = !isNaN(d.getTime())
+            ? d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+            : tx.date
+        } else {
+          header = "Recent"
+        }
+      }
+
+      const dateSub = tx.date || now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
 
       let existing = groups.find((g) => g.header === header)
       if (!existing) {
@@ -540,9 +570,16 @@ export function HistoryScreen() {
             <div className="grid grid-cols-2 gap-2 mb-4">
               {[
                 { id: "all", label: "All Time" },
-                { id: "today", label: "Today (Apr 20)" },
-                { id: "yesterday", label: "Yesterday (Apr 19)" },
-                { id: "month", label: "This Month (April)" },
+                { id: "today", label: `Today (${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })})` },
+                {
+                  id: "yesterday",
+                  label: `Yesterday (${(() => {
+                    const y = new Date()
+                    y.setDate(y.getDate() - 1)
+                    return y.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                  })()})`,
+                },
+                { id: "month", label: `This Month (${new Date().toLocaleDateString("en-US", { month: "long" })})` },
               ].map((preset) => (
                 <button
                   key={preset.id}

@@ -44,8 +44,20 @@ export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
   const totalBudgetsSpent = budgets.reduce((s, b) => s + b.spent, 0)
   const budgetUsagePercent = totalBudgetsLimit > 0 ? Math.round((totalBudgetsSpent / totalBudgetsLimit) * 100) : 0
 
-  const totalReceivables = receivables.reduce((s, r) => s + r.amount, 0)
-  const totalPlannedBills = plannedPayments.reduce((s, p) => s + p.amount, 0)
+  const overBudgetCount = budgets.filter((b) => b.spent > b.limit).length
+  const healthScore = totalDebts > totalAssets
+    ? Math.max(50, 75 - Math.round((totalDebts / (totalAssets || 1)) * 10))
+    : overBudgetCount > 0
+    ? Math.max(60, 95 - overBudgetCount * 10)
+    : 95
+
+  const healthZone = healthScore >= 80 ? "Green Zone" : healthScore >= 60 ? "Yellow Zone" : "Red Zone"
+  const healthBadge = healthScore >= 80 ? "Optimal" : healthScore >= 60 ? "Fair" : "Needs Attention"
+  const runwayMonths = totalBudgetsSpent > 0
+    ? (totalAssets / totalBudgetsSpent).toFixed(1)
+    : totalAssets > 0
+    ? "3.0+"
+    : "0.0"
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-2 pb-28 min-h-screen bg-background text-foreground">
@@ -120,13 +132,13 @@ export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-black text-foreground">Green Zone · 94/100</span>
+              <span className="text-xs font-black text-foreground">{healthZone} · {healthScore}/100</span>
               <span className="rounded-full bg-[#3D784E]/20 px-2 py-0.2 text-[9px] font-black text-[#3D784E]">
-                Optimal
+                {healthBadge}
               </span>
             </div>
             <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
-              3.8 months emergency runway & controlled liabilities
+              {runwayMonths} months emergency runway & {totalDebts > 0 ? "active liabilities" : "zero liabilities"}
             </p>
           </div>
         </div>

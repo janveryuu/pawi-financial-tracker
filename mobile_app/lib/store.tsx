@@ -42,6 +42,127 @@ export interface UpcomingItem {
   icon?: string
 }
 
+export interface PaydayConfig {
+  configured: boolean
+  day1: number
+  day2?: number
+  frequency: "monthly" | "semi-monthly"
+  amount: number
+}
+
+export interface PaydayCountdownInfo {
+  configured: boolean
+  daysRemaining: number
+  formattedDate: string
+  amount: number
+}
+
+export function computePaydayCountdown(config?: PaydayConfig | null, customNow?: Date): PaydayCountdownInfo {
+  if (!config || !config.configured) {
+    return {
+      configured: false,
+      daysRemaining: 0,
+      formattedDate: "",
+      amount: 0,
+    }
+  }
+
+  const now = customNow || new Date()
+  const currentDay = now.getDate()
+  const currentMonth = now.getMonth()
+  const currentYear = now.getFullYear()
+
+  let nextDate: Date
+
+  if (config.frequency === "semi-monthly") {
+    const d1 = Math.min(config.day1 || 15, 28)
+    const d2 = Math.min(config.day2 || 30, 31)
+    const sorted = [Math.min(d1, d2), Math.max(d1, d2)]
+
+    if (currentDay < sorted[0]) {
+      nextDate = new Date(currentYear, currentMonth, sorted[0])
+    } else if (currentDay < sorted[1]) {
+      const lastDayThisMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
+      const targetDay = Math.min(sorted[1], lastDayThisMonth)
+      nextDate = new Date(currentYear, currentMonth, targetDay)
+    } else {
+      nextDate = new Date(currentYear, currentMonth + 1, sorted[0])
+    }
+  } else {
+    const targetDay = config.day1 || 15
+    const lastDayThisMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
+    const validDayThisMonth = Math.min(targetDay, lastDayThisMonth)
+
+    if (currentDay < validDayThisMonth) {
+      nextDate = new Date(currentYear, currentMonth, validDayThisMonth)
+    } else {
+      const lastDayNextMonth = new Date(currentYear, currentMonth + 2, 0).getDate()
+      const validDayNextMonth = Math.min(targetDay, lastDayNextMonth)
+      nextDate = new Date(currentYear, currentMonth + 1, validDayNextMonth)
+    }
+  }
+
+  const nowMidnight = new Date(currentYear, currentMonth, currentDay)
+  const diffTime = nextDate.getTime() - nowMidnight.getTime()
+  const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
+
+  const formattedDate = nextDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  })
+
+  return {
+    configured: true,
+    daysRemaining,
+    formattedDate,
+    amount: config.amount || 0,
+  }
+}
+
+export function calculateStreak(transactions: Transaction[]): number {
+  if (!transactions || transactions.length === 0) return 0
+
+  const validDates = transactions
+    .map((t) => {
+      if (!t.date) return null
+      const parsed = new Date(t.date)
+      if (isNaN(parsed.getTime())) return null
+      return parsed.toISOString().split("T")[0]
+    })
+    .filter((d): d is string => d !== null)
+
+  const uniqueSorted = Array.from(new Set(validDates)).sort().reverse()
+  if (uniqueSorted.length === 0) return 0
+
+  const todayStr = new Date().toISOString().split("T")[0]
+  const yest = new Date()
+  yest.setDate(yest.getDate() - 1)
+  const yestStr = yest.toISOString().split("T")[0]
+
+  // If latest tx date is neither today nor yesterday, streak is inactive
+  if (uniqueSorted[0] !== todayStr && uniqueSorted[0] !== yestStr) {
+    return 0
+  }
+
+  let count = 1
+  let curr = new Date(uniqueSorted[0])
+
+  for (let i = 1; i < uniqueSorted.length; i++) {
+    const prevDate = new Date(curr)
+    prevDate.setDate(prevDate.getDate() - 1)
+    const prevStr = prevDate.toISOString().split("T")[0]
+
+    if (uniqueSorted[i] === prevStr) {
+      count++
+      curr = prevDate
+    } else {
+      break
+    }
+  }
+
+  return count
+}
+
 interface State {
   wallets: Wallet[]
   transactions: Transaction[]
@@ -55,9 +176,8 @@ interface State {
   chatMessages: ChatMessage[]
   defaultCurrency: CurrencyCode
   streakDays: number
-  daysUntilPayday: number
-  paydayAmount: number
-  paydayDate: string
+  paydayConfig: PaydayConfig
+  paydayCountdown: PaydayCountdownInfo
 }
 
 interface StoreContextType extends State {
@@ -93,6 +213,7 @@ interface StoreContextType extends State {
   adjustWalletBalance: (walletId: string, newBalance: number, reason?: string) => Promise<void>
   setChatMessages: (msgs: ChatMessage[]) => Promise<void>
   setDefaultCurrency: (currency: CurrencyCode) => Promise<void>
+  updatePaydayConfig: (config: PaydayConfig) => Promise<void>
   resetAccountData: () => Promise<void>
   loadSampleData: () => Promise<void>
 }
@@ -233,6 +354,22 @@ function mapBudgetToRow(b: Budget, userId: string): any {
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { user, isGuest } = useAuth()
 
+  const savedPaydayConfig: PaydayConfig = (() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("pawi_payday_config")
+        if (stored) return JSON.parse(stored)
+      } catch {}
+    }
+    return {
+      configured: false,
+      day1: 15,
+      day2: 30,
+      frequency: "semi-monthly",
+      amount: 0,
+    }
+  })()
+
   const [state, setState] = useState<State>({
     wallets: starterWallets,
     transactions: [],
@@ -250,16 +387,52 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
     ],
     defaultCurrency: "PHP",
-    streakDays: 1,
-    daysUntilPayday: 25,
-    paydayAmount: 0,
-    paydayDate: "May 15",
+    streakDays: 0,
+    paydayConfig: savedPaydayConfig,
+    paydayCountdown: computePaydayCountdown(savedPaydayConfig),
   })
+
+  const updatePaydayConfig = useCallback(async (config: PaydayConfig) => {
+    const countdown = computePaydayCountdown(config)
+    setState((prev) => ({
+      ...prev,
+      paydayConfig: config,
+      paydayCountdown: countdown,
+    }))
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("pawi_payday_config", JSON.stringify(config))
+      } catch (e) {
+        console.warn("Could not save payday config to localStorage:", e)
+      }
+    }
+
+    if (user && !isGuest) {
+      const userId = user.id || (user as any).uid
+      try {
+        await supabase.from("profiles").upsert({
+          id: userId,
+          monthly_income: config.amount || 0,
+          updated_at: new Date().toISOString(),
+        })
+      } catch (e) {
+        console.warn("Could not sync payday config to profiles:", e)
+      }
+    }
+  }, [user, isGuest])
 
   // Load and sync from Supabase PostgreSQL tables
   useEffect(() => {
     if (!user) {
       if (isGuest || (typeof window !== "undefined" && localStorage.getItem("pawi_guest_session") === "true")) {
+        const guestPayday: PaydayConfig = {
+          configured: true,
+          day1: 15,
+          day2: 30,
+          frequency: "semi-monthly",
+          amount: 18500,
+        }
         setState((prev) => ({
           ...prev,
           wallets: demoWallets,
@@ -271,6 +444,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           plannedPayments: demoPlannedPayments,
           installments: demoInstallments,
           tags: demoTags,
+          streakDays: 6,
+          paydayConfig: guestPayday,
+          paydayCountdown: computePaydayCountdown(guestPayday),
         }))
         return
       }
@@ -287,11 +463,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         plannedPayments: [],
         installments: [],
         tags: [],
+        streakDays: 0,
+        paydayConfig: savedPaydayConfig,
+        paydayCountdown: computePaydayCountdown(savedPaydayConfig),
       }))
       return
     }
 
     if (isGuest || user.email === "demo@pawi.app") {
+      const demoPayday: PaydayConfig = {
+        configured: true,
+        day1: 15,
+        day2: 30,
+        frequency: "semi-monthly",
+        amount: 18500,
+      }
       setState((prev) => ({
         ...prev,
         wallets: demoWallets,
@@ -303,6 +489,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         plannedPayments: demoPlannedPayments,
         installments: demoInstallments,
         tags: demoTags,
+        streakDays: 6,
+        paydayConfig: demoPayday,
+        paydayCountdown: computePaydayCountdown(demoPayday),
       }))
       return
     }
@@ -317,20 +506,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           { data: goalsData },
           { data: catData },
           { data: billsData },
+          { data: profileData },
         ] = await Promise.all([
           supabase.from("accounts").select("*").eq("user_id", userId),
           supabase.from("transactions").select("*").eq("user_id", userId).order("transaction_date", { ascending: false }),
           supabase.from("savings_goals").select("*").eq("user_id", userId),
           supabase.from("categories").select("*").eq("user_id", userId),
           supabase.from("recurring_bills").select("*").eq("user_id", userId),
+          supabase.from("profiles").select("*").eq("id", userId).single(),
         ])
+
+        const loadedTx = txData ? txData.map(mapTxRowToTransaction) : []
+        const liveStreak = calculateStreak(loadedTx)
+
+        // Read or infer payday configuration
+        let currentPaydayConfig = savedPaydayConfig
+        if (profileData && profileData.monthly_income && Number(profileData.monthly_income) > 0) {
+          currentPaydayConfig = {
+            configured: true,
+            day1: 15,
+            day2: 30,
+            frequency: "semi-monthly",
+            amount: Number(profileData.monthly_income),
+          }
+        }
 
         // If user already has accounts in database, hydrate state from Supabase
         if (accountsData && accountsData.length > 0) {
           setState((prev) => ({
             ...prev,
             wallets: accountsData.map(mapAccountToWallet),
-            transactions: txData ? txData.map(mapTxRowToTransaction) : [],
+            transactions: loadedTx,
             goals: goalsData ? goalsData.map(mapGoalRowToGoal) : [],
             budgets: catData ? catData.map(mapCatRowToBudget) : [],
             plannedPayments: billsData && billsData.length > 0
@@ -345,6 +551,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                   icon: "📅",
                 }))
               : [],
+            streakDays: liveStreak,
+            paydayConfig: currentPaydayConfig,
+            paydayCountdown: computePaydayCountdown(currentPaydayConfig),
           }))
         } else {
           // If no accounts found in Supabase (brand-new user), insert minimal starter set (GCash + BDO at 0.00)
@@ -413,6 +622,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             plannedPayments: [],
             installments: [],
             tags: [],
+            streakDays: 0,
+            paydayConfig: currentPaydayConfig,
+            paydayCountdown: computePaydayCountdown(currentPaydayConfig),
           }))
         }
       } catch (err) {
@@ -1126,6 +1338,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         adjustWalletBalance,
         setChatMessages,
         setDefaultCurrency,
+        updatePaydayConfig,
         resetAccountData,
         loadSampleData,
       }}

@@ -18,73 +18,32 @@ import { useAuth } from "@/lib/auth-context"
 import { useStore } from "@/lib/store"
 import { formatMoney } from "@/lib/pawi-data"
 import { cn } from "@/lib/utils"
+import { PaydaySetupModal } from "../payday-setup-modal"
 
 interface HomeScreenProps {
   onOpenSettings: () => void
   onOpenNotifications: () => void
 }
 
-const UPCOMING_INCOME = [
-  {
-    id: "inc-1",
-    title: "Online selling payout",
-    date: "Apr 25",
-    amount: 4500,
-    icon: "G",
-    iconBg: "bg-[#1A73E8]",
-  },
-]
-
-const UPCOMING_EXPENSES = [
-  {
-    id: "exp-1",
-    title: "Globe postpaid",
-    date: "Apr 23",
-    amount: 999,
-    badge: "3 DAYS LEFT",
-    iconType: "globe",
-  },
-  {
-    id: "exp-2",
-    title: "Netflix Premium",
-    date: "Apr 26",
-    amount: 249,
-    iconType: "netflix",
-  },
-  {
-    id: "exp-3",
-    title: "Converge internet",
-    date: "Apr 28",
-    amount: 1699,
-    iconType: "converge",
-  },
-  {
-    id: "exp-4",
-    title: "RCBC Visa",
-    date: "May 02",
-    amount: 1500,
-    iconType: "rcbc",
-  },
-]
-
-const LAST_7_DAYS_BARS = [
-  { day: "T", height: 28, isToday: false },
-  { day: "W", height: 50, isToday: false },
-  { day: "T", height: 85, isToday: false },
-  { day: "F", height: 95, isToday: false },
-  { day: "S", height: 20, isToday: false },
-  { day: "S", height: 45, isToday: false },
-  { day: "M", height: 35, isToday: true },
-]
-
 export function HomeScreen({
   onOpenSettings,
   onOpenNotifications,
 }: HomeScreenProps) {
   const { user } = useAuth()
-  const { streakDays, daysUntilPayday, paydayAmount, paydayDate, transactions = [], plannedPayments = [] } = useStore()
+  const { streakDays, paydayCountdown, transactions = [], plannedPayments = [] } = useStore()
   const [timeFilter, setTimeFilter] = useState<"day" | "week" | "month">("day")
   const [showCommunityModal, setShowCommunityModal] = useState(false)
+  const [showPaydayModal, setShowPaydayModal] = useState(false)
+  const [currentDate, setCurrentDate] = useState<Date>(new Date())
+
+  // Keep live time updated every minute
+  useEffect(() => {
+    setCurrentDate(new Date())
+    const interval = setInterval(() => {
+      setCurrentDate(new Date())
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Determine user name with top priority on real registered name (not email)
   const rawName =
@@ -103,14 +62,24 @@ export function HomeScreen({
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(" ")
 
-  // Dynamic greeting based on current hour
-  const hour = new Date().getHours()
+  // Dynamic greeting based on current local hour
+  const hour = currentDate.getHours()
   let greeting = "Good morning"
   if (hour >= 12 && hour < 18) {
     greeting = "Good afternoon"
   } else if (hour >= 18 || hour < 5) {
     greeting = "Good evening"
   }
+
+  // Live formatted current date (Asia/Manila timezone consistent)
+  const liveDateHeader = currentDate
+    .toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      timeZone: "Asia/Manila",
+    })
+    .toUpperCase()
 
   // Calculate today's flow
   const todayIncome = transactions
@@ -144,7 +113,6 @@ export function HomeScreen({
         day: dayLetters[dayIdx],
         isToday: i === 0,
         amount: dayExpenses,
-        fallbackHeight: [28, 50, 85, 95, 20, 45, 35][6 - i],
       })
     }
 
@@ -155,7 +123,7 @@ export function HomeScreen({
       ...r,
       height: hasData
         ? Math.max(15, Math.min(100, Math.round((r.amount / maxSpend) * 100)))
-        : transactions.length === 0 ? 10 : r.fallbackHeight,
+        : 8,
     }))
   }, [transactions])
 
@@ -179,18 +147,25 @@ export function HomeScreen({
     }
 
     // 2. Payday Countdown Context
-    if (daysUntilPayday <= 3 && daysUntilPayday > 0) {
-      list.push(
-        `Konting tiis na lang, ${daysUntilPayday} araw na lang sahod na! Ready na ba ang budget allocation mo?`,
-        "Malapit na ang sweldo! Unahin agad ang savings at bills bago ang luho ha."
-      )
-    } else if (daysUntilPayday === 0) {
-      list.push(
-        "Payday na today! 🎉 Tabi agad ang 20% para sa savings bago gastusin ang iba."
-      )
+    if (paydayCountdown.configured) {
+      if (paydayCountdown.daysRemaining <= 3 && paydayCountdown.daysRemaining > 0) {
+        list.push(
+          `Konting tiis na lang, ${paydayCountdown.daysRemaining} araw na lang sahod na! Ready na ba ang budget allocation mo?`,
+          "Malapit na ang sweldo! Unahin agad ang savings at bills bago ang luho ha."
+        )
+      } else if (paydayCountdown.daysRemaining === 0) {
+        list.push(
+          "Payday na today! 🎉 Tabi agad ang 20% para sa savings bago gastusin ang iba."
+        )
+      } else {
+        list.push(
+          `${paydayCountdown.daysRemaining} days pa bago mag-sahod. Tipid tip: Magbaon ng lunch at iwas sa impulsive milk tea!`
+        )
+      }
     } else {
       list.push(
-        `${daysUntilPayday} days pa bago mag-sahod. Tipid tip: Magbaon ng lunch at iwas sa impulsive milk tea!`
+        "I-set ang iyong payday schedule para ma-track natin ang countdown at tamang pacing ng budget.",
+        "Tip: I-link ang mga recurring bills para laging ready bago dumating ang due dates."
       )
     }
 
@@ -220,7 +195,7 @@ export function HomeScreen({
     )
 
     return list
-  }, [isOverspending, daysUntilPayday, hour])
+  }, [isOverspending, paydayCountdown, hour])
 
   // Rotate message every 5 minutes (300,000 ms) or on user tap
   const [dialogueIndex, setDialogueIndex] = useState(0)
@@ -245,8 +220,8 @@ export function HomeScreen({
       <div className="flex items-center justify-between py-1">
         {/* Streak Pill */}
         <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-500/10 px-3 py-1.5 text-xs font-black text-amber-900 dark:text-amber-300 shadow-2xs">
-          <Flame className="h-4 w-4 text-orange-500 fill-orange-500" />
-          <span>x{streakDays || 6} day streak!</span>
+          <Flame className={cn("h-4 w-4", streakDays > 0 ? "text-orange-500 fill-orange-500" : "text-amber-400")} />
+          <span>{streakDays > 0 ? `x${streakDays} day streak!` : "Start streak! 🔥"}</span>
         </div>
 
         {/* Action Buttons: Bell, Community, Settings */}
@@ -281,7 +256,7 @@ export function HomeScreen({
       {/* Date & Greeting Header */}
       <div>
         <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
-          MONDAY, APRIL 20
+          {liveDateHeader}
         </p>
         <h1 className="text-2xl font-black tracking-tight text-foreground mt-0.5">
           {greeting}, <span className="text-foreground">{displayName}!</span>
@@ -435,30 +410,73 @@ export function HomeScreen({
       </div>
 
       {/* Payday Countdown Card */}
-      <div className="flex items-center justify-between rounded-3xl border border-[#3D784E]/20 bg-gradient-to-r from-[#3D784E]/10 via-[#3D784E]/5 to-transparent p-4 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E]">
-            <TrendingUp className="h-5 w-5" />
+      {paydayCountdown.configured ? (
+        <div
+          onClick={() => setShowPaydayModal(true)}
+          className="flex items-center justify-between rounded-3xl border border-[#3D784E]/20 bg-gradient-to-r from-[#3D784E]/10 via-[#3D784E]/5 to-transparent p-4 shadow-xs cursor-pointer hover:border-[#3D784E]/40 active:scale-[0.99] transition-all"
+          title="Tap to edit payday schedule"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E]">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-wider text-[#3D784E]">
+                DAYS UNTIL PAYDAY
+              </p>
+              <p className="text-base font-black text-foreground mt-0.5">
+                {paydayCountdown.daysRemaining === 0
+                  ? "Payday today! 🎉"
+                  : `${paydayCountdown.daysRemaining} ${paydayCountdown.daysRemaining === 1 ? "day" : "days"}`}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-wider text-[#3D784E]">
-              DAYS UNTIL PAYDAY
-            </p>
-            <p className="text-base font-black text-foreground mt-0.5">
-              {daysUntilPayday || 25} days
-            </p>
-          </div>
-        </div>
 
-        <div className="text-right">
-          <p className="text-sm font-black text-foreground tabular-nums">
-            {formatMoney(paydayAmount || 0)}
-          </p>
-          <p className="text-[11px] font-semibold text-muted-foreground mt-0.5">
-            {paydayDate || "May 15"}
-          </p>
+          <div className="text-right">
+            {paydayCountdown.amount > 0 && (
+              <p className="text-sm font-black text-foreground tabular-nums">
+                {formatMoney(paydayCountdown.amount)}
+              </p>
+            )}
+            <p className="text-[11px] font-semibold text-muted-foreground mt-0.5">
+              {paydayCountdown.formattedDate}
+            </p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div
+          onClick={() => setShowPaydayModal(true)}
+          className="flex items-center justify-between rounded-3xl border border-dashed border-[#3D784E]/40 bg-[#3D784E]/5 p-4 shadow-xs cursor-pointer hover:bg-[#3D784E]/10 active:scale-[0.99] transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E]">
+              <Calendar className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-wider text-[#3D784E]">
+                PAYDAY COUNTDOWN
+              </p>
+              <p className="text-xs font-bold text-foreground mt-0.5">
+                Set your payday schedule
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                Track days left & salary budget pacing
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowPaydayModal(true)
+            }}
+            className="rounded-full bg-[#3D784E] px-3.5 py-1.5 text-[11px] font-black text-white shadow-xs hover:bg-[#356B46] active:scale-95 transition-all"
+          >
+            Configure
+          </button>
+        </div>
+      )}
 
       {/* Upcoming Section */}
       <div className="rounded-3xl border border-border/80 bg-card p-5 shadow-xs space-y-4">
@@ -506,6 +524,12 @@ export function HomeScreen({
           </div>
         )}
       </div>
+
+      {/* Payday Setup Modal */}
+      <PaydaySetupModal
+        open={showPaydayModal}
+        onClose={() => setShowPaydayModal(false)}
+      />
 
       {/* Financial Community & Circles Modal */}
       {showCommunityModal && (

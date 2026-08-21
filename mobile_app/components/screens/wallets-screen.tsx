@@ -124,7 +124,6 @@ export function WalletsScreen() {
         dayName: dayNames[dayIdx],
         isToday: i === 0,
         amount: dayExpenses,
-        fallbackHeight: [35, 50, 75, 95, 20, 60, 85][6 - i],
       })
     }
 
@@ -134,8 +133,8 @@ export function WalletsScreen() {
     return result.map((r) => {
       const heightPercent = hasRealData
         ? Math.max(18, Math.min(100, Math.round((r.amount / maxSpend) * 100)))
-        : r.fallbackHeight
-      const displayAmount = hasRealData ? r.amount : r.fallbackHeight * 25
+        : 8
+      const displayAmount = hasRealData ? r.amount : 0
 
       return {
         ...r,
@@ -180,11 +179,10 @@ export function WalletsScreen() {
         )
       } else {
         insights.push(
-          "Nasa green zone ka ngayon! Proud ako sa'yo, kontrolado mo ang finances mo.",
-          "Ang bawat pisong naiipon mo ngayon ay pundasyon ng iyong kalayaan bukas.",
-          "Ugaliing magtabi agad ng savings pagdating ng sahod bago magsimulang gumastos.",
-          "Maliit man ang simula, kapag tuloy-tuloy, malaki ang mararating ng iyong ipon!",
-          "Subaybayan ang bawat bayarin para maiwasan ang mga penalties at interest."
+          "Magsimula sa pag-record ng unang income o expense para makita ang live cashflow trends.",
+          "I-set ang iyong monthly budgets para bantayan ni Pawi ang bawat sentimo.",
+          "Bawat pisong naitatabi mo ngayon ay simula ng iyong financial freedom.",
+          "Mag-set ng payday schedule para sa live countdown at tamang pacing ng gastos."
         )
       }
     }

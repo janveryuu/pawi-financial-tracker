@@ -35,16 +35,6 @@ interface AccountDetailsViewProps {
   onOpenAddIncome: (walletName: string) => void
 }
 
-const STATS_BAR_DATA = [
-  { day: "T", height: 85, color: "#3D784E" },
-  { day: "W", height: 10, color: "#3D784E" },
-  { day: "T", height: 15, color: "#3D784E" },
-  { day: "F", height: 35, color: "#E05353" },
-  { day: "S", height: 60, color: "#E05353" },
-  { day: "S", height: 25, color: "#E05353" },
-  { day: "M", height: 10, color: "#3D784E" },
-]
-
 export function AccountDetailsView({
   wallet,
   onBack,
@@ -52,7 +42,7 @@ export function AccountDetailsView({
   onOpenAddExpense,
   onOpenAddIncome,
 }: AccountDetailsViewProps) {
-  const { transactions, deleteWallet, updateWalletNotes, adjustWalletBalance, deleteTransaction } = useStore()
+  const { transactions, goals = [], plannedPayments = [], deleteWallet, updateWalletNotes, adjustWalletBalance, deleteTransaction } = useStore()
 
   const [isFlipped, setIsFlipped] = useState(false)
   const [showStats, setShowStats] = useState(false)
@@ -71,19 +61,67 @@ export function AccountDetailsView({
       t.account.toLowerCase().includes(wallet.name.toLowerCase())
   )
 
+  const goalsLinked = goals
+    .filter((g) => g.category?.toLowerCase() === wallet.name.toLowerCase() || g.name.toLowerCase().includes(wallet.name.toLowerCase()))
+    .reduce((s, g) => s + (Number(g.saved) || 0), 0)
+
   const netBalance = wallet.balance
-  const spendable = wallet.spendable ?? Math.max(0, wallet.balance - (wallet.goalsLinked || 0))
-  const goalsLinked = wallet.goalsLinked ?? 30000
+  const spendable = wallet.spendable ?? Math.max(0, wallet.balance - goalsLinked)
 
   // Calculate totals for stats
   const walletIncome = walletTransactions
     .filter((t) => t.kind === "income")
-    .reduce((sum, t) => sum + t.amount, 0)
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0)
   const walletExpense = walletTransactions
     .filter((t) => t.kind === "expense")
-    .reduce((sum, t) => sum + t.amount, 0)
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0)
 
-  const netIn = Math.max(0, walletIncome - walletExpense) || 8789.98
+  const netIn = walletIncome - walletExpense
+  const totalFlow = walletIncome + walletExpense
+  const inflowPercent = totalFlow > 0 ? Math.round((walletIncome / totalFlow) * 100) : 100
+  const outflowPercent = 100 - inflowPercent
+
+  // Compute expected out from real planned payments for this account
+  const expectedOut = plannedPayments
+    .filter((p) => p.account?.toLowerCase() === wallet.name.toLowerCase() || p.account?.toLowerCase().includes(wallet.name.toLowerCase()))
+    .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+
+  // Dynamic 7-day flow for this account
+  const live7DayBars = useMemo(() => {
+    const dayLetters = ["S", "M", "T", "W", "T", "F", "S"]
+    const result = []
+    const now = new Date()
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(now.getDate() - i)
+      const dateStr = d.toISOString().split("T")[0]
+      const dayIdx = d.getDay()
+
+      const dayExpense = walletTransactions
+        .filter((t) => t.kind === "expense" && t.date && t.date.startsWith(dateStr))
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0)
+
+      const dayIncome = walletTransactions
+        .filter((t) => t.kind === "income" && t.date && t.date.startsWith(dateStr))
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0)
+
+      result.push({
+        day: dayLetters[dayIdx],
+        amount: dayExpense + dayIncome,
+        isExpense: dayExpense > dayIncome,
+      })
+    }
+
+    const maxAmount = Math.max(...result.map((r) => r.amount), 0)
+    const hasData = maxAmount > 0
+
+    return result.map((r) => ({
+      day: r.day,
+      height: hasData ? Math.max(15, Math.min(100, Math.round((r.amount / maxAmount) * 100))) : 8,
+      color: r.isExpense ? "#E05353" : "#3D784E",
+    }))
+  }, [walletTransactions])
 
   const handleSaveNotes = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -369,7 +407,7 @@ export function AccountDetailsView({
                       ↑ EXPECTED OUT
                     </p>
                     <p className="mt-1 text-sm font-black text-rose-600 tabular-nums">
-                      -₱1,698.99
+                      {expectedOut > 0 ? `-${formatMoney(expectedOut)}` : "₱0.00"}
                     </p>
                   </div>
                 </div>
@@ -383,7 +421,7 @@ export function AccountDetailsView({
                     7-DAY FLOW
                   </p>
                   <div className="my-2 flex h-16 items-end justify-between gap-1 px-1">
-                    {STATS_BAR_DATA.map((bar, i) => (
+                    {live7DayBars.map((bar, i) => (
                       <div key={i} className="flex flex-col items-center gap-1 flex-1">
                         <div className="h-12 w-full flex items-end justify-center">
                           <div
@@ -411,32 +449,38 @@ export function AccountDetailsView({
                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                       />
                       {/* Inflow green segment */}
-                      <path
-                        className="text-[#3D784E]"
-                        strokeDasharray="75, 100"
-                        strokeWidth="4"
-                        strokeLinecap="round"
-                        stroke="currentColor"
-                        fill="none"
-                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      />
+                      {walletIncome > 0 && (
+                        <path
+                          className="text-[#3D784E]"
+                          strokeDasharray={`${inflowPercent}, 100`}
+                          strokeWidth="4"
+                          strokeLinecap="round"
+                          stroke="currentColor"
+                          fill="none"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        />
+                      )}
                       {/* Outflow red segment */}
-                      <path
-                        className="text-rose-500"
-                        strokeDasharray="25, 100"
-                        strokeDashoffset="-75"
-                        strokeWidth="4"
-                        strokeLinecap="round"
-                        stroke="currentColor"
-                        fill="none"
-                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      />
+                      {walletExpense > 0 && (
+                        <path
+                          className="text-rose-500"
+                          strokeDasharray={`${outflowPercent}, 100`}
+                          strokeDashoffset={`-${inflowPercent}`}
+                          strokeWidth="4"
+                          strokeLinecap="round"
+                          stroke="currentColor"
+                          fill="none"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        />
+                      )}
                     </svg>
                     <div className="absolute flex flex-col items-center">
                       <span className="text-[10px] font-black text-foreground leading-none">
-                        ₱8.7k
+                        {netIn === 0 ? "₱0.00" : formatMoney(Math.abs(netIn), wallet.currency)}
                       </span>
-                      <span className="text-[7px] font-bold text-[#3D784E] uppercase">NET IN</span>
+                      <span className="text-[7px] font-bold text-[#3D784E] uppercase">
+                        {netIn >= 0 ? "NET IN" : "NET OUT"}
+                      </span>
                     </div>
                   </div>
                 </div>

@@ -81,7 +81,7 @@ export function PlanScreen() {
             <div>
               <p className="text-sm font-black text-foreground">Category budgets</p>
               <p className="text-xs text-muted-foreground font-medium">
-                {budgets.length || 4} active budgets
+                {budgets.length} {budgets.length === 1 ? "active budget" : "active budgets"}
               </p>
             </div>
           </div>
@@ -101,7 +101,7 @@ export function PlanScreen() {
             <div>
               <p className="text-sm font-black text-foreground">Personal goals</p>
               <p className="text-xs text-muted-foreground font-medium">
-                {goals.length || 2} goals in progress
+                {goals.length} {goals.length === 1 ? "goal in progress" : "goals in progress"}
               </p>
             </div>
           </div>
@@ -121,7 +121,7 @@ export function PlanScreen() {
             <div>
               <p className="text-sm font-black text-foreground">Debt</p>
               <p className="text-xs text-muted-foreground font-medium">
-                {debts.length || 2} debts tracked
+                {debts.length} {debts.length === 1 ? "debt tracked" : "debts tracked"}
               </p>
             </div>
           </div>
@@ -141,7 +141,7 @@ export function PlanScreen() {
             <div>
               <p className="text-sm font-black text-foreground">Money owed to you</p>
               <p className="text-xs text-muted-foreground font-medium">
-                {receivables.length || 2} receivables tracked
+                {receivables.length} {receivables.length === 1 ? "receivable tracked" : "receivables tracked"}
               </p>
             </div>
           </div>
@@ -161,7 +161,7 @@ export function PlanScreen() {
             <div>
               <p className="text-sm font-black text-foreground">Planned payments</p>
               <p className="text-xs text-muted-foreground font-medium">
-                {recurringCount || 6} recurring • {oneTimeCount || 6} one-time planned
+                {recurringCount} recurring • {oneTimeCount} one-time planned
               </p>
             </div>
           </div>

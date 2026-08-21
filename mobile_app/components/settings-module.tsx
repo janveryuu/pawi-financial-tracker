@@ -15,6 +15,8 @@ import { useAuth } from "@/lib/auth-context"
 import { User, LogOut } from "lucide-react"
 
 import { StoryOfPawiModal } from "./story-of-pawi-modal"
+import { PaydaySetupModal } from "./payday-setup-modal"
+import { Calendar } from "lucide-react"
 
 export interface SettingsModuleProps {
   onStartTutorial?: () => void
@@ -23,7 +25,7 @@ export interface SettingsModuleProps {
 export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
   const { user, signOut } = useAuth()
   const { theme, setTheme } = useTheme()
-  const { defaultCurrency, setDefaultCurrency, resetAccountData, loadSampleData, wallets, goals, budgets } = useStore()
+  const { defaultCurrency, setDefaultCurrency, resetAccountData, loadSampleData, wallets, goals, budgets, paydayCountdown } = useStore()
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const [showStoryModal, setShowStoryModal] = useState(false)
   const [showAuditModal, setShowAuditModal] = useState(false)
@@ -31,6 +33,7 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
   const [showWipeDialog, setShowWipeDialog] = useState(false)
   const [showWipeSuccessModal, setShowWipeSuccessModal] = useState(false)
   const [showPopupWarningModal, setShowPopupWarningModal] = useState(false)
+  const [showPaydayModal, setShowPaydayModal] = useState(false)
 
   const displayName =
     user?.user_metadata?.name ||
@@ -274,6 +277,30 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
             <option value="GBP">£ GBP</option>
             <option value="JPY">¥ JPY</option>
           </select>
+        </div>
+
+        {/* Payday Schedule Option */}
+        <div className="mt-4 pt-4 border-t border-border/40 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+              <Calendar className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Payday Schedule</p>
+              <p className="text-[11px] text-muted-foreground">
+                {paydayCountdown.configured
+                  ? `Next: ${paydayCountdown.formattedDate} (${paydayCountdown.daysRemaining}d)`
+                  : "Not configured yet"}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowPaydayModal(true)}
+            className="rounded-xl border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-foreground hover:bg-secondary/80"
+          >
+            {paydayCountdown.configured ? "Edit" : "Set up"}
+          </button>
         </div>
       </div>
 
@@ -600,6 +627,7 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
       )}
 
       <StoryOfPawiModal open={showStoryModal} onClose={() => setShowStoryModal(false)} />
+      <PaydaySetupModal open={showPaydayModal} onClose={() => setShowPaydayModal(false)} />
     </section>
   )
 }

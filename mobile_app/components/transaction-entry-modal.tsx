@@ -38,22 +38,8 @@ const EXPENSE_CATEGORIES = [
   { id: "education", label: "Education", icon: "📚" },
 ]
 
-const RECENT_INCOME_TEMPLATES = [
-  { wallet: "BPI Savings", amount: 18500, note: "Cutoff salary", category: "Salary" },
-  { wallet: "GCash", amount: 3500, note: "Weekend design slot", category: "Freelance" },
-  { wallet: "GCash", amount: 1500, note: "Allowance from parents", category: "Allowance From Family" },
-  { wallet: "GCash", amount: 2200, note: "Sold pre-loved items", category: "Online Selling" },
-]
-
-const RECENT_EXPENSE_TEMPLATES = [
-  { wallet: "GCash", amount: 250, note: "Lunch at cafeteria", category: "Food & Dining" },
-  { wallet: "GCash", amount: 890, note: "SM Supermarket grocery", category: "Groceries" },
-  { wallet: "GCash", amount: 165, note: "Grab ride to office", category: "Transport" },
-  { wallet: "RCBC Visa", amount: 549, note: "Netflix Premium", category: "Entertainment" },
-]
-
 export function TransactionEntryModal({ open, kind, initialAccount, onClose }: TransactionEntryModalProps) {
-  const { wallets, addTransaction, defaultCurrency } = useStore()
+  const { wallets, transactions = [], addTransaction, defaultCurrency } = useStore()
 
   const [displayValue, setDisplayValue] = useState("0")
   const [expression, setExpression] = useState("")
@@ -66,7 +52,46 @@ export function TransactionEntryModal({ open, kind, initialAccount, onClose }: T
 
   const isIncome = kind === "income"
   const categories = isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
-  const recentTemplates = isIncome ? RECENT_INCOME_TEMPLATES : RECENT_EXPENSE_TEMPLATES
+
+  const recentTemplates = useMemo(() => {
+    const matching = transactions.filter((t) => t.kind === kind)
+    const primaryWallet = wallets[0]?.name || "GCash"
+
+    if (matching.length === 0) {
+      if (isIncome) {
+        return [
+          { wallet: primaryWallet, amount: 5000, note: "Salary payout", category: "Salary" },
+          { wallet: primaryWallet, amount: 1500, note: "Freelance", category: "Freelance" },
+          { wallet: primaryWallet, amount: 500, note: "Allowance", category: "Allowance From Family" },
+        ]
+      } else {
+        return [
+          { wallet: primaryWallet, amount: 150, note: "Lunch", category: "Food & Dining" },
+          { wallet: primaryWallet, amount: 500, note: "Groceries", category: "Groceries" },
+          { wallet: primaryWallet, amount: 60, note: "Transportation", category: "Transport" },
+        ]
+      }
+    }
+
+    const seen = new Set<string>()
+    const templates: { wallet: string; amount: number; note: string; category: string }[] = []
+
+    for (const t of matching) {
+      const key = `${t.label}-${t.amount}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        templates.push({
+          wallet: t.account || primaryWallet,
+          amount: Number(t.amount) || 0,
+          note: t.label || t.category,
+          category: t.category || (isIncome ? "Salary" : "Food & Dining"),
+        })
+        if (templates.length >= 4) break
+      }
+    }
+
+    return templates
+  }, [transactions, kind, isIncome, wallets])
 
   useEffect(() => {
     if (open) {

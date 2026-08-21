@@ -181,7 +181,7 @@ export function PlanPaymentsScreen({ onBack }: PlanPaymentsScreenProps) {
                   type="text"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  placeholder="e.g. May 15, 2026"
+                  placeholder="e.g. 15th of the month, or Aug 30, 2026"
                   className="mt-1 flex h-11 w-full rounded-xl border border-border/70 bg-secondary/40 px-3.5 text-xs font-bold outline-none"
                 />
               </div>
