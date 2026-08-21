@@ -173,31 +173,34 @@ export function WalletsScreen() {
         </div>
       </div>
 
-      {/* Hero Mascot Banner: Dynamic for All / Assets / Liabilities */}
-      <div className="relative rounded-[2rem] bg-[#3D784E] p-3.5 text-white shadow-md">
-        <div className="flex items-center gap-3">
-          {/* Mascot in cap with wallet on left */}
-          <div className="relative -mt-4 -mb-3 -ml-1 h-24 w-24 shrink-0 pointer-events-none z-10">
+      {/* Hero Mascot Banner: Matched to Home Screen Capsule & Speech Bubble Format */}
+      <div className="relative rounded-3xl bg-[#3D784E] py-2 px-3 text-white shadow-md select-none">
+        <div className="flex items-center gap-2.5">
+          {/* Pop-out Mascot Graphic (Enlarged and breaking over border) */}
+          <div className="relative -mt-6 -mb-4 -ml-1 h-20 w-20 shrink-0 z-10 pointer-events-none">
             <Image
               src="/pawi-holding-wallet.png"
               alt="Pawi"
               fill
               priority
-              className="object-contain drop-shadow-lg scale-110 origin-bottom"
+              className="object-contain drop-shadow-lg scale-135 origin-bottom"
             />
           </div>
 
-          {/* White card on right with Dynamic Filter & Amount */}
-          <div className="relative z-0 flex-1 rounded-[1.75rem] bg-white p-3.5 text-foreground shadow-sm">
+          {/* White Speech Bubble Card on Right */}
+          <div className="relative z-0 flex-1 rounded-2xl bg-white px-3.5 py-2.5 text-foreground shadow-xs">
+            {/* Speech bubble pointer arrow */}
+            <div className="absolute -left-1.5 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 bg-white" />
+
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
                   {bannerConfig.title}
                 </span>
-                <p className="mt-0.5 text-xl font-black tracking-tight text-foreground tabular-nums">
+                <p className="mt-0.5 text-xl font-black tracking-tight text-foreground tabular-nums leading-none">
                   {showBalance ? formatMoney(bannerConfig.amount) : "••••••••"}
                 </p>
-                <p className="text-[10px] text-muted-foreground font-semibold">
+                <p className="text-[9px] text-muted-foreground font-semibold mt-0.5">
                   {bannerConfig.subtitle}
                 </p>
               </div>
@@ -212,7 +215,7 @@ export function WalletsScreen() {
             </div>
 
             {/* Filter Pills [All] [Assets] [Liabilities] */}
-            <div className="mt-3 flex items-center gap-1 rounded-full bg-secondary/80 p-1 border border-border/60">
+            <div className="mt-2 flex items-center gap-1 rounded-full bg-secondary/80 p-0.5 border border-border/60">
               <button
                 type="button"
                 onClick={() => setActiveFilter("all")}

@@ -1,10 +1,26 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
-import { Lightbulb, ScanLine, Sparkles, X, Loader2, AlertCircle, ArrowRight, Check } from "lucide-react"
+import { useEffect, useState, useRef, useMemo } from "react"
+import {
+  Lightbulb,
+  ScanLine,
+  Sparkles,
+  X,
+  Loader2,
+  AlertCircle,
+  ArrowRight,
+  Check,
+  Mic,
+  Tag,
+  Wallet as WalletIcon,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react"
+import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { useStore } from "@/lib/store"
 import { useAuth } from "@/lib/auth-context"
+import { formatMoney } from "@/lib/pawi-data"
 import { cn } from "@/lib/utils"
 
 interface QuickLogModalProps {
@@ -12,11 +28,13 @@ interface QuickLogModalProps {
   onClose: () => void
 }
 
-const examples = [
-  "Spent 250 on lunch",
-  "Salary 15000 to GCash",
-  "Transfer 1000 to Maya",
-  "₱1,200 groceries at SM",
+const QUICK_PROMPTS = [
+  { text: "Spent 250 on lunch", icon: "🍱", category: "Food" },
+  { text: "Salary 15000 to GCash", icon: "💰", category: "Income" },
+  { text: "Transfer 1000 to Maya", icon: "⚡", category: "Transfer" },
+  { text: "₱1,200 groceries at SM", icon: "🛒", category: "Groceries" },
+  { text: "Coffee 180 Cash", icon: "☕", category: "Snacks" },
+  { text: "Grab ride 240", icon: "🚗", category: "Transport" },
 ]
 
 export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
@@ -24,12 +42,14 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
   const [isScanning, setIsScanning] = useState(false)
   const [lowFields, setLowFields] = useState<string[]>([])
   const [scannedReceiptUrl, setScannedReceiptUrl] = useState<string | null>(null)
-  const { addTransaction } = useStore()
+  const [isListening, setIsListening] = useState(false)
+  const { addTransaction, wallets } = useStore()
   const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleLog = () => {
-    if (!value.trim()) return
+  // Realtime Live Parser for instant visual feedback
+  const parsedData = useMemo(() => {
+    if (!value.trim()) return null
 
     const lowerValue = value.toLowerCase()
     const cleanNumText = value.replace(/,/g, "")
@@ -42,7 +62,6 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
       if (unit === "m") amount *= 1000000
     }
 
-    // Determine Income/Expense comprehensive keywords
     const incomeKeywords = [
       "salary", "income", "receive", "received", "receiving",
       "add", "added", "gain", "gained", "allowance",
@@ -51,18 +70,16 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
     ]
     const isIncome = incomeKeywords.some((kw) => lowerValue.includes(kw))
 
-    // Determine Account
     let account = "Cash"
     if (lowerValue.includes("gcash")) account = "GCash"
-    if (lowerValue.includes("paymaya") || lowerValue.includes("maya")) account = "Maya"
-    if (lowerValue.includes("rcbc") || lowerValue.includes("visa") || lowerValue.includes("card")) account = "RCBC Visa"
-    if (lowerValue.includes("bpi")) account = "BPI Savings"
-    if (lowerValue.includes("bdo")) account = "BDO Mastercard"
-    if (lowerValue.includes("seabank")) account = "SeaBank"
-    if (lowerValue.includes("unionbank")) account = "UnionBank"
+    else if (lowerValue.includes("paymaya") || lowerValue.includes("maya")) account = "Maya"
+    else if (lowerValue.includes("rcbc") || lowerValue.includes("visa") || lowerValue.includes("card")) account = "RCBC Visa"
+    else if (lowerValue.includes("bpi")) account = "BPI Savings"
+    else if (lowerValue.includes("bdo")) account = "BDO Mastercard"
+    else if (lowerValue.includes("seabank")) account = "SeaBank"
+    else if (lowerValue.includes("unionbank") || lowerValue.includes("ub")) account = "UnionBank"
 
-    // Determine Category
-    let category = isIncome ? "Income" : "General"
+    let category = isIncome ? "Salary & Income" : "General Expense"
     if (isIncome) {
       if (lowerValue.includes("freelance")) category = "Freelance"
       else if (lowerValue.includes("salary") || lowerValue.includes("sahod") || lowerValue.includes("sweldo")) category = "Salary"
@@ -70,19 +87,30 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
       else if (lowerValue.includes("bonus")) category = "Bonus"
     } else {
       if (lowerValue.includes("lunch") || lowerValue.includes("food") || lowerValue.includes("dinner") || lowerValue.includes("breakfast") || lowerValue.includes("coffee") || lowerValue.includes("milk tea")) category = "Food & Dining"
-      if (lowerValue.includes("groceries") || lowerValue.includes("supermarket") || lowerValue.includes("sm") || lowerValue.includes("puregold")) category = "Groceries"
-      if (lowerValue.includes("ride") || lowerValue.includes("grab") || lowerValue.includes("taxi") || lowerValue.includes("transport") || lowerValue.includes("gas") || lowerValue.includes("angkas")) category = "Transport"
-      if (lowerValue.includes("netflix") || lowerValue.includes("game") || lowerValue.includes("movie") || lowerValue.includes("spotify")) category = "Entertainment"
-      if (lowerValue.includes("shopping") || lowerValue.includes("uniqlo") || lowerValue.includes("zara") || lowerValue.includes("shopee") || lowerValue.includes("lazada")) category = "Shopping"
+      else if (lowerValue.includes("groceries") || lowerValue.includes("supermarket") || lowerValue.includes("sm") || lowerValue.includes("puregold")) category = "Groceries"
+      else if (lowerValue.includes("ride") || lowerValue.includes("grab") || lowerValue.includes("taxi") || lowerValue.includes("transport") || lowerValue.includes("gas") || lowerValue.includes("angkas")) category = "Transport"
+      else if (lowerValue.includes("netflix") || lowerValue.includes("game") || lowerValue.includes("movie") || lowerValue.includes("spotify")) category = "Entertainment"
+      else if (lowerValue.includes("shopping") || lowerValue.includes("uniqlo") || lowerValue.includes("zara") || lowerValue.includes("shopee") || lowerValue.includes("lazada")) category = "Shopping"
     }
+
+    return {
+      amount: amount || 0,
+      isIncome,
+      account,
+      category,
+    }
+  }, [value])
+
+  const handleLog = () => {
+    if (!value.trim() || !parsedData) return
 
     addTransaction({
       label: value.trim(),
-      category,
-      account,
-      amount: amount || 250,
+      category: parsedData.category,
+      account: parsedData.account,
+      amount: parsedData.amount || 250,
       currency: "PHP",
-      kind: isIncome ? "income" : "expense",
+      kind: parsedData.isIncome ? "income" : "expense",
       receipt_url: scannedReceiptUrl || undefined,
     })
 
@@ -133,6 +161,29 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
     }
   }
 
+  // Voice Web Speech API
+  const handleVoiceInput = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      alert("Voice input is not supported by your browser.")
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = "en-PH"
+    recognition.interimResults = false
+
+    recognition.onstart = () => setIsListening(true)
+    recognition.onend = () => setIsListening(false)
+    recognition.onerror = () => setIsListening(false)
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript
+      setValue(transcript)
+    }
+
+    recognition.start()
+  }
+
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -157,27 +208,27 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
       />
       <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        initial={{ opacity: 0, y: 24, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.96 }}
-        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        exit={{ opacity: 0, y: 24, scale: 0.96 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         className="relative z-10 w-full max-w-md rounded-t-[2.5rem] bg-card p-6 text-foreground shadow-2xl sm:rounded-[2.5rem] border border-border/80"
       >
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E] shadow-2xs">
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
               <h2 className="text-lg font-black tracking-tight text-foreground">
                 Quick Log
               </h2>
-              <p className="text-xs font-semibold text-muted-foreground">
-                Natural language or AI receipt scanner
+              <p className="text-[11px] font-semibold text-muted-foreground">
+                Natural language & instant AI receipt OCR
               </p>
             </div>
           </div>
@@ -191,17 +242,64 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
           </button>
         </div>
 
-        {/* Text Input Area */}
-        <div className="relative">
+        {/* Input Area with Live Parser Badge */}
+        <div className="relative rounded-2xl border border-border/80 bg-secondary/30 focus-within:border-[#3D784E] focus-within:bg-card focus-within:ring-4 focus-within:ring-[#3D784E]/10 transition-all">
           <textarea
             id="quick-log-input"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             rows={3}
             autoFocus
-            placeholder="Type a transaction... e.g., 'Spent 250 on lunch' or 'Sahod 15000 GCash'"
-            className="w-full resize-none rounded-2xl border border-border/80 bg-secondary/30 p-4 text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all leading-relaxed"
+            placeholder="Type or speak... e.g., 'Spent 250 on lunch' or 'Sahod 15000 GCash'"
+            className="w-full resize-none bg-transparent p-4 text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:outline-none leading-relaxed"
           />
+
+          {/* Voice Input Button in Corner */}
+          <div className="flex items-center justify-between px-3 pb-2.5 pt-1 border-t border-border/40">
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+              {parsedData && parsedData.amount > 0 ? (
+                <>
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-black",
+                      parsedData.isIncome
+                        ? "bg-[#3D784E]/15 text-[#3D784E]"
+                        : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                    )}
+                  >
+                    {parsedData.isIncome ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {formatMoney(parsedData.amount)}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-secondary px-2 py-0.5 text-[10px] font-black text-foreground">
+                    <Tag className="h-3 w-3 text-muted-foreground" />
+                    {parsedData.category}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-secondary px-2 py-0.5 text-[10px] font-black text-foreground">
+                    <WalletIcon className="h-3 w-3 text-muted-foreground" />
+                    {parsedData.account}
+                  </span>
+                </>
+              ) : (
+                <span className="text-[10px] font-semibold text-muted-foreground/70">
+                  AI will auto-detect amount, category & account
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleVoiceInput}
+              title="Voice Input"
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-xl transition-all",
+                isListening
+                  ? "bg-rose-500 text-white animate-pulse"
+                  : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent"
+              )}
+            >
+              <Mic className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* OCR Field Notice */}
@@ -214,26 +312,32 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
 
         {/* Quick Suggestion Chips */}
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {examples.map((ex) => (
+          {QUICK_PROMPTS.map((item) => (
             <button
-              key={ex}
+              key={item.text}
               type="button"
-              onClick={() => setValue(ex)}
-              className="rounded-xl border border-border/70 bg-card px-3 py-1.5 text-xs font-bold text-foreground/80 shadow-2xs transition-all hover:bg-secondary hover:text-foreground active:scale-95"
+              onClick={() => setValue(item.text)}
+              className="flex items-center gap-1.5 rounded-xl border border-border/70 bg-card px-2.5 py-1.5 text-xs font-bold text-foreground/85 shadow-2xs transition-all hover:bg-secondary hover:text-foreground active:scale-95"
             >
-              {ex}
+              <span>{item.icon}</span>
+              <span>{item.text}</span>
             </button>
           ))}
         </div>
 
-        {/* Smart Pawi Tip Card */}
-        <div className="mt-3.5 flex items-start gap-2.5 rounded-2xl border border-[#3D784E]/20 bg-[#3D784E]/10 p-3 text-foreground">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#3D784E] text-white shadow-2xs">
-            <Lightbulb className="h-3.5 w-3.5" />
+        {/* Smart Pawi Mascot Tip Banner */}
+        <div className="mt-3.5 flex items-center gap-3 rounded-2xl border border-[#3D784E]/25 bg-[#3D784E]/10 p-3 text-foreground">
+          <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-[#3D784E]/20 p-1">
+            <Image
+              src="/pawikan-logo.png"
+              alt="Pawi"
+              fill
+              className="object-contain"
+            />
           </div>
-          <p className="text-[11px] font-semibold leading-relaxed text-foreground/90">
-            <span className="font-black text-[#2E683E] dark:text-[#4ADE80]">Tip: </span>
-            Track every expense, no matter how small. Small leaks can sink a great ship!
+          <p className="text-[11px] font-semibold leading-tight text-foreground/90">
+            <span className="font-black text-[#2E683E] dark:text-[#4ADE80]">Pawi AI Tip: </span>
+            I&apos;ll parse the exact amounts and assign the right wallet automatically!
           </p>
         </div>
 
