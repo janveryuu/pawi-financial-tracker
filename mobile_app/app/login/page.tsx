@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
-import { Mail, Lock, User, Eye, EyeOff, Sparkles, ShieldCheck, ArrowRight, Loader2 } from "lucide-react"
+import { Mail, Lock, User, Eye, EyeOff, Sparkles, ShieldCheck, ArrowRight, Loader2, AlertCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
 
@@ -20,6 +20,33 @@ export default function LoginPage() {
   const router = useRouter()
 
   const { signIn, signUp, signInWithGoogle, signInGuest } = useAuth()
+
+  useEffect(() => {
+    // Catch URL hash error parameters returned by OAuth providers
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash
+      const params = new URLSearchParams(window.location.search)
+      const errorDesc = params.get("error_description") || params.get("error")
+      
+      if (errorDesc) {
+        if (errorDesc.includes("not enabled") || errorDesc.includes("unsupported_provider")) {
+          setError("Google Sign-In is not enabled yet in your Supabase project. Enable Google in Supabase Dashboard > Authentication > Providers, or log in with Email / Guest below!")
+        } else {
+          setError(decodeURIComponent(errorDesc))
+        }
+      } else if (hash.includes("error_description=")) {
+        const match = hash.match(/error_description=([^&]+)/)
+        if (match && match[1]) {
+          const decoded = decodeURIComponent(match[1].replace(/\+/g, " "))
+          if (decoded.includes("not enabled") || decoded.includes("unsupported_provider")) {
+            setError("Google Sign-In is not enabled yet in your Supabase project. Enable Google in Supabase Dashboard > Authentication > Providers, or log in with Email / Guest below!")
+          } else {
+            setError(decoded)
+          }
+        }
+      }
+    }
+  }, [])
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault()

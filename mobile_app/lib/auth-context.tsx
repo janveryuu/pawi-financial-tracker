@@ -48,8 +48,8 @@ export function mapAuthError(err: any): string {
   if (message.includes("rate limit") || message.includes("too many requests")) {
     return "Too many attempts. Please wait a moment before trying again."
   }
-  if (message.includes("network") || message.includes("fetch")) {
-    return "Network connection issue. Please check your internet connection."
+  if (message.includes("unsupported provider") || message.includes("provider is not enabled") || message.includes("not enabled")) {
+    return "Google Sign-In is not enabled in your Supabase project dashboard yet. Please enable Google under Authentication > Providers in Supabase, or use Email & Password / Guest Mode below!"
   }
 
   return err.message || "Authentication failed. Please try again."
