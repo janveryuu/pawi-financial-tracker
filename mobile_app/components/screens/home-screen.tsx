@@ -86,9 +86,22 @@ export function HomeScreen({
   const [timeFilter, setTimeFilter] = useState<"day" | "week" | "month">("day")
   const [showCommunityModal, setShowCommunityModal] = useState(false)
 
-  // Determine user name
-  const rawName = user?.displayName?.split(" ")[0] || user?.email?.split("@")[0] || "Janver"
-  const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1)
+  // Determine user name with top priority on real registered name (not email)
+  const rawName =
+    user?.user_metadata?.name ||
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.display_name ||
+    user?.displayName ||
+    user?.identities?.[0]?.identity_data?.name ||
+    user?.identities?.[0]?.identity_data?.full_name ||
+    user?.email?.split("@")[0] ||
+    "Janver"
+
+  // Format properly (e.g. "Gojo Satoru")
+  const displayName = rawName
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ")
 
   // Dynamic greeting based on current hour
   const hour = new Date().getHours()

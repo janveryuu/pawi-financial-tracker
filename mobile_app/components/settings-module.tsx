@@ -32,7 +32,13 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
   const [showWipeSuccessModal, setShowWipeSuccessModal] = useState(false)
   const [showPopupWarningModal, setShowPopupWarningModal] = useState(false)
 
-  const displayName = user?.displayName || user?.email?.split("@")[0] || "User"
+  const displayName =
+    user?.user_metadata?.name ||
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.display_name ||
+    user?.displayName ||
+    user?.email?.split("@")[0] ||
+    "Janver"
   const userEmail = user?.email || "Offline User"
 
 

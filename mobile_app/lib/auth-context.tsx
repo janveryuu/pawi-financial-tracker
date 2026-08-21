@@ -5,7 +5,7 @@ import { User, Session, AuthError } from "@supabase/supabase-js"
 import { supabase } from "./supabase"
 
 export interface AuthContextType {
-  user: (User & { uid?: string }) | null
+  user: (User & { uid?: string; displayName?: string }) | null
   session: Session | null
   loading: boolean
   isGuest: boolean
@@ -27,6 +27,34 @@ const AuthContext = createContext<AuthContextType>({
   signInWithGoogle: async () => ({ error: null }),
   signInGuest: async () => ({ error: null }),
 })
+
+// Normalizes any Supabase user object so displayName and user_metadata always contain the actual person's name
+export function normalizeUserObject(rawUser: any, fallbackName?: string): any {
+  if (!rawUser) return null
+
+  const cleanEmail = rawUser.email || ""
+  const extractedName =
+    fallbackName ||
+    rawUser.displayName ||
+    rawUser.user_metadata?.name ||
+    rawUser.user_metadata?.full_name ||
+    rawUser.user_metadata?.display_name ||
+    rawUser.identities?.[0]?.identity_data?.name ||
+    rawUser.identities?.[0]?.identity_data?.full_name ||
+    (cleanEmail ? cleanEmail.split("@")[0] : "Janver")
+
+  return {
+    ...rawUser,
+    uid: rawUser.id || rawUser.uid,
+    displayName: extractedName,
+    user_metadata: {
+      ...(rawUser.user_metadata || {}),
+      name: extractedName,
+      full_name: extractedName,
+      display_name: extractedName,
+    },
+  }
+}
 
 // Translate technical Supabase error codes to friendly strings
 export function mapAuthError(err: any): string {
@@ -56,7 +84,7 @@ export function mapAuthError(err: any): string {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<(User & { uid?: string }) | null>(null)
+  const [user, setUser] = useState<(User & { uid?: string; displayName?: string }) | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [isGuest, setIsGuest] = useState(false)
@@ -67,18 +95,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
-          const normalizedUser = { ...session.user, uid: session.user.id }
+          const activeUserStr = localStorage.getItem("pawi_active_user")
+          let savedName = ""
+          if (activeUserStr) {
+            try {
+              const parsed = JSON.parse(activeUserStr)
+              if (parsed.email === session.user.email) {
+                savedName = parsed.displayName || parsed.user_metadata?.name
+              }
+            } catch {}
+          }
+          const normalizedUser = normalizeUserObject(session.user, savedName)
           setUser(normalizedUser)
           setSession(session)
           setIsGuest(session.user.is_anonymous || session.user.email === "demo@pawi.app")
           localStorage.removeItem("pawi_guest_session")
+          localStorage.setItem("pawi_active_user", JSON.stringify(normalizedUser))
         } else {
           // Check if active registered user was stored locally
           const activeUserStr = localStorage.getItem("pawi_active_user")
           if (activeUserStr) {
             try {
               const activeUser = JSON.parse(activeUserStr)
-              setUser(activeUser)
+              const normalized = normalizeUserObject(activeUser)
+              setUser(normalized)
               setIsGuest(false)
               setLoading(false)
               return
@@ -92,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               id: "guest-demo-user",
               uid: "guest-demo-user",
               email: "demo@pawi.app",
+              displayName: "Janver",
               user_metadata: { name: "Janver (Guest)", full_name: "Janver" },
               is_anonymous: true,
             }
@@ -112,7 +153,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, currentSession) => {
         if (currentSession?.user) {
-          const normalizedUser = { ...currentSession.user, uid: currentSession.user.id }
+          const activeUserStr = localStorage.getItem("pawi_active_user")
+          let savedName = ""
+          if (activeUserStr) {
+            try {
+              const parsed = JSON.parse(activeUserStr)
+              if (parsed.email === currentSession.user.email) {
+                savedName = parsed.displayName || parsed.user_metadata?.name
+              }
+            } catch {}
+          }
+          const normalizedUser = normalizeUserObject(currentSession.user, savedName)
           setUser(normalizedUser)
           setSession(currentSession)
           setIsGuest(currentSession.user.is_anonymous || currentSession.user.email === "demo@pawi.app")
@@ -152,7 +203,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const parsed = JSON.parse(localUserStr)
             if (parsed.email === cleanEmail) {
-              setUser(parsed)
+              const normalized = normalizeUserObject(parsed)
+              setUser(normalized)
               setIsGuest(false)
               return { error: null }
             }
@@ -162,7 +214,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.user) {
-        const normalizedUser = { ...data.user, uid: data.user.id }
+        const activeUserStr = localStorage.getItem("pawi_active_user")
+        let savedName = ""
+        if (activeUserStr) {
+          try {
+            const parsed = JSON.parse(activeUserStr)
+            if (parsed.email === cleanEmail) {
+              savedName = parsed.displayName || parsed.user_metadata?.name
+            }
+          } catch {}
+        }
+        const normalizedUser = normalizeUserObject(data.user, savedName)
         setUser(normalizedUser)
         setSession(data.session)
         setIsGuest(false)
@@ -179,7 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, name?: string) => {
     try {
       const cleanEmail = email.trim().toLowerCase()
-      const cleanName = (name && name.trim()) || cleanEmail.split("@")[0] || "Janver"
+      const cleanName = (name && name.trim()) || "Janver"
 
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
@@ -188,6 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data: {
             name: cleanName,
             full_name: cleanName,
+            display_name: cleanName,
           },
         },
       })
@@ -196,14 +259,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: mapAuthError(error) }
       }
 
+      const userToStore = normalizeUserObject(data.user || { id: "user-" + Date.now(), email: cleanEmail }, cleanName)
+
       // If session is returned immediately
       if (data.session && data.user) {
-        const normalizedUser = { ...data.user, uid: data.user.id }
-        setUser(normalizedUser)
+        setUser(userToStore)
         setSession(data.session)
         setIsGuest(false)
         localStorage.removeItem("pawi_guest_session")
-        localStorage.setItem("pawi_active_user", JSON.stringify(normalizedUser))
+        localStorage.setItem("pawi_active_user", JSON.stringify(userToStore))
         return { error: null }
       }
 
@@ -214,33 +278,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       if (!signInErr && signInData.session && signInData.user) {
-        const normalizedUser = { ...signInData.user, uid: signInData.user.id }
-        setUser(normalizedUser)
+        const loggedUser = normalizeUserObject(signInData.user, cleanName)
+        setUser(loggedUser)
         setSession(signInData.session)
         setIsGuest(false)
         localStorage.removeItem("pawi_guest_session")
-        localStorage.setItem("pawi_active_user", JSON.stringify(normalizedUser))
+        localStorage.setItem("pawi_active_user", JSON.stringify(loggedUser))
         return { error: null }
       }
 
       // Fallback: If Supabase has email confirmation enabled, establish verified user session locally
-      if (data.user) {
-        const normalizedUser: any = {
-          ...data.user,
-          uid: data.user.id,
-          email: cleanEmail,
-          user_metadata: {
-            name: cleanName,
-            full_name: cleanName,
-          },
-        }
-        setUser(normalizedUser)
-        setIsGuest(false)
-        localStorage.removeItem("pawi_guest_session")
-        localStorage.setItem("pawi_active_user", JSON.stringify(normalizedUser))
-        return { error: null }
-      }
-
+      setUser(userToStore)
+      setIsGuest(false)
+      localStorage.removeItem("pawi_guest_session")
+      localStorage.setItem("pawi_active_user", JSON.stringify(userToStore))
       return { error: null }
     } catch (err: any) {
       return { error: mapAuthError(err) }
@@ -283,7 +334,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Try anonymous Supabase authentication first
       const { data, error } = await supabase.auth.signInAnonymously()
       if (!error && data.user) {
-        setUser({ ...data.user, uid: data.user.id })
+        const normalizedUser = normalizeUserObject(data.user, "Janver")
+        setUser(normalizedUser)
         setSession(data.session)
         setIsGuest(true)
         localStorage.removeItem("pawi_guest_session")
@@ -296,6 +348,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: "guest-demo-user",
         uid: "guest-demo-user",
         email: "demo@pawi.app",
+        displayName: "Janver",
         user_metadata: { name: "Janver", full_name: "Janver" },
         is_anonymous: true,
       }
@@ -309,6 +362,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: "guest-demo-user",
         uid: "guest-demo-user",
         email: "demo@pawi.app",
+        displayName: "Janver",
         user_metadata: { name: "Janver", full_name: "Janver" },
         is_anonymous: true,
       }

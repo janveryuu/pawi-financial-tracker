@@ -21,7 +21,13 @@ export function GreetingCard() {
     }
   }, [])
 
-  const name = user?.displayName || user?.email?.split('@')[0] || "Janveryu"
+  const name =
+    user?.user_metadata?.name ||
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.display_name ||
+    user?.displayName ||
+    user?.email?.split('@')[0] ||
+    "Janver"
 
   return (
     <div className="flex items-start gap-3 rounded-3xl bg-accent/60 p-4">

@@ -20,7 +20,13 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
   const [showHelp, setShowHelp] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const displayName = user?.displayName || user?.email?.split("@")[0] || "there"
+  const displayName =
+    user?.user_metadata?.name ||
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.display_name ||
+    user?.displayName ||
+    user?.email?.split("@")[0] ||
+    "there"
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
