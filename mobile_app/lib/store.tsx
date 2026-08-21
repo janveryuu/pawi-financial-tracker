@@ -6,11 +6,21 @@ import {
   Transaction,
   Goal,
   Budget,
+  Debt,
+  Receivable,
+  PlannedPayment,
+  Installment,
+  Tag,
   CurrencyCode,
   wallets as defaultWallets,
   transactions as defaultTransactions,
   goals as defaultGoals,
   budgets as defaultBudgets,
+  debts as defaultDebts,
+  receivables as defaultReceivables,
+  plannedPayments as defaultPlannedPayments,
+  installments as defaultInstallments,
+  tags as defaultTags,
 } from "./pawi-data"
 import { useAuth } from "./auth-context"
 import { db } from "./firebase"
@@ -36,6 +46,11 @@ interface State {
   transactions: Transaction[]
   goals: Goal[]
   budgets: Budget[]
+  debts: Debt[]
+  receivables: Receivable[]
+  plannedPayments: PlannedPayment[]
+  installments: Installment[]
+  tags: Tag[]
   chatMessages: ChatMessage[]
   defaultCurrency: CurrencyCode
   streakDays: number
@@ -58,6 +73,20 @@ interface StoreContextType extends State {
   addBudget: (budget: Omit<Budget, "id">) => Promise<void>
   editBudget: (budget: Budget) => Promise<void>
   deleteBudget: (budgetId: string) => Promise<void>
+  addDebt: (debt: Omit<Debt, "id">) => Promise<void>
+  editDebt: (debt: Debt) => Promise<void>
+  deleteDebt: (debtId: string) => Promise<void>
+  addReceivable: (receivable: Omit<Receivable, "id">) => Promise<void>
+  editReceivable: (receivable: Receivable) => Promise<void>
+  deleteReceivable: (receivableId: string) => Promise<void>
+  addPlannedPayment: (payment: Omit<PlannedPayment, "id">) => Promise<void>
+  editPlannedPayment: (payment: PlannedPayment) => Promise<void>
+  deletePlannedPayment: (paymentId: string) => Promise<void>
+  addInstallment: (installment: Omit<Installment, "id">) => Promise<void>
+  editInstallment: (installment: Installment) => Promise<void>
+  deleteInstallment: (installmentId: string) => Promise<void>
+  addTag: (tag: Omit<Tag, "id">) => Promise<void>
+  deleteTag: (tagId: string) => Promise<void>
   addFundsToGoal: (goalId: string, amount: number, fromWalletName?: string) => Promise<void>
   updateWalletNotes: (walletId: string, notes: string) => Promise<void>
   adjustWalletBalance: (walletId: string, newBalance: number, reason?: string) => Promise<void>
@@ -76,6 +105,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     transactions: [],
     goals: [],
     budgets: [],
+    debts: [],
+    receivables: [],
+    plannedPayments: [],
+    installments: [],
+    tags: [],
     chatMessages: [
       {
         role: "assistant",
@@ -97,6 +131,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         transactions: [],
         goals: [],
         budgets: [],
+        debts: [],
+        receivables: [],
+        plannedPayments: [],
+        installments: [],
+        tags: [],
         chatMessages: [],
         defaultCurrency: "PHP",
         streakDays: 6,
@@ -107,37 +146,74 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    const docRef = doc(db, "users", user.uid)
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as Partial<State>
-        setState((prev) => ({
-          ...prev,
-          wallets: data.wallets || [],
-          transactions: data.transactions || [],
-          goals: data.goals || [],
-          budgets: data.budgets || [],
-          chatMessages: data.chatMessages && data.chatMessages.length > 0
-            ? data.chatMessages
-            : [
-                {
-                  role: "assistant",
-                  content: "Hi! I'm Pawi 🐢. Ask me about your money, balances, or a specific account. You can also type or dictate transactions, and I can log them for you whenever you're ready.",
-                },
-              ],
-          defaultCurrency: data.defaultCurrency || "PHP",
-          streakDays: data.streakDays ?? 6,
-          daysUntilPayday: data.daysUntilPayday ?? 25,
-          paydayAmount: data.paydayAmount ?? 18500,
-          paydayDate: data.paydayDate || "May 15",
-        }))
-      } else {
-        // Initialize with clean starter state
-        const cleanState: State = {
+    const unsubscribe = onSnapshot(
+      doc(db, "users", user.uid),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data()
+          setState({
+            wallets: data.wallets || defaultWallets,
+            transactions: data.transactions || defaultTransactions,
+            goals: data.goals || defaultGoals,
+            budgets: data.budgets || defaultBudgets,
+            debts: data.debts || defaultDebts,
+            receivables: data.receivables || defaultReceivables,
+            plannedPayments: data.plannedPayments || defaultPlannedPayments,
+            installments: data.installments || defaultInstallments,
+            tags: data.tags || defaultTags,
+            chatMessages: data.chatMessages || [
+              {
+                role: "assistant",
+                content: "Hi! I'm Pawi 🐢. Ask me about your money, balances, or a specific account. You can also type or dictate transactions, and I can log them for you whenever you're ready.",
+              },
+            ],
+            defaultCurrency: data.defaultCurrency || "PHP",
+            streakDays: data.streakDays ?? 6,
+            daysUntilPayday: data.daysUntilPayday ?? 25,
+            paydayAmount: data.paydayAmount ?? 18500,
+            paydayDate: data.paydayDate ?? "May 15",
+          })
+        } else {
+          // Initialize with rich default sample data
+          const initialData: State = {
+            wallets: defaultWallets,
+            transactions: defaultTransactions,
+            goals: defaultGoals,
+            budgets: defaultBudgets,
+            debts: defaultDebts,
+            receivables: defaultReceivables,
+            plannedPayments: defaultPlannedPayments,
+            installments: defaultInstallments,
+            tags: defaultTags,
+            chatMessages: [
+              {
+                role: "assistant",
+                content: "Hi! I'm Pawi 🐢. Ask me about your money, balances, or a specific account. You can also type or dictate transactions, and I can log them for you whenever you're ready.",
+              },
+            ],
+            defaultCurrency: "PHP",
+            streakDays: 6,
+            daysUntilPayday: 25,
+            paydayAmount: 18500,
+            paydayDate: "May 15",
+          }
+          setDoc(doc(db, "users", user.uid), initialData)
+          setState(initialData)
+        }
+      },
+      (error) => {
+        console.error("Firestore sync error:", error)
+        // Fallback to local default data if offline or error
+        setState({
           wallets: defaultWallets,
           transactions: defaultTransactions,
           goals: defaultGoals,
           budgets: defaultBudgets,
+          debts: defaultDebts,
+          receivables: defaultReceivables,
+          plannedPayments: defaultPlannedPayments,
+          installments: defaultInstallments,
+          tags: defaultTags,
           chatMessages: [
             {
               role: "assistant",
@@ -149,89 +225,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           daysUntilPayday: 25,
           paydayAmount: 18500,
           paydayDate: "May 15",
-        }
-        setDoc(docRef, cleanState)
-        setState(cleanState)
+        })
       }
-    })
+    )
 
     return () => unsubscribe()
   }, [user])
 
-  const setChatMessages = async (msgs: ChatMessage[]) => {
-    setState((prev) => ({ ...prev, chatMessages: msgs }))
-    if (!user) return
-    try {
-      await setDoc(doc(db, "users", user.uid), { chatMessages: msgs }, { merge: true })
-    } catch (error) {
-      console.error("Failed to sync chat messages:", error)
-    }
-  }
-
-  const setDefaultCurrency = async (currency: CurrencyCode) => {
-    if (!user) return
-    const newState = { ...state, defaultCurrency: currency }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), { defaultCurrency: currency }, { merge: true })
-  }
-
   const addTransaction = async (tx: Omit<Transaction, "id" | "time">) => {
     if (!user) return
 
+    const now = new Date()
+    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     const newTx: Transaction = {
       ...tx,
       id: "tx_" + Date.now(),
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      time: timeStr,
+      dateHeader: "Today",
+      date: now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
     }
 
     const adjustment = tx.kind === "income" ? tx.amount : -tx.amount
-    let matched = false
-    let updatedWallets = state.wallets.map((w) => {
-      const wName = w.name.toLowerCase()
-      const txAcc = (tx.account || "Cash").toLowerCase()
-      if (wName === txAcc || wName.includes(txAcc) || txAcc.includes(wName)) {
-        matched = true
-        return { ...w, balance: w.balance + adjustment }
+    const updatedWallets = state.wallets.map((w) => {
+      if (w.name.toLowerCase() === tx.account.toLowerCase() || tx.account.toLowerCase().includes(w.name.toLowerCase())) {
+        return {
+          ...w,
+          balance: w.balance + adjustment,
+          usedCredit: w.isLiability ? Math.max(0, (w.usedCredit || 0) + (tx.kind === "expense" ? tx.amount : -tx.amount)) : undefined,
+        }
       }
       return w
     })
-
-    if (!matched) {
-      if (state.wallets.length === 0) {
-        const newWallet: Wallet = {
-          id: "w_" + Date.now(),
-          name: tx.account || "Cash",
-          subtitle: "Debit · PHP",
-          balance: adjustment,
-          currency: tx.currency || "PHP",
-          type: "cash",
-          accent: "oklch(0.52 0.12 145)",
-        }
-        updatedWallets = [newWallet]
-      } else {
-        updatedWallets = state.wallets.map((w, index) => {
-          if (index === 0) return { ...w, balance: w.balance + adjustment }
-          return w
-        })
-      }
-    }
-
-    // Also update budget spent if it's an expense and category matches
-    let updatedBudgets = state.budgets
-    if (tx.kind === "expense" && tx.category) {
-      updatedBudgets = state.budgets.map((b) => {
-        if (b.category.toLowerCase() === tx.category.toLowerCase()) {
-          return { ...b, spent: b.spent + tx.amount }
-        }
-        return b
-      })
-    }
 
     const newState = {
       ...state,
       transactions: [newTx, ...state.transactions],
       wallets: updatedWallets,
-      budgets: updatedBudgets,
     }
 
     setState(newState)
@@ -245,7 +274,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let updatedWallets = state.wallets
 
     if (oldTx) {
-      // Revert old transaction
       const oldReversal = oldTx.kind === "income" ? -oldTx.amount : oldTx.amount
       updatedWallets = updatedWallets.map((w) => {
         if (w.name.toLowerCase() === oldTx.account.toLowerCase()) {
@@ -254,7 +282,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return w
       })
 
-      // Apply new transaction
       const newAdjustment = tx.kind === "income" ? tx.amount : -tx.amount
       updatedWallets = updatedWallets.map((w) => {
         if (w.name.toLowerCase() === tx.account.toLowerCase()) {
@@ -331,10 +358,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const deleteWallet = async (walletId: string) => {
     if (!user) return
+
     const newState = {
       ...state,
       wallets: state.wallets.filter((w) => w.id !== walletId),
     }
+
     setState(newState)
     await setDoc(doc(db, "users", user.uid), newState, { merge: true })
   }
@@ -364,13 +393,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     const transferTx: Transaction = {
       id: "tx_" + Date.now(),
-      label: note || `Transfer: ${fromWalletName} → ${toWalletName}`,
+      label: "Transfer sent",
+      note: note || `To ${toWalletName} • Inter-wallet top-up`,
       category: "Transfer",
       account: fromWalletName,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       amount: amount,
       currency: "PHP",
       kind: "expense",
+      dateHeader: "Today",
+      date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
     }
 
     const newState = {
@@ -465,6 +497,114 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await setDoc(doc(db, "users", user.uid), newState, { merge: true })
   }
 
+  // Debt CRUD
+  const addDebt = async (debt: Omit<Debt, "id">) => {
+    if (!user) return
+    const newDebt: Debt = { ...debt, id: "d_" + Date.now() }
+    const newState = { ...state, debts: [...state.debts, newDebt] }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
+  const editDebt = async (debt: Debt) => {
+    if (!user) return
+    const newState = { ...state, debts: state.debts.map((d) => (d.id === debt.id ? debt : d)) }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
+  const deleteDebt = async (debtId: string) => {
+    if (!user) return
+    const newState = { ...state, debts: state.debts.filter((d) => d.id !== debtId) }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
+  // Receivable CRUD
+  const addReceivable = async (receivable: Omit<Receivable, "id">) => {
+    if (!user) return
+    const newRec: Receivable = { ...receivable, id: "rec_" + Date.now() }
+    const newState = { ...state, receivables: [...state.receivables, newRec] }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
+  const editReceivable = async (receivable: Receivable) => {
+    if (!user) return
+    const newState = { ...state, receivables: state.receivables.map((r) => (r.id === receivable.id ? receivable : r)) }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
+  const deleteReceivable = async (receivableId: string) => {
+    if (!user) return
+    const newState = { ...state, receivables: state.receivables.filter((r) => r.id !== receivableId) }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
+  // Planned Payment CRUD
+  const addPlannedPayment = async (payment: Omit<PlannedPayment, "id">) => {
+    if (!user) return
+    const newPay: PlannedPayment = { ...payment, id: "pp_" + Date.now() }
+    const newState = { ...state, plannedPayments: [...state.plannedPayments, newPay] }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
+  const editPlannedPayment = async (payment: PlannedPayment) => {
+    if (!user) return
+    const newState = { ...state, plannedPayments: state.plannedPayments.map((p) => (p.id === payment.id ? payment : p)) }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
+  const deletePlannedPayment = async (paymentId: string) => {
+    if (!user) return
+    const newState = { ...state, plannedPayments: state.plannedPayments.filter((p) => p.id !== paymentId) }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
+  // Installment CRUD
+  const addInstallment = async (installment: Omit<Installment, "id">) => {
+    if (!user) return
+    const newInst: Installment = { ...installment, id: "inst_" + Date.now() }
+    const newState = { ...state, installments: [...state.installments, newInst] }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
+  const editInstallment = async (installment: Installment) => {
+    if (!user) return
+    const newState = { ...state, installments: state.installments.map((i) => (i.id === installment.id ? installment : i)) }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
+  const deleteInstallment = async (installmentId: string) => {
+    if (!user) return
+    const newState = { ...state, installments: state.installments.filter((i) => i.id !== installmentId) }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
+  // Tag CRUD
+  const addTag = async (tag: Omit<Tag, "id">) => {
+    if (!user) return
+    const newTag: Tag = { ...tag, id: "tag_" + Date.now() }
+    const newState = { ...state, tags: [...state.tags, newTag] }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
+  const deleteTag = async (tagId: string) => {
+    if (!user) return
+    const newState = { ...state, tags: state.tags.filter((t) => t.id !== tagId) }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
   const addFundsToGoal = async (goalId: string, amount: number, fromWalletName?: string) => {
     if (!user || amount <= 0) return
 
@@ -492,6 +632,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       amount: amount,
       currency: "PHP",
       kind: "expense",
+      dateHeader: "Today",
+      date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
     }
 
     const newState = {
@@ -535,7 +677,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       amount: absDiff,
       currency: targetWallet.currency,
       kind: isIncome ? "income" : "expense",
-      date: "TODAY",
+      dateHeader: "Today",
+      date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
     }
 
     const updatedWallets = state.wallets.map((w) =>
@@ -553,7 +696,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }
 
   const resetAccountData = async () => {
-
     if (!user) return
     const cleanState: State = {
       wallets: [
@@ -564,12 +706,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           balance: 0,
           currency: "PHP",
           type: "cash",
-          accent: "oklch(0.52 0.12 145)",
+          accent: "#3D784E",
         },
       ],
       transactions: [],
       goals: [],
       budgets: [],
+      debts: [],
+      receivables: [],
+      plannedPayments: [],
+      installments: [],
+      tags: [],
       chatMessages: [
         {
           role: "assistant",
@@ -593,6 +740,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       transactions: defaultTransactions,
       goals: defaultGoals,
       budgets: defaultBudgets,
+      debts: defaultDebts,
+      receivables: defaultReceivables,
+      plannedPayments: defaultPlannedPayments,
+      installments: defaultInstallments,
+      tags: defaultTags,
       chatMessages: [
         {
           role: "assistant",
@@ -607,6 +759,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     setState(sampleState)
     await setDoc(doc(db, "users", user.uid), sampleState)
+  }
+
+  const setChatMessages = async (msgs: ChatMessage[]) => {
+    if (!user) return
+    const newState = { ...state, chatMessages: msgs }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+  }
+
+  const setDefaultCurrency = async (currency: CurrencyCode) => {
+    if (!user) return
+    const newState = { ...state, defaultCurrency: currency }
+    setState(newState)
+    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
   }
 
   return (
@@ -626,6 +792,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         addBudget,
         editBudget,
         deleteBudget,
+        addDebt,
+        editDebt,
+        deleteDebt,
+        addReceivable,
+        editReceivable,
+        deleteReceivable,
+        addPlannedPayment,
+        editPlannedPayment,
+        deletePlannedPayment,
+        addInstallment,
+        editInstallment,
+        deleteInstallment,
+        addTag,
+        deleteTag,
         addFundsToGoal,
         updateWalletNotes,
         adjustWalletBalance,
@@ -647,4 +827,3 @@ export function useStore() {
   }
   return context
 }
-

@@ -1,0 +1,7 @@
+*.zip
+node_modules
+.next
+temp-login-interface
+server
+docs
+assets

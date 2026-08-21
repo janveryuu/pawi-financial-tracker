@@ -63,6 +63,10 @@ export interface Transaction {
   currency: CurrencyCode
   kind: "income" | "expense"
   date?: string
+  dateHeader?: string
+  note?: string
+  tag?: string
+  icon?: string
 }
 
 export interface Goal {
@@ -81,6 +85,60 @@ export interface Budget {
   spent: number
   limit: number
   accent: string
+  icon?: string
+}
+
+export interface Debt {
+  id: string
+  lender: string
+  amount: number
+  monthlyPayment: number
+  dueDate: string
+  interestRate?: string
+  notes?: string
+  category?: string
+  accent?: string
+}
+
+export interface Receivable {
+  id: string
+  borrower: string
+  amount: number
+  dueDate: string
+  notes?: string
+  status: "pending" | "received" | "overdue"
+  accent?: string
+}
+
+export interface PlannedPayment {
+  id: string
+  label: string
+  amount: number
+  dueDate: string
+  frequency: "recurring" | "one-time"
+  category: string
+  account: string
+  icon?: string
+}
+
+export interface Installment {
+  id: string
+  name: string
+  totalAmount: number
+  paid: number
+  remaining: number
+  monthlyAmount: number
+  card: string
+  monthsTotal: number
+  monthsPaid: number
+  endDate: string
+}
+
+export interface Tag {
+  id: string
+  label: string
+  color: string
+  count?: number
 }
 
 export const wallets: Wallet[] = [
@@ -198,60 +256,127 @@ export const wallets: Wallet[] = [
 ]
 
 export const transactions: Transaction[] = [
+  // Today's entries matching Image 2
   {
-    id: "t1",
-    label: "Transfer sent",
-    category: "Transfer",
-    account: "BPI Savings",
-    time: "10:30 AM",
-    amount: 1850.64,
+    id: "tx_1",
+    label: "Food",
+    category: "Food",
+    note: "Lunch at carinderia",
+    tag: "Dining Out",
+    account: "Cash",
+    time: "12:00 PM",
+    amount: 220,
     currency: "PHP",
     kind: "expense",
-    date: "YESTERDAY",
+    dateHeader: "Today",
+    date: "APRIL 20, 2026",
+    icon: "🍽️",
   },
   {
-    id: "t2",
-    label: "Debt payment",
-    category: "Loans",
-    account: "BPI Savings",
-    time: "4:15 PM",
-    amount: 1388.87,
-    currency: "PHP",
-    kind: "expense",
-    date: "SAT, APR 18",
-  },
-  {
-    id: "t3",
-    label: "Cutoff salary",
-    category: "Salary",
-    account: "BPI Savings",
-    time: "8:00 AM",
-    amount: 18500,
-    currency: "PHP",
-    kind: "income",
-    date: "Apr 15",
-  },
-  {
-    id: "t4",
-    label: "SM Supermarket Groceries",
-    category: "Groceries",
+    id: "tx_2",
+    label: "Sold pre-loved items",
+    category: "Online Selling",
+    note: "Garage sale clothing item",
+    tag: "Side Hustle",
     account: "GCash",
-    time: "2:45 PM",
-    amount: 2450,
+    time: "10:00 AM",
+    amount: 2200,
     currency: "PHP",
-    kind: "expense",
-    date: "Apr 14",
+    kind: "income",
+    dateHeader: "Today",
+    date: "APRIL 20, 2026",
+    icon: "🏪",
   },
   {
-    id: "t5",
-    label: "Freelance UI Project Payout",
-    category: "Freelance",
-    account: "Wise USD",
-    time: "11:20 PM",
-    amount: 420,
-    currency: "USD",
+    id: "tx_3",
+    label: "Fun",
+    category: "Entertainment",
+    note: "Netflix subscription",
+    tag: "Subscription",
+    account: "RCBC Visa",
+    time: "7:00 AM",
+    amount: 249,
+    currency: "PHP",
+    kind: "expense",
+    dateHeader: "Today",
+    date: "APRIL 20, 2026",
+    icon: "🎮",
+  },
+  {
+    id: "tx_4",
+    label: "Food",
+    category: "Food",
+    note: "Starbucks iced latte",
+    tag: "Coffee",
+    account: "Cash",
+    time: "12:51 AM",
+    amount: 250,
+    currency: "PHP",
+    kind: "expense",
+    dateHeader: "Today",
+    date: "APRIL 20, 2026",
+    icon: "☕",
+  },
+  {
+    id: "tx_5",
+    label: "Shopping",
+    category: "Shopping",
+    note: "Uniqlo everyday jacket",
+    tag: "Clothes",
+    account: "Cash",
+    time: "12:51 AM",
+    amount: 5000,
+    currency: "PHP",
+    kind: "expense",
+    dateHeader: "Today",
+    date: "APRIL 20, 2026",
+    icon: "🛍️",
+  },
+  {
+    id: "tx_6",
+    label: "Freelance Project Deposit",
+    category: "Salary",
+    note: "Client web design milestone 1",
+    tag: "Work",
+    account: "Cash",
+    time: "12:51 AM",
+    amount: 25000,
+    currency: "PHP",
     kind: "income",
-    date: "Apr 12",
+    dateHeader: "Today",
+    date: "APRIL 20, 2026",
+    icon: "💼",
+  },
+  // Yesterday's entries
+  {
+    id: "tx_7",
+    label: "Groceries",
+    category: "Groceries",
+    note: "Weekly kitchen stock SM",
+    tag: "Essentials",
+    account: "GCash",
+    time: "6:30 PM",
+    amount: 1299,
+    currency: "PHP",
+    kind: "expense",
+    dateHeader: "Yesterday",
+    date: "APRIL 19, 2026",
+    icon: "🛒",
+  },
+  {
+    id: "tx_8",
+    label: "Allowance from Family",
+    category: "Allowance",
+    note: "Weekly support",
+    tag: "Family",
+    account: "Cash",
+    time: "11:00 AM",
+    amount: 2500,
+    currency: "PHP",
+    kind: "income",
+    dateHeader: "Yesterday",
+    date: "APRIL 19, 2026",
+    icon: "👛",
   },
 ]
 
@@ -283,6 +408,7 @@ export const budgets: Budget[] = [
     spent: 4820,
     limit: 6000,
     accent: "#3D784E",
+    icon: "🍽️",
   },
   {
     id: "groceries",
@@ -290,6 +416,7 @@ export const budgets: Budget[] = [
     spent: 3215,
     limit: 5000,
     accent: "#E53E3E",
+    icon: "🛒",
   },
   {
     id: "transport",
@@ -297,7 +424,139 @@ export const budgets: Budget[] = [
     spent: 1890,
     limit: 2500,
     accent: "#1A73E8",
+    icon: "🚗",
   },
+  {
+    id: "utilities",
+    category: "Utilities & Bills",
+    spent: 4100,
+    limit: 5000,
+    accent: "#D97706",
+    icon: "⚡",
+  },
+]
+
+export const debts: Debt[] = [
+  {
+    id: "debt_1",
+    lender: "Home Credit Phone",
+    amount: 14200,
+    monthlyPayment: 1388.87,
+    dueDate: "Day 15 of month",
+    interestRate: "0% 12-month promo",
+    notes: "Samsung Galaxy installment",
+    accent: "#E53E3E",
+  },
+  {
+    id: "debt_2",
+    lender: "Motorcycle Loan (Yamaha)",
+    amount: 32100,
+    monthlyPayment: 2850,
+    dueDate: "Day 28 of month",
+    interestRate: "4.5% p.a.",
+    notes: "Auto-debit via BPI Savings",
+    accent: "#0D9488",
+  },
+]
+
+export const receivables: Receivable[] = [
+  {
+    id: "rec_1",
+    borrower: "Marco (Cousin)",
+    amount: 3500,
+    dueDate: "Apr 30, 2026",
+    notes: "Borrowed for laptop repair",
+    status: "pending",
+    accent: "#3D784E",
+  },
+  {
+    id: "rec_2",
+    borrower: "Sarah Client (Freelance)",
+    amount: 8000,
+    dueDate: "May 5, 2026",
+    notes: "Logo design final milestone payout",
+    status: "pending",
+    accent: "#1A73E8",
+  },
+]
+
+export const plannedPayments: PlannedPayment[] = [
+  {
+    id: "plan_1",
+    label: "Meralco Electric Bill",
+    amount: 3850,
+    dueDate: "Apr 28, 2026",
+    frequency: "recurring",
+    category: "Utilities",
+    account: "GCash",
+    icon: "⚡",
+  },
+  {
+    id: "plan_2",
+    label: "PLDT Fiber Internet",
+    amount: 1699,
+    dueDate: "May 2, 2026",
+    frequency: "recurring",
+    category: "Bills",
+    account: "GCash",
+    icon: "🌐",
+  },
+  {
+    id: "plan_3",
+    label: "Spotify Family",
+    amount: 239,
+    dueDate: "May 5, 2026",
+    frequency: "recurring",
+    category: "Entertainment",
+    account: "RCBC Visa",
+    icon: "🎵",
+  },
+  {
+    id: "plan_4",
+    label: "Dentist Cleaning & Checkup",
+    amount: 2500,
+    dueDate: "May 10, 2026",
+    frequency: "one-time",
+    category: "Health",
+    account: "Cash",
+    icon: "🦷",
+  },
+]
+
+export const installments: Installment[] = [
+  {
+    id: "inst_1",
+    name: "MacBook Air M2",
+    totalAmount: 64990,
+    paid: 43326,
+    remaining: 21664,
+    monthlyAmount: 2708,
+    card: "BDO Mastercard",
+    monthsTotal: 24,
+    monthsPaid: 16,
+    endDate: "Dec 2026",
+  },
+  {
+    id: "inst_2",
+    name: "IKEA Study Desk & Ergonomic Chair",
+    totalAmount: 18500,
+    paid: 12333,
+    remaining: 6167,
+    monthlyAmount: 1541,
+    card: "RCBC Visa",
+    monthsTotal: 12,
+    monthsPaid: 8,
+    endDate: "Aug 2026",
+  },
+]
+
+export const tags: Tag[] = [
+  { id: "tag_1", label: "Dining Out", color: "#E53E3E", count: 18 },
+  { id: "tag_2", label: "Side Hustle", color: "#3D784E", count: 6 },
+  { id: "tag_3", label: "Subscription", color: "#8B5CF6", count: 4 },
+  { id: "tag_4", label: "Essentials", color: "#1A73E8", count: 24 },
+  { id: "tag_5", label: "Coffee", color: "#D97706", count: 12 },
+  { id: "tag_6", label: "Travel", color: "#0D9488", count: 8 },
 ]
 
 export function formatMoney(amount: number, currency: CurrencyCode = "PHP") {
