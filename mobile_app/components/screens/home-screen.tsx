@@ -162,27 +162,27 @@ export function HomeScreen({
         </h1>
       </div>
 
-      {/* Mascot Card: Tarsi Banner */}
-      <div className="relative rounded-[2rem] bg-[#3D784E] p-4 text-white shadow-md mt-2">
-        <div className="flex items-center gap-3">
-          {/* Bigger Pop-out Mascot Graphic (Breaks out over border) */}
-          <div className="relative -mt-8 -mb-4 -ml-2 h-28 w-28 shrink-0 z-10 pointer-events-none">
+      {/* Mascot Card: Slim Tarsi Banner */}
+      <div className="relative rounded-3xl bg-[#3D784E] py-2 px-3 text-white shadow-md mt-1">
+        <div className="flex items-center gap-2.5">
+          {/* Pop-out Mascot Graphic (Enlarged and breaking over border) */}
+          <div className="relative -mt-6 -mb-4 -ml-1 h-20 w-20 shrink-0 z-10 pointer-events-none">
             <Image
               src="/pawi-v2-hi.png"
               alt="Pawi Mascot"
               fill
               priority
-              className="object-contain drop-shadow-xl scale-125 origin-bottom"
+              className="object-contain drop-shadow-lg scale-135 origin-bottom"
             />
           </div>
 
-          {/* White Speech Bubble with Tail */}
-          <div className="relative z-0 flex-1 rounded-2xl bg-white p-3.5 text-foreground shadow-sm">
+          {/* White Speech Bubble with Tail - Compact */}
+          <div className="relative z-0 flex-1 rounded-2xl bg-white px-3 py-2 text-foreground shadow-xs">
             {/* Speech bubble pointer arrow */}
-            <div className="absolute -left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 bg-white" />
+            <div className="absolute -left-1.5 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 bg-white" />
 
-            <p className="text-xs font-black text-[#2E683E] leading-none">Tarsi</p>
-            <p className="text-[11px] font-semibold leading-snug text-neutral-800 mt-1">
+            <p className="text-[11px] font-black text-[#2E683E] leading-tight">Tarsi</p>
+            <p className="text-[11px] font-semibold leading-tight text-neutral-800 mt-0.5">
               {tarsiMessage}
             </p>
           </div>
