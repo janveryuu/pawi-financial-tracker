@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Tag, Check, ChevronDown, Sparkles } from "lucide-react"
 import Image from "next/image"
 import { useStore } from "@/lib/store"
