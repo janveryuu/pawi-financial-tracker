@@ -302,7 +302,7 @@ export function WalletsScreen() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className={cn("grid gap-2.5", eWallets.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
               {eWallets.map((wallet) => {
                 const brandLogo = getWalletBrandLogo(wallet.name)
                 return (
@@ -358,7 +358,7 @@ export function WalletsScreen() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className={cn("grid gap-2.5", bankAccounts.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
               {bankAccounts.map((wallet) => {
                 const brandLogo = getWalletBrandLogo(wallet.name)
                 return (
@@ -415,35 +415,62 @@ export function WalletsScreen() {
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
-              {creditCards.map((wallet) => (
-                <div
-                  key={wallet.id}
-                  onClick={() => setSelectedWallet(wallet)}
-                  className="flex flex-col justify-between rounded-3xl p-4 text-white shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                  style={{ backgroundColor: wallet.accent || "#7C3AED" }}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20">
-                      <CreditCard className="h-4 w-4" />
+              {creditCards.map((wallet) => {
+                const brandLogo = getWalletBrandLogo(wallet.name)
+                const used = wallet.usedCredit || wallet.balance || 0
+                const limit = wallet.creditLimit || 50000
+                const percentUsed = Math.min(100, Math.round((used / limit) * 100)) || 16
+                const remaining = Math.max(0, limit - used)
+
+                return (
+                  <div
+                    key={wallet.id}
+                    onClick={() => setSelectedWallet(wallet)}
+                    className="flex flex-col justify-between rounded-3xl p-4 text-white shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    style={{ backgroundColor: wallet.accent || "#7C3AED" }}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
+                        {brandLogo ? (
+                          <Image src={brandLogo} alt={wallet.name} fill className="object-contain" />
+                        ) : (
+                          <CreditCard className="h-4 w-4 text-neutral-800" />
+                        )}
+                      </div>
+                      <MoreHorizontal className="h-4 w-4 text-white/70" />
                     </div>
-                    <MoreHorizontal className="h-4 w-4 text-white/70" />
-                  </div>
 
-                  <div className="mt-3">
-                    <p className="text-xs font-black leading-tight truncate">{wallet.name}</p>
-                    <p className="text-[9px] text-white/80 font-medium truncate mt-0.5">{wallet.subtitle}</p>
-                  </div>
+                    <div className="mt-2.5">
+                      <p className="text-xs font-black leading-tight truncate">{wallet.name}</p>
+                      <p className="text-[9px] text-white/80 font-medium truncate mt-0.5">
+                        Credit · {wallet.currency} · due day {wallet.dueDay || 15}
+                      </p>
+                    </div>
 
-                  <div className="mt-2">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-white/70">
-                      USED CREDIT
-                    </span>
-                    <p className="text-sm font-black tracking-tight tabular-nums">
-                      {formatMoney(wallet.usedCredit || wallet.balance, wallet.currency)}
-                    </p>
+                    <div className="mt-2 space-y-1">
+                      <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-wider text-white/80">
+                        <span>USED CREDIT</span>
+                        <span>{percentUsed}% used</span>
+                      </div>
+                      {/* Progress Bar */}
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+                        <div
+                          className="h-full rounded-full bg-white transition-all"
+                          style={{ width: `${percentUsed}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between pt-0.5">
+                        <span className="text-xs font-black tracking-tight tabular-nums">
+                          {formatMoney(used, wallet.currency)}
+                        </span>
+                        <span className="text-[8px] font-semibold text-white/80 tabular-nums">
+                          {formatMoney(remaining, wallet.currency)} left
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
@@ -463,13 +490,13 @@ export function WalletsScreen() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className={cn("grid gap-2.5", loans.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
               {loans.map((wallet) => (
                 <div
                   key={wallet.id}
                   onClick={() => setSelectedWallet(wallet)}
                   className="flex flex-col justify-between rounded-3xl p-4 text-white shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                  style={{ backgroundColor: wallet.accent || "#B45309" }}
+                  style={{ backgroundColor: wallet.accent || "#0D9488" }}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20">

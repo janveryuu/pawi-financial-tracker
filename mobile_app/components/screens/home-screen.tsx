@@ -430,9 +430,9 @@ export function HomeScreen({
               className="flex items-center justify-between py-2 border-b border-border/40 last:border-none"
             >
               <div className="flex items-center gap-3">
-                {/* Blue G icon matching reference */}
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1A73E8] text-white font-black text-sm shadow-xs">
-                  G
+                {/* Official Brand Logo Icon */}
+                <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-card p-1 shadow-xs">
+                  <Image src="/logos/gcash.png" alt="GCash" fill className="object-contain" />
                 </div>
                 <div>
                   <p className="text-xs font-bold text-foreground">{item.title}</p>
@@ -452,39 +452,32 @@ export function HomeScreen({
             EXPENSES
           </p>
           <div className="space-y-1">
-            {UPCOMING_EXPENSES.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between py-2 border-b border-border/40 last:border-none"
-              >
-                <div className="flex items-center gap-3">
-                  {/* Styled Brand Icons */}
-                  {item.iconType === "globe" && (
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white font-black text-sm shadow-xs">
-                      🌐
-                    </div>
-                  )}
-                  {item.iconType === "netflix" && (
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black text-red-600 font-black text-base shadow-xs">
-                      N
-                    </div>
-                  )}
-                  {item.iconType === "converge" && (
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-700 text-white font-black text-sm shadow-xs">
-                      C
-                    </div>
-                  )}
-                  {item.iconType === "rcbc" && (
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0284C7] text-white font-black text-xs shadow-xs">
-                      💳
-                    </div>
-                  )}
+            {UPCOMING_EXPENSES.map((item) => {
+              const logoPath =
+                item.iconType === "globe"
+                  ? "/logos/globe.png"
+                  : item.iconType === "netflix"
+                  ? "/logos/netflix.png"
+                  : item.iconType === "converge"
+                  ? "/logos/converge.png"
+                  : "/logos/rcbc.png"
 
-                  <div>
-                    <p className="text-xs font-bold text-foreground">{item.title}</p>
-                    <p className="text-[10px] text-muted-foreground font-medium">{item.date}</p>
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between py-2 border-b border-border/40 last:border-none"
+                >
+                  <div className="flex items-center gap-3">
+                    {/* Official Brand Icon */}
+                    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-card p-1 shadow-xs">
+                      <Image src={logoPath} alt={item.title} fill className="object-contain" />
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-bold text-foreground">{item.title}</p>
+                      <p className="text-[10px] text-muted-foreground font-medium">{item.date}</p>
+                    </div>
                   </div>
-                </div>
 
                 <div className="text-right">
                   {item.badge && (
@@ -497,7 +490,7 @@ export function HomeScreen({
                   </span>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       </div>
