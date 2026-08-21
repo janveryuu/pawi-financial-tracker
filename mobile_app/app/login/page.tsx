@@ -104,19 +104,19 @@ export default function LoginPage() {
       >
         {/* Header Branding Card */}
         <div className="mb-6 flex flex-col items-center text-center">
-          {/* Logo Badge */}
-          <div className="relative mb-3 flex h-20 w-20 items-center justify-center rounded-3xl border border-border/80 bg-card p-2 shadow-sm">
-            <div className="relative h-14 w-14 overflow-hidden rounded-2xl">
+          {/* Main Pawi Logo Emblem */}
+          <div className="relative mb-3 flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#3D784E]/20 bg-card p-1 shadow-md">
+            <div className="relative h-16 w-16 overflow-hidden rounded-full">
               <Image
-                src="/pawi-dashboard-clean.png"
-                alt="Pawi Mascot"
+                src="/pawikan-logo.png"
+                alt="Pawi Logo"
                 fill
                 priority
-                className="object-contain scale-110"
+                className="object-cover scale-105"
               />
             </div>
-            {/* Tiny Mascot Sparkle */}
-            <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#3D784E] text-white shadow-xs">
+            {/* Tiny Sparkle Badge */}
+            <div className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#3D784E] text-white shadow-xs border-2 border-card">
               <Sparkles className="h-3 w-3" />
             </div>
           </div>
