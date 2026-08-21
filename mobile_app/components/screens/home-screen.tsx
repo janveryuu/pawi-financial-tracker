@@ -163,24 +163,24 @@ export function HomeScreen({
       </div>
 
       {/* Mascot Card: Tarsi Banner */}
-      <div className="relative overflow-hidden rounded-[2rem] bg-[#3D784E] p-4 text-white shadow-md">
+      <div className="relative rounded-[2rem] bg-[#3D784E] p-4 text-white shadow-md mt-2">
         <div className="flex items-center gap-3">
-          {/* Tarsi Mascot Graphic */}
-          <div className="relative h-20 w-20 shrink-0 overflow-hidden">
+          {/* Bigger Pop-out Mascot Graphic (Breaks out over border) */}
+          <div className="relative -mt-8 -mb-4 -ml-2 h-28 w-28 shrink-0 z-10 pointer-events-none">
             <Image
-              src="/pawi-dashboard-clean.png"
-              alt="Tarsi"
+              src="/pawi-v2-hi.png"
+              alt="Pawi Mascot"
               fill
               priority
-              className="object-contain drop-shadow-md scale-110"
+              className="object-contain drop-shadow-xl scale-125 origin-bottom"
             />
           </div>
 
           {/* White Speech Bubble with Tail */}
-          <div className="relative flex-1 rounded-2xl bg-white p-3.5 text-foreground shadow-sm">
+          <div className="relative z-0 flex-1 rounded-2xl bg-white p-3.5 text-foreground shadow-sm">
             {/* Speech bubble pointer arrow */}
             <div className="absolute -left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 bg-white" />
-            
+
             <p className="text-xs font-black text-[#2E683E] leading-none">Tarsi</p>
             <p className="text-[11px] font-semibold leading-snug text-neutral-800 mt-1">
               {tarsiMessage}
