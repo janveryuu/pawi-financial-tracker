@@ -17,10 +17,10 @@ import {
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 
-export type TabId = "dashboard" | "wallets" | "plan" | "history" | "chat" | "settings"
+export type TabId = "home" | "dashboard" | "wallets" | "plan" | "history" | "chat" | "settings"
 
 const navItems: { id: TabId; label: string; icon: typeof Home }[] = [
-  { id: "dashboard", label: "Home", icon: Home },
+  { id: "home", label: "Home", icon: Home },
   { id: "wallets", label: "Wallet", icon: Wallet },
   { id: "plan", label: "Plan", icon: Calendar },
   { id: "history", label: "History", icon: Clock },

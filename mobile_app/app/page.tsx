@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { AnimatePresence, motion } from "framer-motion"
-import { DashboardOverview } from "@/components/dashboard-overview"
+import { HomeScreen } from "@/components/screens/home-screen"
 import { WalletsScreen } from "@/components/screens/wallets-screen"
 import { PlanScreen } from "@/components/screens/plan-screen"
 import { HistoryScreen } from "@/components/screens/history-screen"
@@ -21,7 +21,7 @@ export default function Page() {
   const { user, loading } = useAuth()
   const router = useRouter()
 
-  const [tab, setTab] = useState<TabId>("dashboard")
+  const [tab, setTab] = useState<TabId>("home")
   const [txModalOpen, setTxModalOpen] = useState(false)
   const [txKind, setTxKind] = useState<"income" | "expense">("income")
   const [transferOpen, setTransferOpen] = useState(false)
@@ -53,8 +53,8 @@ export default function Page() {
           exit={{ opacity: 0, y: -6, scale: 0.99 }}
           transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
         >
-          {tab === "dashboard" && (
-            <DashboardOverview
+          {(tab === "home" || tab === "dashboard") && (
+            <HomeScreen
               onOpenSettings={() => setTab("settings")}
               onOpenNotifications={() => setNotifOpen(true)}
             />
@@ -63,7 +63,7 @@ export default function Page() {
           {tab === "wallets" && <WalletsScreen />}
           {tab === "plan" && <PlanScreen />}
           {tab === "history" && <HistoryScreen />}
-          {tab === "chat" && <ChatScreen onBack={() => setTab("dashboard")} />}
+          {tab === "chat" && <ChatScreen onBack={() => setTab("home")} />}
           {tab === "settings" && (
             <div className="px-5 pt-4">
               <SettingsModule onStartTutorial={() => setTutorialOpen(true)} />
