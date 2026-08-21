@@ -173,34 +173,34 @@ export function WalletsScreen() {
         </div>
       </div>
 
-      {/* Hero Mascot Banner: Matched to Home Screen Capsule & Speech Bubble Format */}
-      <div className="relative rounded-3xl bg-[#3D784E] py-2 px-3 text-white shadow-md select-none">
-        <div className="flex items-center gap-2.5">
-          {/* Pop-out Mascot Graphic (Enlarged and breaking over border) */}
-          <div className="relative -mt-6 -mb-4 -ml-1 h-20 w-20 shrink-0 z-10 pointer-events-none">
+      {/* Hero Mascot Banner: Tight Capsule with Big Pop-Out Mascot */}
+      <div className="relative rounded-[2.25rem] bg-[#3D784E] p-1.5 pl-2 text-white shadow-md select-none mt-2">
+        <div className="flex items-center gap-2">
+          {/* Pop-out Mascot Graphic (Large & breaking over border like Home screen) */}
+          <div className="relative -mt-9 -mb-6 -ml-2 h-28 w-28 shrink-0 z-10 pointer-events-none">
             <Image
               src="/pawi-holding-wallet.png"
               alt="Pawi"
               fill
               priority
-              className="object-contain drop-shadow-lg scale-135 origin-bottom"
+              className="object-contain drop-shadow-xl scale-150 origin-bottom"
             />
           </div>
 
           {/* White Speech Bubble Card on Right */}
-          <div className="relative z-0 flex-1 rounded-2xl bg-white px-3.5 py-2.5 text-foreground shadow-xs">
+          <div className="relative z-0 flex-1 rounded-[1.75rem] bg-white px-3.5 py-2 text-foreground shadow-xs">
             {/* Speech bubble pointer arrow */}
-            <div className="absolute -left-1.5 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 bg-white" />
+            <div className="absolute -left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 bg-white" />
 
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
                   {bannerConfig.title}
                 </span>
-                <p className="mt-0.5 text-xl font-black tracking-tight text-foreground tabular-nums leading-none">
+                <p className="text-xl font-black tracking-tight text-foreground tabular-nums leading-tight">
                   {showBalance ? formatMoney(bannerConfig.amount) : "••••••••"}
                 </p>
-                <p className="text-[9px] text-muted-foreground font-semibold mt-0.5">
+                <p className="text-[9px] text-muted-foreground font-semibold">
                   {bannerConfig.subtitle}
                 </p>
               </div>
@@ -215,12 +215,12 @@ export function WalletsScreen() {
             </div>
 
             {/* Filter Pills [All] [Assets] [Liabilities] */}
-            <div className="mt-2 flex items-center gap-1 rounded-full bg-secondary/80 p-0.5 border border-border/60">
+            <div className="mt-1.5 flex items-center gap-1 rounded-full bg-secondary/80 p-0.5 border border-border/60">
               <button
                 type="button"
                 onClick={() => setActiveFilter("all")}
                 className={cn(
-                  "flex-1 rounded-full py-1 text-[10px] font-black transition-all",
+                  "flex-1 rounded-full py-0.5 text-[10px] font-black transition-all",
                   activeFilter === "all" ? "bg-[#3D784E] text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -230,7 +230,7 @@ export function WalletsScreen() {
                 type="button"
                 onClick={() => setActiveFilter("assets")}
                 className={cn(
-                  "flex-1 rounded-full py-1 text-[10px] font-black transition-all",
+                  "flex-1 rounded-full py-0.5 text-[10px] font-black transition-all",
                   activeFilter === "assets" ? "bg-[#3D784E] text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -240,7 +240,7 @@ export function WalletsScreen() {
                 type="button"
                 onClick={() => setActiveFilter("liabilities")}
                 className={cn(
-                  "flex-1 rounded-full py-1 text-[10px] font-black transition-all",
+                  "flex-1 rounded-full py-0.5 text-[10px] font-black transition-all",
                   activeFilter === "liabilities" ? "bg-[#3D784E] text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
                 )}
               >
