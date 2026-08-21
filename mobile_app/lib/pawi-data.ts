@@ -32,9 +32,36 @@ export function getWalletBrandLogo(name: string): string | undefined {
   if (lower.includes("globe")) return "/logos/globe.png"
   if (lower.includes("netflix")) return "/logos/netflix.png"
   if (lower.includes("converge")) return "/logos/converge.png"
+  if (lower.includes("gotyme") || lower.includes("tyme")) return "/logos/gotyme.png"
+  if (lower.includes("grab")) return "/logos/grab.png"
+  if (lower.includes("panda") || lower.includes("foodpanda")) return "/logos/foodpanda.png"
+  if (lower.includes("mcdo") || lower.includes("mcdonald")) return "/logos/mcdo.png"
+  if (lower.includes("starbucks") || lower.includes("sbux")) return "/logos/starbucks.png"
   if (lower.includes("metro")) return "/metrobank.svg"
-  if (lower.includes("gotyme") || lower.includes("tyme")) return "/gotyme.svg"
   if (lower.includes("sea")) return "/seabank.svg"
+  return undefined
+}
+
+export function getTransactionMerchantLogo(label: string, category?: string, account?: string): string | undefined {
+  const text = `${label} ${category || ""} ${account || ""}`.toLowerCase()
+  
+  if (text.includes("mcdo") || text.includes("mcdonald") || text.includes("big mac")) return "/logos/mcdo.png"
+  if (text.includes("starbucks") || text.includes("sbux") || text.includes("frappuccino")) return "/logos/starbucks.png"
+  if (text.includes("foodpanda") || text.includes("food panda")) return "/logos/foodpanda.png"
+  if (text.includes("grab") || text.includes("grabfood") || text.includes("grabcar") || text.includes("grabpay")) return "/logos/grab.png"
+  if (text.includes("gotyme") || text.includes("go tyme")) return "/logos/gotyme.png"
+  if (text.includes("netflix")) return "/logos/netflix.png"
+  if (text.includes("globe")) return "/logos/globe.png"
+  if (text.includes("converge")) return "/logos/converge.png"
+  if (text.includes("gcash")) return "/logos/gcash.png"
+  if (text.includes("maya") || text.includes("paymaya")) return "/Paymaya-logo.png"
+  if (text.includes("bdo")) return "/logos/bdo.png"
+  if (text.includes("bpi")) return "/logos/bpi.png"
+  if (text.includes("rcbc")) return "/logos/rcbc.png"
+  if (text.includes("unionbank") || text.includes("union bank")) return "/logos/unionbank.png"
+  if (text.includes("wise")) return "/logos/wise.png"
+  if (text.includes("paypal")) return "/Paypal-logo.png"
+  
   return undefined
 }
 

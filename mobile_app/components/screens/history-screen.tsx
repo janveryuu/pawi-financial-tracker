@@ -27,7 +27,8 @@ import {
   CalendarCheck,
   Filter,
 } from "lucide-react"
-import { formatMoney, Transaction, formatMoney as fmt } from "@/lib/pawi-data"
+import Image from "next/image"
+import { formatMoney, Transaction, formatMoney as fmt, getTransactionMerchantLogo } from "@/lib/pawi-data"
 import { useStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
 
@@ -338,6 +339,7 @@ export function HistoryScreen() {
               {/* Transactions in Group */}
               <div className="rounded-3xl border border-border/80 bg-card overflow-hidden divide-y divide-border/40 shadow-xs">
                 {group.items.map((tx) => {
+                  const merchantLogo = getTransactionMerchantLogo(tx.label, tx.category, tx.account)
                   const categoryMeta = CATEGORY_ICON_MAP[tx.category] || {
                     icon: Utensils,
                     bg: "bg-[#3D784E]/10",
@@ -351,15 +353,26 @@ export function HistoryScreen() {
                       className="flex items-center justify-between p-3.5 hover:bg-secondary/30 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <div
-                          className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
-                            categoryMeta.bg,
-                            categoryMeta.text
-                          )}
-                        >
-                          <IconComp className="h-5 w-5" />
-                        </div>
+                        {merchantLogo ? (
+                          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full drop-shadow-xs">
+                            <Image
+                              src={merchantLogo}
+                              alt={tx.label}
+                              fill
+                              className="object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <div
+                            className={cn(
+                              "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
+                              categoryMeta.bg,
+                              categoryMeta.text
+                            )}
+                          >
+                            <IconComp className="h-5 w-5" />
+                          </div>
+                        )}
                         <div>
                           <p className="text-xs font-black text-foreground leading-tight">{tx.label}</p>
                           <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
