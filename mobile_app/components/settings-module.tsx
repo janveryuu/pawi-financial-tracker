@@ -11,6 +11,8 @@ import {
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useStore } from "@/lib/store"
+import { useAuth } from "@/lib/auth-context"
+import { User, LogOut } from "lucide-react"
 
 import { StoryOfPawiModal } from "./story-of-pawi-modal"
 
@@ -19,6 +21,7 @@ export interface SettingsModuleProps {
 }
 
 export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
+  const { user, logout } = useAuth()
   const { theme, setTheme } = useTheme()
   const { defaultCurrency, setDefaultCurrency, resetAccountData, loadSampleData, wallets, goals, budgets } = useStore()
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
@@ -28,6 +31,10 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
   const [showWipeDialog, setShowWipeDialog] = useState(false)
   const [showWipeSuccessModal, setShowWipeSuccessModal] = useState(false)
   const [showPopupWarningModal, setShowPopupWarningModal] = useState(false)
+
+  const displayName = user?.displayName || user?.email?.split("@")[0] || "User"
+  const userEmail = user?.email || "Offline User"
+
 
   // Calculate quick health metrics
   const totalWalletsCount = wallets?.length || 0
@@ -157,7 +164,29 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
 
   return (
     <section className="flex flex-col gap-4 pb-24">
+      {/* User Profile Card */}
+      <div className="flex items-center justify-between rounded-3xl border border-border/70 bg-card p-4 shadow-sm">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E] font-black text-base">
+            {displayName[0]?.toUpperCase()}
+          </div>
+          <div>
+            <p className="text-sm font-extrabold text-foreground">{displayName}</p>
+            <p className="text-xs text-muted-foreground">{userEmail}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowLogoutDialog(true)}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          title="Sign Out"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
+      </div>
+
       {/* Tutorial & Story Section */}
+
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"

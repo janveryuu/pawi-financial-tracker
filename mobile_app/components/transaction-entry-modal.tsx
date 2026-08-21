@@ -1,0 +1,514 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Tag, Check, ChevronDown, Sparkles } from "lucide-react"
+import Image from "next/image"
+import { useStore } from "@/lib/store"
+import { getWalletBrandLogo, formatMoney } from "@/lib/pawi-data"
+import { cn } from "@/lib/utils"
+
+interface TransactionEntryModalProps {
+  open: boolean
+  kind: "income" | "expense"
+  onClose: () => void
+}
+
+const INCOME_CATEGORIES = [
+  { id: "online-selling", label: "Online Selling", icon: "🏪" },
+  { id: "allowance", label: "Allowance From Family", icon: "👛" },
+  { id: "salary", label: "Salary", icon: "💼" },
+  { id: "bonus", label: "Bonus", icon: "🎁" },
+  { id: "freelance", label: "Freelance", icon: "📋" },
+  { id: "commission", label: "Commission", icon: "📈" },
+  { id: "business", label: "Business", icon: "🏬" },
+  { id: "side-hustle", label: "Side Hustle", icon: "⚡" },
+]
+
+const EXPENSE_CATEGORIES = [
+  { id: "food", label: "Food & Dining", icon: "🍔" },
+  { id: "groceries", label: "Groceries", icon: "🛒" },
+  { id: "transport", label: "Transport", icon: "🚗" },
+  { id: "shopping", label: "Shopping", icon: "🛍️" },
+  { id: "utilities", label: "Utilities & Bills", icon: "💡" },
+  { id: "entertainment", label: "Entertainment", icon: "🎬" },
+  { id: "health", label: "Health & Wellness", icon: "💊" },
+  { id: "housing", label: "Rent & Housing", icon: "🏠" },
+  { id: "coffee", label: "Coffee & Snacks", icon: "☕" },
+  { id: "education", label: "Education", icon: "📚" },
+]
+
+const RECENT_INCOME_TEMPLATES = [
+  { wallet: "BPI Savings", amount: 18500, note: "Cutoff salary", category: "Salary" },
+  { wallet: "GCash", amount: 3500, note: "Weekend design slot", category: "Freelance" },
+  { wallet: "GCash", amount: 1500, note: "Allowance from parents", category: "Allowance From Family" },
+  { wallet: "GCash", amount: 2200, note: "Sold pre-loved items", category: "Online Selling" },
+]
+
+const RECENT_EXPENSE_TEMPLATES = [
+  { wallet: "GCash", amount: 250, note: "Lunch at cafeteria", category: "Food & Dining" },
+  { wallet: "GCash", amount: 890, note: "SM Supermarket grocery", category: "Groceries" },
+  { wallet: "GCash", amount: 165, note: "Grab ride to office", category: "Transport" },
+  { wallet: "RCBC Visa", amount: 549, note: "Netflix Premium", category: "Entertainment" },
+]
+
+export function TransactionEntryModal({ open, kind, onClose }: TransactionEntryModalProps) {
+  const { wallets, addTransaction, defaultCurrency } = useStore()
+
+  const [displayValue, setDisplayValue] = useState("0")
+  const [expression, setExpression] = useState("")
+  const [note, setNote] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("")
+  const [selectedWalletName, setSelectedWalletName] = useState("")
+  const [showWalletDropdown, setShowWalletDropdown] = useState(false)
+  const [showTagInput, setShowTagInput] = useState(false)
+  const [tag, setTag] = useState("")
+
+  const isIncome = kind === "income"
+  const categories = isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+  const recentTemplates = isIncome ? RECENT_INCOME_TEMPLATES : RECENT_EXPENSE_TEMPLATES
+
+  useEffect(() => {
+    if (open) {
+      setDisplayValue("0")
+      setExpression("")
+      setNote("")
+      setTag("")
+      setShowTagInput(false)
+      setSelectedCategory(categories[0]?.label || "")
+      if (wallets.length > 0) {
+        setSelectedWalletName(wallets[0].name)
+      } else {
+        setSelectedWalletName("Cash")
+      }
+    }
+  }, [open, kind, wallets, categories])
+
+  if (!open) return null
+
+  // Numpad Calculator logic
+  const handleDigit = (digit: string) => {
+    if (displayValue === "0" && digit !== ".") {
+      setDisplayValue(digit)
+    } else {
+      if (digit === "." && displayValue.includes(".")) return
+      setDisplayValue((prev) => prev + digit)
+    }
+  }
+
+  const handleOperator = (op: "+" | "-") => {
+    const currentNum = parseFloat(displayValue) || 0
+    if (expression === "") {
+      setExpression(`${currentNum} ${op}`)
+      setDisplayValue("0")
+    } else {
+      handleEquals()
+      setExpression(`${parseFloat(displayValue) || currentNum} ${op}`)
+      setDisplayValue("0")
+    }
+  }
+
+  const handleEquals = () => {
+    if (!expression) return
+    const parts = expression.trim().split(" ")
+    if (parts.length >= 2) {
+      const prevNum = parseFloat(parts[0]) || 0
+      const op = parts[1]
+      const currentNum = parseFloat(displayValue) || 0
+      let result = currentNum
+      if (op === "+") result = prevNum + currentNum
+      if (op === "-") result = Math.max(0, prevNum - currentNum)
+      setDisplayValue(result.toString())
+      setExpression("")
+    }
+  }
+
+  const handleBackspace = () => {
+    if (displayValue.length <= 1) {
+      setDisplayValue("0")
+    } else {
+      setDisplayValue((prev) => prev.slice(0, -1))
+    }
+  }
+
+  const handleClear = () => {
+    setDisplayValue("0")
+    setExpression("")
+  }
+
+  const handleSelectTemplate = (tmpl: typeof recentTemplates[0]) => {
+    setDisplayValue(tmpl.amount.toString())
+    setNote(tmpl.note)
+    setSelectedCategory(tmpl.category)
+    setSelectedWalletName(tmpl.wallet)
+  }
+
+  const handleSave = () => {
+    let finalAmount = parseFloat(displayValue) || 0
+    if (expression) {
+      const parts = expression.trim().split(" ")
+      if (parts.length >= 2) {
+        const prevNum = parseFloat(parts[0]) || 0
+        const op = parts[1]
+        const currentNum = parseFloat(displayValue) || 0
+        if (op === "+") finalAmount = prevNum + currentNum
+        if (op === "-") finalAmount = Math.max(0, prevNum - currentNum)
+      }
+    }
+
+    if (finalAmount <= 0) return
+
+    const finalLabel = note.trim()
+      ? (tag ? `[${tag}] ${note.trim()}` : note.trim())
+      : `${selectedCategory || (isIncome ? "Income" : "Expense")}`
+
+    addTransaction({
+      label: finalLabel,
+      category: selectedCategory || (isIncome ? "Income" : "General"),
+      account: selectedWalletName || (wallets[0]?.name ?? "Cash"),
+      amount: finalAmount,
+      currency: defaultCurrency || "PHP",
+      kind,
+    })
+
+    onClose()
+  }
+
+  const activeWallet = wallets.find((w) => w.name === selectedWalletName) || wallets[0]
+  const brandLogo = activeWallet ? getWalletBrandLogo(activeWallet.name) : "/cash-logo.png"
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-xs">
+      <div className="relative flex max-h-[92vh] w-full max-w-md flex-col rounded-t-[2.25rem] bg-card text-foreground shadow-2xl animate-in slide-in-from-bottom duration-200 overflow-hidden">
+        {/* Top Header */}
+        <div className="flex items-center justify-between border-b border-border/40 px-5 pt-4 pb-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Cancel
+          </button>
+          <h2 className="text-base font-extrabold tracking-tight text-foreground">
+            {isIncome ? "New Income" : "New Expense"}
+          </h2>
+          <div className="w-12" />
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-5 pt-4 pb-6 space-y-4 scrollbar-hide">
+          {/* Main Amount Display */}
+          <div className="flex flex-col items-center justify-center py-2 text-center">
+            {expression && (
+              <span className="text-xs font-semibold text-muted-foreground mb-0.5">
+                {expression}
+              </span>
+            )}
+            <div className="flex items-center justify-center gap-1.5">
+              <span className="text-3xl font-light text-muted-foreground/70">
+                ₱
+              </span>
+              <span className="text-4xl font-extrabold tracking-tight text-foreground tabular-nums">
+                {displayValue}
+              </span>
+            </div>
+          </div>
+
+          {/* Note Input with Tag action */}
+          <div className="rounded-2xl border border-border/80 bg-background/50 p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                NOTE
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowTagInput(!showTagInput)}
+                className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Tag className="h-3 w-3" />
+                <span>{tag ? `#${tag}` : "Tag"}</span>
+              </button>
+            </div>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={isIncome ? "e.g. March salary, freelance project" : "e.g. Dinner with friends, grocery run"}
+              className="w-full bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground/60 outline-none"
+            />
+            {showTagInput && (
+              <div className="flex items-center gap-1.5 pt-1">
+                <input
+                  type="text"
+                  value={tag}
+                  onChange={(e) => setTag(e.target.value)}
+                  placeholder="Custom tag (e.g. Work, Vacation)"
+                  className="rounded-lg border border-border/60 bg-card px-2.5 py-1 text-xs outline-none"
+                  autoFocus
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Recent Templates Row */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+              {isIncome ? "RECENT INCOME" : "RECENT EXPENSES"}
+            </p>
+            <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
+              {recentTemplates.map((tmpl, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleSelectTemplate(tmpl)}
+                  className="flex shrink-0 flex-col items-start rounded-2xl border border-border/60 bg-background/60 p-3 text-left transition-all hover:bg-secondary/60 hover:border-primary/40 active:scale-95"
+                >
+                  <span className="text-[10px] font-semibold text-muted-foreground">
+                    {tmpl.wallet}
+                  </span>
+                  <span className="text-xs font-black text-foreground mt-0.5">
+                    ₱{tmpl.amount.toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-[110px]">
+                    {tmpl.note}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Categories Grid */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+              {isIncome ? "INCOME CATEGORIES" : "EXPENSE CATEGORIES"}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {categories.map((cat) => {
+                const isSelected = selectedCategory === cat.label
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat.label)}
+                    className={cn(
+                      "flex items-center gap-2.5 rounded-2xl border px-3 py-2.5 text-left text-xs font-bold transition-all active:scale-95",
+                      isSelected
+                        ? "border-primary/60 bg-primary/10 text-primary shadow-xs"
+                        : "border-border/60 bg-card text-foreground hover:bg-secondary/40"
+                    )}
+                  >
+                    <span className="text-base">{cat.icon}</span>
+                    <span className="truncate">{cat.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Calculator Numpad Keypad (Image 4 Design) */}
+          <div className="rounded-3xl border border-border/60 bg-secondary/30 p-2.5">
+            <div className="grid grid-cols-4 gap-2">
+              {/* Row 1 */}
+              <button
+                type="button"
+                onClick={() => handleOperator("+")}
+                className="flex h-12 items-center justify-center rounded-2xl bg-primary/15 text-lg font-bold text-primary active:scale-90 transition-transform"
+              >
+                +
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDigit("1")}
+                className="flex h-12 items-center justify-center rounded-2xl bg-card text-base font-bold text-foreground shadow-xs active:scale-90 transition-transform"
+              >
+                1
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDigit("2")}
+                className="flex h-12 items-center justify-center rounded-2xl bg-card text-base font-bold text-foreground shadow-xs active:scale-90 transition-transform"
+              >
+                2
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDigit("3")}
+                className="flex h-12 items-center justify-center rounded-2xl bg-card text-base font-bold text-foreground shadow-xs active:scale-90 transition-transform"
+              >
+                3
+              </button>
+
+              {/* Row 2 */}
+              <button
+                type="button"
+                onClick={() => handleOperator("-")}
+                className="flex h-12 items-center justify-center rounded-2xl bg-primary/15 text-lg font-bold text-primary active:scale-90 transition-transform"
+              >
+                −
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDigit("4")}
+                className="flex h-12 items-center justify-center rounded-2xl bg-card text-base font-bold text-foreground shadow-xs active:scale-90 transition-transform"
+              >
+                4
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDigit("5")}
+                className="flex h-12 items-center justify-center rounded-2xl bg-card text-base font-bold text-foreground shadow-xs active:scale-90 transition-transform"
+              >
+                5
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDigit("6")}
+                className="flex h-12 items-center justify-center rounded-2xl bg-card text-base font-bold text-foreground shadow-xs active:scale-90 transition-transform"
+              >
+                6
+              </button>
+
+              {/* Row 3 */}
+              <button
+                type="button"
+                onClick={handleClear}
+                className="flex h-12 items-center justify-center rounded-2xl bg-rose-500/15 text-sm font-bold text-rose-600 active:scale-90 transition-transform"
+              >
+                ⊗
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDigit("7")}
+                className="flex h-12 items-center justify-center rounded-2xl bg-card text-base font-bold text-foreground shadow-xs active:scale-90 transition-transform"
+              >
+                7
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDigit("8")}
+                className="flex h-12 items-center justify-center rounded-2xl bg-card text-base font-bold text-foreground shadow-xs active:scale-90 transition-transform"
+              >
+                8
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDigit("9")}
+                className="flex h-12 items-center justify-center rounded-2xl bg-card text-base font-bold text-foreground shadow-xs active:scale-90 transition-transform"
+              >
+                9
+              </button>
+
+              {/* Row 4 */}
+              <button
+                type="button"
+                onClick={handleEquals}
+                className="flex h-12 items-center justify-center rounded-2xl bg-primary text-lg font-bold text-primary-foreground shadow-sm active:scale-90 transition-transform"
+              >
+                =
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDigit(".")}
+                className="flex h-12 items-center justify-center rounded-2xl bg-card text-lg font-bold text-foreground shadow-xs active:scale-90 transition-transform"
+              >
+                .
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDigit("0")}
+                className="flex h-12 items-center justify-center rounded-2xl bg-card text-base font-bold text-foreground shadow-xs active:scale-90 transition-transform"
+              >
+                0
+              </button>
+              <button
+                type="button"
+                onClick={handleBackspace}
+                className="flex h-12 items-center justify-center rounded-2xl bg-card text-sm font-bold text-muted-foreground shadow-xs active:scale-90 transition-transform"
+              >
+                ⌫
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Bar (Account Picker + Save Button) */}
+        <div className="border-t border-border/40 bg-card p-4">
+          <div className="flex items-center gap-3">
+            {/* Account Selector Button */}
+            <div className="relative flex-1">
+              <button
+                type="button"
+                onClick={() => setShowWalletDropdown(!showWalletDropdown)}
+                className="flex h-12 w-full items-center justify-between rounded-2xl border border-border/70 bg-secondary/40 px-3.5 text-left transition-colors hover:bg-secondary/70"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10">
+                    {brandLogo ? (
+                      <Image src={brandLogo} alt={selectedWalletName} fill className="object-contain p-0.5" />
+                    ) : (
+                      <span className="text-xs font-bold">💳</span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="block text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                      ACCOUNT
+                    </span>
+                    <span className="block truncate text-xs font-extrabold text-foreground">
+                      {selectedWalletName || "Select Wallet"}
+                    </span>
+                  </div>
+                </div>
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+
+              {/* Wallet Dropdown Popover */}
+              {showWalletDropdown && (
+                <div className="absolute bottom-14 left-0 right-0 z-50 max-h-48 overflow-y-auto rounded-2xl border border-border bg-card p-1.5 shadow-xl">
+                  {wallets.map((w) => {
+                    const logo = getWalletBrandLogo(w.name)
+                    return (
+                      <button
+                        key={w.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedWalletName(w.name)
+                          setShowWalletDropdown(false)
+                        }}
+                        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold hover:bg-secondary transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10">
+                            {logo ? (
+                              <Image src={logo} alt={w.name} fill className="object-contain" />
+                            ) : (
+                              <span>💳</span>
+                            )}
+                          </div>
+                          <span>{w.name}</span>
+                        </div>
+                        <span className="text-muted-foreground">{formatMoney(w.balance, w.currency)}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Save Button */}
+            <button
+              type="button"
+              onClick={handleSave}
+              className={cn(
+                "flex h-12 flex-1 items-center justify-center rounded-2xl font-extrabold text-sm shadow-md transition-all active:scale-95",
+                isIncome
+                  ? "bg-primary text-primary-foreground shadow-primary/20 hover:bg-primary/90"
+                  : "bg-[#3D784E] text-white shadow-emerald-700/20 hover:bg-[#356B46]"
+              )}
+            >
+              {isIncome ? "Save Income" : "Save Expense"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
