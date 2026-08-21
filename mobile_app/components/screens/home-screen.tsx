@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Image from "next/image"
 import {
   Flame,
@@ -107,12 +107,87 @@ export function HomeScreen({
   // Default matching screenshot values if fresh
   const displayIncome = todayIncome > 0 ? todayIncome : 2200
   const displayExpense = todayExpense > 0 ? todayExpense : 469
-
-  // Dynamic Tarsi message based on spending
   const isOverspending = displayExpense > displayIncome
-  const tarsiMessage = isOverspending
-    ? "Nasa red ka na ngayon. Essentials muna hanggang may pumasok ulit na money."
-    : "Nasa green zone ka ngayon! Essentials muna hanggang may pumasok ulit na money."
+
+  // Smart Tagalog Financial Dialogue Engine for Pawi
+  const pawiDialogueList = useMemo(() => {
+    const list: string[] = []
+
+    // 1. Spending & Cashflow Context
+    if (isOverspending) {
+      list.push(
+        "Medyo mataas ang gastos natin today, idol! Essentials muna bago mag-add to cart.",
+        "Nasa red zone tayo ngayon. Konting hinay-hinay muna sa cravings hanggang next sahod!",
+        "Double-check natin ang mga binili today, baka may unnecessary expenses na pwedeng iwasan."
+      )
+    } else {
+      list.push(
+        "Nasa green zone ka ngayon! Proud ako sa'yo, kontrolado mo ang finances mo.",
+        "Ganda ng cashflow natin today! Tuloy-tuloy lang para lumaki pa ang emergency fund mo.",
+        "Basta may natitira sa budget, panalo ka! Good job sa disiplina sa paggastos."
+      )
+    }
+
+    // 2. Payday Countdown Context
+    if (daysUntilPayday <= 3 && daysUntilPayday > 0) {
+      list.push(
+        `Konting tiis na lang, ${daysUntilPayday} araw na lang sahod na! Ready na ba ang budget allocation mo?`,
+        "Malapit na ang sweldo! Unahin agad ang savings at bills bago ang luho ha."
+      )
+    } else if (daysUntilPayday === 0) {
+      list.push(
+        "Payday na today! 🎉 Tabi agad ang 20% para sa savings bago gastusin ang iba."
+      )
+    } else {
+      list.push(
+        `${daysUntilPayday} days pa bago mag-sahod. Tipid tip: Magbaon ng lunch at iwas sa impulsive milk tea!`
+      )
+    }
+
+    // 3. Time of Day Context
+    if (hour >= 5 && hour < 12) {
+      list.push(
+        "Magandang umaga! Simulan ang araw nang may plano sa budget para iwas-overspend.",
+        "Good morning! Huwag kalimutang i-track ang kape at almusal mo today gamit ang Scan AI."
+      )
+    } else if (hour >= 12 && hour < 18) {
+      list.push(
+        "Kumain ka na ba ng lunch? I-log agad ang resibo gamit ang AI scanner natin!",
+        "Hapon na! Kumusta ang daily budget mo? May tira pa ba para sa merienda?"
+      )
+    } else {
+      list.push(
+        "Magandang gabi! Balikan ang mga nagastos today at i-review ang wallet balance bago matulog.",
+        "Nightly habit: I-log ang bawat barya para laging accurate at updated ang net worth mo."
+      )
+    }
+
+    // 4. Financial Wisdom & Motivation
+    list.push(
+      "Tandaan: Hindi sukatan ng yaman ang dami ng gastos, kundi ang naiipon mo!",
+      "Bawat pisong naise-save mo ngayon, peace of mind at kalayaan mo 'yan bukas.",
+      "Smart move ang pag-track araw-araw. Mas madaling maabot ang mga goals kapag may plano!"
+    )
+
+    return list
+  }, [isOverspending, daysUntilPayday, hour])
+
+  // Rotate message every 5 minutes (300,000 ms) or on user tap
+  const [dialogueIndex, setDialogueIndex] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDialogueIndex((prev) => (prev + 1) % pawiDialogueList.length)
+    }, 300000) // 5 minutes
+
+    return () => clearInterval(interval)
+  }, [pawiDialogueList.length])
+
+  const currentPawiMessage = pawiDialogueList[dialogueIndex % pawiDialogueList.length] || pawiDialogueList[0]
+
+  const handleNextMessage = () => {
+    setDialogueIndex((prev) => (prev + 1) % pawiDialogueList.length)
+  }
 
   return (
     <div className="flex flex-col gap-3.5 px-4 pt-2 pb-28 min-h-screen bg-background text-foreground">
@@ -162,8 +237,12 @@ export function HomeScreen({
         </h1>
       </div>
 
-      {/* Mascot Card: Slim Tarsi Banner */}
-      <div className="relative rounded-3xl bg-[#3D784E] py-2 px-3 text-white shadow-md mt-1">
+      {/* Mascot Card: Slim Pawi Banner (Rotates every 5 mins or on tap) */}
+      <div 
+        onClick={handleNextMessage}
+        className="relative rounded-3xl bg-[#3D784E] py-2 px-3 text-white shadow-md mt-1 cursor-pointer transition-transform active:scale-[0.99] select-none"
+        title="Tap for next tip from Pawi!"
+      >
         <div className="flex items-center gap-2.5">
           {/* Pop-out Mascot Graphic (Enlarged and breaking over border) */}
           <div className="relative -mt-6 -mb-4 -ml-1 h-20 w-20 shrink-0 z-10 pointer-events-none">
@@ -181,9 +260,12 @@ export function HomeScreen({
             {/* Speech bubble pointer arrow */}
             <div className="absolute -left-1.5 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 bg-white" />
 
-            <p className="text-[11px] font-black text-[#2E683E] leading-tight">Tarsi</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-black text-[#2E683E] leading-tight">Pawi</p>
+              <span className="text-[9px] font-bold text-muted-foreground/60">Tap for tip 💡</span>
+            </div>
             <p className="text-[11px] font-semibold leading-tight text-neutral-800 mt-0.5">
-              {tarsiMessage}
+              {currentPawiMessage}
             </p>
           </div>
         </div>
