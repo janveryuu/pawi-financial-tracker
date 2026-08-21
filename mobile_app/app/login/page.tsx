@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { Mail, Lock, User, Eye, EyeOff, Sparkles, ShieldCheck, ArrowRight, Loader2, AlertCircle } from "lucide-react"
@@ -27,7 +27,7 @@ export default function LoginPage() {
       const hash = window.location.hash
       const params = new URLSearchParams(window.location.search)
       const errorDesc = params.get("error_description") || params.get("error")
-      
+
       if (errorDesc) {
         if (errorDesc.includes("not enabled") || errorDesc.includes("unsupported_provider")) {
           setError("Google Sign-In is not enabled yet in your Supabase project. Enable Google in Supabase Dashboard > Authentication > Providers, or log in with Email / Guest below!")
@@ -118,10 +118,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8 text-foreground selection:bg-[#3D784E]/20">
+    // Always enforced in Pure Light Theme
+    <div className="light relative flex min-h-screen flex-col items-center justify-center bg-[#F6F8F6] px-4 py-8 text-neutral-900 selection:bg-[#3D784E]/20">
       {/* Background Soft Glow Accents */}
-      <div className="pointer-events-none absolute -top-24 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-[#3D784E]/8 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-emerald-500/5 blur-3xl" />
+      <div className="pointer-events-none absolute -top-24 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-[#3D784E]/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-emerald-500/10 blur-3xl" />
 
       <motion.div
         initial={{ opacity: 0, y: 14 }}
@@ -132,7 +133,7 @@ export default function LoginPage() {
         {/* Header Branding Card */}
         <div className="mb-6 flex flex-col items-center text-center">
           {/* Main Pawi Logo Emblem */}
-          <div className="relative mb-3 flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#3D784E]/20 bg-card p-1 shadow-md">
+          <div className="relative mb-3 flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#3D784E]/20 bg-white p-1 shadow-md">
             <div className="relative h-16 w-16 overflow-hidden rounded-full">
               <Image
                 src="/pawikan-logo.png"
@@ -143,25 +144,25 @@ export default function LoginPage() {
               />
             </div>
             {/* Tiny Sparkle Badge */}
-            <div className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#3D784E] text-white shadow-xs border-2 border-card">
+            <div className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#3D784E] text-white shadow-xs border-2 border-white">
               <Sparkles className="h-3 w-3" />
             </div>
           </div>
 
-          <h1 className="text-2xl font-black tracking-tight text-foreground">
+          <h1 className="text-2xl font-black tracking-tight text-neutral-900">
             {isSignUp ? "Create your account" : "Welcome back to Pawi"}
           </h1>
-          <p className="text-xs font-semibold text-muted-foreground mt-1">
+          <p className="text-xs font-semibold text-neutral-500 mt-1">
             {isSignUp
               ? "Start tracking, budgeting, and growing your savings."
               : "Log in to access your financial tracker & AI insights."}
           </p>
         </div>
 
-        {/* Main Form Container Card */}
-        <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-sm">
+        {/* Main Form Container Card (Pure White) */}
+        <div className="rounded-3xl border border-neutral-200/90 bg-white p-6 shadow-md text-neutral-900">
           {/* Tab Selector: Log In / Sign Up */}
-          <div className="relative mb-5 flex rounded-2xl bg-secondary/80 p-1 border border-border/50">
+          <div className="relative mb-5 flex rounded-2xl bg-neutral-100 p-1 border border-neutral-200/80">
             <button
               type="button"
               onClick={() => {
@@ -170,13 +171,13 @@ export default function LoginPage() {
               }}
               className={cn(
                 "relative z-10 flex-1 rounded-xl py-2 text-xs font-black transition-all",
-                !isSignUp ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                !isSignUp ? "text-neutral-900" : "text-neutral-500 hover:text-neutral-800"
               )}
             >
               {!isSignUp && (
                 <motion.div
                   layoutId="activeAuthTab"
-                  className="absolute inset-0 rounded-xl bg-card shadow-xs border border-border/60"
+                  className="absolute inset-0 rounded-xl bg-white shadow-xs border border-neutral-200/80"
                   transition={{ type: "spring", stiffness: 450, damping: 32 }}
                 />
               )}
@@ -191,13 +192,13 @@ export default function LoginPage() {
               }}
               className={cn(
                 "relative z-10 flex-1 rounded-xl py-2 text-xs font-black transition-all",
-                isSignUp ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                isSignUp ? "text-neutral-900" : "text-neutral-500 hover:text-neutral-800"
               )}
             >
               {isSignUp && (
                 <motion.div
                   layoutId="activeAuthTab"
-                  className="absolute inset-0 rounded-xl bg-card shadow-xs border border-border/60"
+                  className="absolute inset-0 rounded-xl bg-white shadow-xs border border-neutral-200/80"
                   transition={{ type: "spring", stiffness: 450, damping: 32 }}
                 />
               )}
@@ -215,17 +216,17 @@ export default function LoginPage() {
                   exit={{ opacity: 0, height: 0 }}
                   className="space-y-1.5 overflow-hidden"
                 >
-                  <label className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-1">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-neutral-600 px-1">
                     Your Name
                   </label>
                   <div className="relative flex items-center">
-                    <User className="absolute left-3.5 h-4 w-4 text-muted-foreground" />
+                    <User className="absolute left-3.5 h-4 w-4 text-neutral-400" />
                     <input
                       type="text"
                       placeholder="e.g. Janver"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="h-12 w-full rounded-2xl border border-border/80 bg-secondary/30 pl-10 pr-4 text-sm font-semibold text-foreground placeholder:text-muted-foreground/70 focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
+                      className="h-12 w-full rounded-2xl border border-neutral-200 bg-neutral-50 pl-10 pr-4 text-sm font-semibold text-neutral-900 placeholder:text-neutral-400 focus:border-[#3D784E] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
                     />
                   </div>
                 </motion.div>
@@ -234,41 +235,41 @@ export default function LoginPage() {
 
             {/* Email Field */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-1">
+              <label className="text-[11px] font-black uppercase tracking-wider text-neutral-600 px-1">
                 Email Address
               </label>
               <div className="relative flex items-center">
-                <Mail className="absolute left-3.5 h-4 w-4 text-muted-foreground" />
+                <Mail className="absolute left-3.5 h-4 w-4 text-neutral-400" />
                 <input
                   type="email"
                   placeholder="name@example.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-12 w-full rounded-2xl border border-border/80 bg-secondary/30 pl-10 pr-4 text-sm font-semibold text-foreground placeholder:text-muted-foreground/70 focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
+                  className="h-12 w-full rounded-2xl border border-neutral-200 bg-neutral-50 pl-10 pr-4 text-sm font-semibold text-neutral-900 placeholder:text-neutral-400 focus:border-[#3D784E] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
                 />
               </div>
             </div>
 
             {/* Password Field */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-1">
+              <label className="text-[11px] font-black uppercase tracking-wider text-neutral-600 px-1">
                 Password
               </label>
               <div className="relative flex items-center">
-                <Lock className="absolute left-3.5 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-3.5 h-4 w-4 text-neutral-400" />
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 w-full rounded-2xl border border-border/80 bg-secondary/30 pl-10 pr-11 text-sm font-semibold text-foreground placeholder:text-muted-foreground/70 focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
+                  className="h-12 w-full rounded-2xl border border-neutral-200 bg-neutral-50 pl-10 pr-11 text-sm font-semibold text-neutral-900 placeholder:text-neutral-400 focus:border-[#3D784E] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3.5 text-neutral-400 hover:text-neutral-700 transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -285,18 +286,18 @@ export default function LoginPage() {
                   exit={{ opacity: 0, height: 0 }}
                   className="space-y-1.5 overflow-hidden"
                 >
-                  <label className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-1">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-neutral-600 px-1">
                     Confirm Password
                   </label>
                   <div className="relative flex items-center">
-                    <Lock className="absolute left-3.5 h-4 w-4 text-muted-foreground" />
+                    <Lock className="absolute left-3.5 h-4 w-4 text-neutral-400" />
                     <input
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
                       required
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="h-12 w-full rounded-2xl border border-border/80 bg-secondary/30 pl-10 pr-4 text-sm font-semibold text-foreground placeholder:text-muted-foreground/70 focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
+                      className="h-12 w-full rounded-2xl border border-neutral-200 bg-neutral-50 pl-10 pr-4 text-sm font-semibold text-neutral-900 placeholder:text-neutral-400 focus:border-[#3D784E] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
                     />
                   </div>
                 </motion.div>
@@ -308,9 +309,10 @@ export default function LoginPage() {
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl bg-rose-500/10 p-3 text-xs font-bold text-rose-600 dark:text-rose-400"
+                className="flex items-start gap-2 rounded-2xl bg-rose-50 border border-rose-200 p-3 text-xs font-bold text-rose-700 leading-relaxed"
               >
-                {error}
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-600" />
+                <span>{error}</span>
               </motion.div>
             )}
 
@@ -334,9 +336,9 @@ export default function LoginPage() {
           {/* Clean Divider */}
           <div className="relative my-5 flex items-center justify-center">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border/60" />
+              <div className="w-full border-t border-neutral-200" />
             </div>
-            <span className="relative bg-card px-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+            <span className="relative bg-white px-3 text-[10px] font-black uppercase tracking-wider text-neutral-400">
               or continue with
             </span>
           </div>
@@ -346,7 +348,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleGoogleAuth}
             disabled={submitting}
-            className="flex h-12 w-full items-center justify-center gap-2.5 rounded-2xl border border-border/80 bg-card text-sm font-bold text-foreground shadow-xs hover:bg-secondary/60 active:scale-[0.98] transition-all disabled:opacity-50"
+            className="flex h-12 w-full items-center justify-center gap-2.5 rounded-2xl border border-neutral-200 bg-white text-sm font-bold text-neutral-800 shadow-xs hover:bg-neutral-50 active:scale-[0.98] transition-all disabled:opacity-50"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4">
               <path
@@ -374,14 +376,14 @@ export default function LoginPage() {
             type="button"
             onClick={handleGuestAuth}
             disabled={submitting}
-            className="mt-2.5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#3D784E]/25 bg-[#3D784E]/10 text-xs font-black text-[#3D784E] shadow-2xs hover:bg-[#3D784E]/15 active:scale-[0.98] transition-all disabled:opacity-50"
+            className="mt-2.5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#3D784E]/30 bg-[#3D784E]/10 text-xs font-black text-[#3D784E] shadow-2xs hover:bg-[#3D784E]/15 active:scale-[0.98] transition-all disabled:opacity-50"
           >
             <span>🐢 Continue as Guest (Instant Access)</span>
           </button>
         </div>
 
         {/* Security Footer Note */}
-        <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-muted-foreground/80">
+        <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-neutral-500">
           <ShieldCheck className="h-3.5 w-3.5 text-[#3D784E]" />
           <span>Encrypted PostgreSQL · Private & Secure</span>
         </div>
