@@ -29,13 +29,21 @@ import { AccountDetailsView } from "../account-details-view"
 type AccountFilter = "all" | "assets" | "liabilities"
 
 const DAILY_DOTS = [
-  { day: "T", height: 25 },
-  { day: "W", height: 40 },
+  { day: "T", height: 35 },
+  { day: "W", height: 50 },
   { day: "T", height: 75 },
-  { day: "F", height: 90 },
-  { day: "S", height: 15 },
-  { day: "S", height: 50 },
-  { day: "M", height: 30 },
+  { day: "F", height: 95 },
+  { day: "S", height: 20 },
+  { day: "S", height: 60 },
+  { day: "M", height: 45 },
+]
+
+const WALLET_TIPS = [
+  "Nasa green zone ka ngayon! Proud ako sa'yo, kontrolado mo ang finances mo.",
+  "Ang bawat pisong naiipon mo ngayon ay pundasyon ng iyong kalayaan bukas.",
+  "Ugaliing magtabi agad ng savings pagdating ng sahod bago magsimulang gumastos.",
+  "Maliit man ang simula, kapag tuloy-tuloy, malaki ang mararating ng iyong ipon!",
+  "Subaybayan ang bawat bayarin para maiwasan ang mga penalties at interest.",
 ]
 
 export function WalletsScreen() {
@@ -43,6 +51,7 @@ export function WalletsScreen() {
 
   const [activeFilter, setActiveFilter] = useState<AccountFilter>("all")
   const [showBalance, setShowBalance] = useState(true)
+  const [walletTipIndex, setWalletTipIndex] = useState(0)
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isTransferOpen, setIsTransferOpen] = useState(false)
@@ -51,6 +60,10 @@ export function WalletsScreen() {
   const [txKind, setTxKind] = useState<"income" | "expense">("expense")
   const [txPresetWallet, setTxPresetWallet] = useState<string | undefined>(undefined)
   const [showFolderModal, setShowFolderModal] = useState(false)
+
+  const handleNextWalletTip = () => {
+    setWalletTipIndex((prev) => (prev + 1) % WALLET_TIPS.length)
+  }
 
   // Calculate Asset vs Liability totals
   const assetWallets = wallets.filter((w) => !w.isLiability)
@@ -253,17 +266,26 @@ export function WalletsScreen() {
 
       {/* Insight & Daily Balance Row */}
       <div className="grid grid-cols-2 gap-2.5">
-        {/* Insight Card */}
-        <div className="flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-3.5 shadow-xs">
+        {/* Insight Card: Interactive Pawi Wisdom */}
+        <div
+          onClick={handleNextWalletTip}
+          className="flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-3.5 shadow-xs cursor-pointer hover:border-[#3D784E]/40 active:scale-[0.99] transition-all select-none"
+          title="Tap for next tip from Pawi!"
+        >
           <div className="flex items-center justify-between text-[10px] font-black">
-            <span className="uppercase tracking-wider text-[#3D784E]">INSIGHT</span>
-            <span className="text-muted-foreground flex items-center gap-0.5">Forecast &gt;</span>
+            <span className="uppercase tracking-wider text-[#3D784E] flex items-center gap-1">
+              <span>💡</span> INSIGHT
+            </span>
+            <span className="text-[9px] text-muted-foreground/80 font-bold">Tap &gt;</span>
           </div>
-          <p className="my-2 text-[11px] leading-tight font-semibold text-foreground/85">
+          <p className="my-1.5 text-[11px] leading-snug font-bold text-foreground">
             {activeFilter === "liabilities"
               ? "Panatilihing mababa sa 30% ang utang utilization para laging healthy ang credit score mo!"
-              : "Nasa green zone ka ngayon! Proud ako sa'yo, kontrolado mo ang finances mo."}
+              : WALLET_TIPS[walletTipIndex]}
           </p>
+          <span className="text-[9px] font-black text-[#2E683E] dark:text-[#4ADE80]">
+            Pawi Advice 🐢
+          </span>
         </div>
 
         {/* Daily Balance Mini Chart */}
@@ -286,21 +308,24 @@ export function WalletsScreen() {
                   <div className="h-10 w-full flex items-end justify-center">
                     <div
                       className={cn(
-                        "w-2 rounded-full transition-all",
+                        "w-2.5 rounded-full transition-all",
                         activeFilter === "liabilities"
-                          ? isToday ? "bg-rose-500" : "bg-rose-500/30"
-                          : isToday ? "bg-[#3D784E]" : "bg-[#3D784E]/30 hover:bg-[#3D784E]/60"
+                          ? isToday ? "bg-rose-500 shadow-2xs" : "bg-rose-500/30"
+                          : isToday ? "bg-[#3D784E] shadow-2xs" : "bg-[#3D784E]/30 hover:bg-[#3D784E]/60"
                       )}
                       style={{ height: `${dot.height}%` }}
                     />
                   </div>
-                  <span className={cn("text-[8px] font-black", isToday ? "text-foreground font-extrabold" : "text-muted-foreground")}>
+                  <span className={cn("text-[9px] font-black", isToday ? "text-foreground font-extrabold" : "text-muted-foreground")}>
                     {dot.day}
                   </span>
                 </div>
               )
             })}
           </div>
+          <p className="text-[9px] font-bold text-muted-foreground/80 text-right">
+            Avg: ₱1,420/day
+          </p>
         </div>
       </div>
 
