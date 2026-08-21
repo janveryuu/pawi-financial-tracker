@@ -147,19 +147,20 @@ export function HomeScreen({
     }
 
     // 2. Payday Countdown Context
-    if (paydayCountdown.configured) {
-      if (paydayCountdown.daysRemaining <= 3 && paydayCountdown.daysRemaining > 0) {
+    if (paydayCountdown?.configured) {
+      const days = paydayCountdown.daysRemaining ?? 0
+      if (days <= 3 && days > 0) {
         list.push(
-          `Konting tiis na lang, ${paydayCountdown.daysRemaining} araw na lang sahod na! Ready na ba ang budget allocation mo?`,
+          `Konting tiis na lang, ${days} araw na lang sahod na! Ready na ba ang budget allocation mo?`,
           "Malapit na ang sweldo! Unahin agad ang savings at bills bago ang luho ha."
         )
-      } else if (paydayCountdown.daysRemaining === 0) {
+      } else if (days === 0) {
         list.push(
           "Payday na today! 🎉 Tabi agad ang 20% para sa savings bago gastusin ang iba."
         )
       } else {
         list.push(
-          `${paydayCountdown.daysRemaining} days pa bago mag-sahod. Tipid tip: Magbaon ng lunch at iwas sa impulsive milk tea!`
+          `${days} days pa bago mag-sahod. Tipid tip: Magbaon ng lunch at iwas sa impulsive milk tea!`
         )
       }
     } else {
@@ -410,7 +411,7 @@ export function HomeScreen({
       </div>
 
       {/* Payday Countdown Card */}
-      {paydayCountdown.configured ? (
+      {paydayCountdown?.configured ? (
         <div
           onClick={() => setShowPaydayModal(true)}
           className="flex items-center justify-between rounded-3xl border border-[#3D784E]/20 bg-gradient-to-r from-[#3D784E]/10 via-[#3D784E]/5 to-transparent p-4 shadow-xs cursor-pointer hover:border-[#3D784E]/40 active:scale-[0.99] transition-all"
@@ -427,19 +428,19 @@ export function HomeScreen({
               <p className="text-base font-black text-foreground mt-0.5">
                 {paydayCountdown.daysRemaining === 0
                   ? "Payday today! 🎉"
-                  : `${paydayCountdown.daysRemaining} ${paydayCountdown.daysRemaining === 1 ? "day" : "days"}`}
+                  : `${paydayCountdown.daysRemaining ?? 0} ${(paydayCountdown.daysRemaining ?? 0) === 1 ? "day" : "days"}`}
               </p>
             </div>
           </div>
 
           <div className="text-right">
-            {paydayCountdown.amount > 0 && (
+            {(paydayCountdown.amount || 0) > 0 && (
               <p className="text-sm font-black text-foreground tabular-nums">
-                {formatMoney(paydayCountdown.amount)}
+                {formatMoney(paydayCountdown.amount || 0)}
               </p>
             )}
             <p className="text-[11px] font-semibold text-muted-foreground mt-0.5">
-              {paydayCountdown.formattedDate}
+              {paydayCountdown.formattedDate || ""}
             </p>
           </div>
         </div>

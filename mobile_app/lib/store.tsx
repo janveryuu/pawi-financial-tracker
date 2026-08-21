@@ -1172,6 +1172,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
     ]
 
+    const cleanPayday: PaydayConfig = {
+      configured: false,
+      day1: 15,
+      day2: 30,
+      frequency: "semi-monthly",
+      amount: 0,
+    }
+
     const cleanState: State = {
       wallets: userStarterWallets,
       transactions: [],
@@ -1189,10 +1197,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         },
       ],
       defaultCurrency: "PHP",
-      streakDays: 1,
-      daysUntilPayday: 25,
-      paydayAmount: 0,
-      paydayDate: "May 15",
+      streakDays: 0,
+      paydayConfig: cleanPayday,
+      paydayCountdown: computePaydayCountdown(cleanPayday),
     }
     setState(cleanState)
 
@@ -1208,6 +1215,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("pawi_debts")
         localStorage.removeItem("pawi_receivables")
         localStorage.removeItem("pawi_planned_payments")
+        localStorage.removeItem("pawi_payday_config")
         localStorage.removeItem("sentimo_insight_history")
         localStorage.removeItem("pawi_user_data_wiped")
       } catch (e) {
@@ -1255,6 +1263,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }
 
   const loadSampleData = async () => {
+    const demoPayday: PaydayConfig = {
+      configured: true,
+      day1: 15,
+      day2: 30,
+      frequency: "semi-monthly",
+      amount: 18500,
+    }
+
     const sampleState: State = {
       wallets: demoWallets,
       transactions: demoTransactions,
@@ -1273,9 +1289,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ],
       defaultCurrency: "PHP",
       streakDays: 6,
-      daysUntilPayday: 25,
-      paydayAmount: 18500,
-      paydayDate: "May 15",
+      paydayConfig: demoPayday,
+      paydayCountdown: computePaydayCountdown(demoPayday),
     }
     setState(sampleState)
 

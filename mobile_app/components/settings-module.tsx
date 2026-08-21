@@ -288,7 +288,7 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
             <div>
               <p className="text-sm font-semibold text-foreground">Payday Schedule</p>
               <p className="text-[11px] text-muted-foreground">
-                {paydayCountdown.configured
+                {paydayCountdown?.configured
                   ? `Next: ${paydayCountdown.formattedDate} (${paydayCountdown.daysRemaining}d)`
                   : "Not configured yet"}
               </p>
@@ -299,7 +299,7 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
             onClick={() => setShowPaydayModal(true)}
             className="rounded-xl border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-foreground hover:bg-secondary/80"
           >
-            {paydayCountdown.configured ? "Edit" : "Set up"}
+            {paydayCountdown?.configured ? "Edit" : "Set up"}
           </button>
         </div>
       </div>
