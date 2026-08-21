@@ -13,15 +13,16 @@ import {
   Tag,
   CurrencyCode,
   getWalletBrandColor,
-  wallets as defaultWallets,
-  transactions as defaultTransactions,
-  goals as defaultGoals,
-  budgets as defaultBudgets,
-  debts as defaultDebts,
-  receivables as defaultReceivables,
-  plannedPayments as defaultPlannedPayments,
-  installments as defaultInstallments,
-  tags as defaultTags,
+  starterWallets,
+  demoWallets,
+  demoTransactions,
+  demoGoals,
+  demoBudgets,
+  demoDebts,
+  demoReceivables,
+  demoPlannedPayments,
+  demoInstallments,
+  demoTags,
 } from "./pawi-data"
 import { useAuth } from "./auth-context"
 import { supabase } from "./supabase"
@@ -98,40 +99,40 @@ interface StoreContextType extends State {
 
 const StoreContext = createContext<StoreContextType | null>(null)
 
-// -------------------------------------------------------------
-// Data Mapping Layer: Frontend Models <-> Supabase PostgreSQL
-// -------------------------------------------------------------
-
+// ---------------------------------------------------------
+// Helper: Map between Supabase DB rows and App types
+// ---------------------------------------------------------
 function mapAccountToWallet(row: any): Wallet {
   const brandColor = getWalletBrandColor(row.name, row.type, row.accent)
   return {
     id: row.id,
     name: row.name,
-    subtitle: `${row.type === "credit" ? "Credit" : row.type === "loan" ? "Loans" : "Debit"} · ${row.currency || "PHP"}`,
+    subtitle: row.subtitle || (row.type === "savings" ? "Savings · PHP" : row.type === "credit" ? `Credit · ${row.currency || "PHP"}` : "E-Wallet · PHP"),
     balance: Number(row.balance) || 0,
-    currency: (row.currency as CurrencyCode) || "PHP",
+    currency: row.currency || "PHP",
     type: row.type || "cash",
-    group: row.type === "credit" ? "credit" : row.type === "loan" ? "loan" : row.type === "ewallet" ? "ewallet" : "bank",
+    group: row.group || (row.type === "credit" ? "credit" : row.type === "loan" ? "loan" : row.type === "savings" ? "bank" : "ewallet"),
     accent: brandColor,
-    isLiability: Boolean(row.is_liability),
-    creditLimit: Number(row.credit_limit) || undefined,
-    usedCredit: Number(row.used_credit) || undefined,
-    interestRate: row.interest_rate || undefined,
-    dueDay: row.due_day || undefined,
-    notes: row.notes || undefined,
-    spendable: Number(row.balance) || 0,
+    isLiability: row.is_liability ?? (row.type === "credit" || row.type === "loan"),
+    creditLimit: row.credit_limit ? Number(row.credit_limit) : undefined,
+    usedCredit: row.used_credit ? Number(row.used_credit) : undefined,
+    interestRate: row.interest_rate,
+    dueDay: row.due_day,
+    notes: row.notes,
   }
 }
 
 function mapWalletToAccount(w: Wallet, userId: string): any {
   return {
-    id: w.id,
+    id: w.id.includes("_") ? w.id : `${w.id}_${userId}`,
     user_id: userId,
     name: w.name,
-    type: w.type,
-    balance: w.balance,
-    currency: w.currency,
-    is_liability: Boolean(w.isLiability),
+    type: w.type || "cash",
+    balance: w.balance || 0,
+    currency: w.currency || "PHP",
+    color: 1,
+    icon: w.type === "ewallet" ? "gcash" : w.type === "savings" ? "bdo" : "wallet",
+    is_liability: !!w.isLiability,
     credit_limit: w.creditLimit || 0,
     used_credit: w.usedCredit || 0,
     interest_rate: w.interestRate || null,
@@ -145,17 +146,16 @@ function mapTxRowToTransaction(row: any): Transaction {
   return {
     id: row.id,
     label: row.title,
-    category: row.merchant || "General",
+    category: row.category_id || "General",
+    note: row.notes || undefined,
+    tag: row.tags && row.tags.length > 0 ? row.tags[0] : undefined,
     account: row.account_id || "Cash",
     time: row.transaction_time || "12:00 PM",
     amount: Number(row.amount) || 0,
-    currency: (row.currency as CurrencyCode) || "PHP",
-    kind: row.type === "income" ? "income" : "expense",
-    date: row.transaction_date || "Today",
-    dateHeader: "Today",
-    note: row.notes || undefined,
-    tag: row.tags?.[0] || undefined,
-    receipt_url: row.receipt_url || undefined,
+    currency: row.currency || "PHP",
+    kind: row.type === "income" ? "income" : row.type === "transfer" ? "transfer" : "expense",
+    date: row.transaction_date || new Date().toISOString().split("T")[0],
+    icon: "💰",
   }
 }
 
@@ -164,28 +164,30 @@ function mapTransactionToRow(t: Transaction, userId: string): any {
     id: t.id,
     user_id: userId,
     title: t.label,
-    type: t.kind,
     amount: t.amount,
-    currency: t.currency,
-    merchant: t.category,
-    account_id: t.account,
-    transaction_date: t.date === "Today" ? new Date().toISOString().split("T")[0] : t.date || new Date().toISOString().split("T")[0],
-    transaction_time: t.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    currency: t.currency || "PHP",
+    type: t.kind === "income" ? "income" : t.kind === "transfer" ? "transfer" : "expense",
     notes: t.note || null,
     tags: t.tag ? [t.tag] : [],
-    receipt_url: t.receipt_url || null,
+    transaction_date: t.date || new Date().toISOString().split("T")[0],
+    transaction_time: t.time || "12:00 PM",
+    account_id: t.account,
+    category_id: t.category,
   }
 }
 
-function mapGoalRowToGoal(row: any): Goal {
+function mapGoalRowToGoal(g: any): Goal {
   return {
-    id: row.id,
-    name: row.title,
-    due: row.target_date || "Dec 31",
-    saved: Number(row.current_amount) || 0,
-    target: Number(row.target_amount) || 0,
-    accent: "#3D784E",
-    icon: row.icon || "🎯",
+    id: g.id,
+    label: g.title,
+    target: Number(g.target_amount) || 0,
+    saved: Number(g.current_amount) || 0,
+    dueDate: g.target_date || "2026-12-31",
+    color: "#3D784E",
+    icon: g.icon || "🎯",
+    linkedAccount: "BPI Savings",
+    category: "General",
+    createdDate: g.created_at,
   }
 }
 
@@ -193,23 +195,25 @@ function mapGoalToRow(g: Goal, userId: string): any {
   return {
     id: g.id,
     user_id: userId,
-    title: g.name,
+    title: g.label,
     target_amount: g.target,
     current_amount: g.saved,
-    target_date: g.due || null,
+    target_date: g.dueDate,
     icon: g.icon || "🎯",
+    color: 1,
     completed: g.saved >= g.target,
   }
 }
 
-function mapCatRowToBudget(row: any): Budget {
+function mapCatRowToBudget(c: any): Budget {
   return {
-    id: row.id,
-    category: row.name,
-    spent: Number(row.spent) || 0,
-    limit: Number(row.monthly_limit) || 0,
-    accent: "#3D784E",
-    icon: row.icon || "🍽️",
+    id: c.id,
+    category: c.name,
+    limit: Number(c.monthly_limit) || 0,
+    spent: Number(c.spent) || 0,
+    period: "Monthly",
+    icon: c.icon || "🍽️",
+    color: "#3D784E",
   }
 }
 
@@ -227,19 +231,18 @@ function mapBudgetToRow(b: Budget, userId: string): any {
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
-  const isWipedInitially = typeof window !== "undefined" && localStorage.getItem("pawi_user_data_wiped") === "true"
+  const { user, isGuest } = useAuth()
 
   const [state, setState] = useState<State>({
-    wallets: isWipedInitially ? [] : defaultWallets,
-    transactions: isWipedInitially ? [] : defaultTransactions,
-    goals: isWipedInitially ? [] : defaultGoals,
-    budgets: isWipedInitially ? [] : defaultBudgets,
-    debts: isWipedInitially ? [] : defaultDebts,
-    receivables: isWipedInitially ? [] : defaultReceivables,
-    plannedPayments: isWipedInitially ? [] : defaultPlannedPayments,
-    installments: isWipedInitially ? [] : defaultInstallments,
-    tags: isWipedInitially ? [] : defaultTags,
+    wallets: starterWallets,
+    transactions: [],
+    goals: [],
+    budgets: [],
+    debts: [],
+    receivables: [],
+    plannedPayments: [],
+    installments: [],
+    tags: [],
     chatMessages: [
       {
         role: "assistant",
@@ -249,42 +252,57 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     defaultCurrency: "PHP",
     streakDays: 1,
     daysUntilPayday: 25,
-    paydayAmount: 18500,
+    paydayAmount: 0,
     paydayDate: "May 15",
   })
 
   // Load and sync from Supabase PostgreSQL tables
   useEffect(() => {
     if (!user) {
-      const isWiped = typeof window !== "undefined" && localStorage.getItem("pawi_user_data_wiped") === "true"
-      if (isWiped) {
+      if (isGuest || (typeof window !== "undefined" && localStorage.getItem("pawi_guest_session") === "true")) {
         setState((prev) => ({
           ...prev,
-          wallets: [],
-          transactions: [],
-          goals: [],
-          budgets: [],
-          debts: [],
-          receivables: [],
-          plannedPayments: [],
-          installments: [],
-          tags: [],
+          wallets: demoWallets,
+          transactions: demoTransactions,
+          goals: demoGoals,
+          budgets: demoBudgets,
+          debts: demoDebts,
+          receivables: demoReceivables,
+          plannedPayments: demoPlannedPayments,
+          installments: demoInstallments,
+          tags: demoTags,
         }))
         return
       }
 
-      // Local fallback state
+      // Offline / default starter fallback state (clean minimal starter set)
       setState((prev) => ({
         ...prev,
-        wallets: defaultWallets,
-        transactions: defaultTransactions,
-        goals: defaultGoals,
-        budgets: defaultBudgets,
-        debts: defaultDebts,
-        receivables: defaultReceivables,
-        plannedPayments: defaultPlannedPayments,
-        installments: defaultInstallments,
-        tags: defaultTags,
+        wallets: starterWallets,
+        transactions: [],
+        goals: [],
+        budgets: [],
+        debts: [],
+        receivables: [],
+        plannedPayments: [],
+        installments: [],
+        tags: [],
+      }))
+      return
+    }
+
+    if (isGuest || user.email === "demo@pawi.app") {
+      setState((prev) => ({
+        ...prev,
+        wallets: demoWallets,
+        transactions: demoTransactions,
+        goals: demoGoals,
+        budgets: demoBudgets,
+        debts: demoDebts,
+        receivables: demoReceivables,
+        plannedPayments: demoPlannedPayments,
+        installments: demoInstallments,
+        tags: demoTags,
       }))
       return
     }
@@ -301,13 +319,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           { data: billsData },
         ] = await Promise.all([
           supabase.from("accounts").select("*").eq("user_id", userId),
-          supabase.from("transactions").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+          supabase.from("transactions").select("*").eq("user_id", userId).order("transaction_date", { ascending: false }),
           supabase.from("savings_goals").select("*").eq("user_id", userId),
           supabase.from("categories").select("*").eq("user_id", userId),
           supabase.from("recurring_bills").select("*").eq("user_id", userId),
         ])
 
-        // If user has accounts in database, hydrate state from Supabase
+        // If user already has accounts in database, hydrate state from Supabase
         if (accountsData && accountsData.length > 0) {
           setState((prev) => ({
             ...prev,
@@ -329,11 +347,64 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               : [],
           }))
         } else {
-          // If no accounts found in Supabase (empty database or user wiped data),
-          // maintain clean empty state without auto-seeding mock data
+          // If no accounts found in Supabase (brand-new user), insert minimal starter set (GCash + BDO at 0.00)
+          const starterAccountsToInsert = [
+            {
+              id: `gcash_${userId}`,
+              user_id: userId,
+              name: "GCash",
+              type: "ewallet",
+              balance: 0.0,
+              currency: "PHP",
+              color: 1,
+              icon: "gcash",
+              is_liability: false,
+            },
+            {
+              id: `bdo_${userId}`,
+              user_id: userId,
+              name: "BDO",
+              type: "savings",
+              balance: 0.0,
+              currency: "PHP",
+              color: 2,
+              icon: "bdo",
+              is_liability: false,
+            },
+          ]
+
+          await supabase.from("accounts").upsert(starterAccountsToInsert)
+
+          const userStarterWallets: Wallet[] = [
+            {
+              id: `gcash_${userId}`,
+              name: "GCash",
+              subtitle: "E-Wallet · PHP",
+              balance: 0,
+              currency: "PHP",
+              type: "ewallet",
+              group: "ewallet",
+              accent: "#007DFE",
+              spendable: 0,
+              notes: "Primary digital wallet for bills, food, and online transfers.",
+            },
+            {
+              id: `bdo_${userId}`,
+              name: "BDO",
+              subtitle: "Savings · PHP",
+              balance: 0,
+              currency: "PHP",
+              type: "savings",
+              group: "bank",
+              accent: "#003882",
+              spendable: 0,
+              notes: "Primary bank account.",
+            },
+          ]
+
           setState((prev) => ({
             ...prev,
-            wallets: [],
+            wallets: userStarterWallets,
             transactions: [],
             goals: [],
             budgets: [],
@@ -861,8 +932,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }
 
   const resetAccountData = async () => {
+    const userId = user ? (user.id || (user as any).uid) : "local"
+    const userStarterWallets: Wallet[] = [
+      {
+        id: user ? `gcash_${userId}` : "gcash",
+        name: "GCash",
+        subtitle: "E-Wallet · PHP",
+        balance: 0,
+        currency: "PHP",
+        type: "ewallet",
+        group: "ewallet",
+        accent: "#007DFE",
+        spendable: 0,
+        notes: "Primary digital wallet for bills, food, and online transfers.",
+      },
+      {
+        id: user ? `bdo_${userId}` : "bdo",
+        name: "BDO",
+        subtitle: "Savings · PHP",
+        balance: 0,
+        currency: "PHP",
+        type: "savings",
+        group: "bank",
+        accent: "#003882",
+        spendable: 0,
+        notes: "Primary bank account.",
+      },
+    ]
+
     const cleanState: State = {
-      wallets: [],
+      wallets: userStarterWallets,
       transactions: [],
       goals: [],
       budgets: [],
@@ -898,35 +997,62 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("pawi_receivables")
         localStorage.removeItem("pawi_planned_payments")
         localStorage.removeItem("sentimo_insight_history")
-        localStorage.setItem("pawi_user_data_wiped", "true")
+        localStorage.removeItem("pawi_user_data_wiped")
       } catch (e) {
         console.warn("Error clearing localStorage:", e)
       }
     }
 
-    if (user) {
-      const userId = user.id || (user as any).uid
+    if (user && !isGuest) {
+      // 1. Delete all previous transactions, goals, categories, bills, and accounts
       await Promise.allSettled([
-        supabase.from("accounts").delete().eq("user_id", userId),
         supabase.from("transactions").delete().eq("user_id", userId),
         supabase.from("savings_goals").delete().eq("user_id", userId),
         supabase.from("categories").delete().eq("user_id", userId),
         supabase.from("recurring_bills").delete().eq("user_id", userId),
+        supabase.from("accounts").delete().eq("user_id", userId),
       ])
+
+      // 2. Re-insert the 2 clean starter accounts (GCash 0, BDO 0)
+      const starterAccounts = [
+        {
+          id: `gcash_${userId}`,
+          user_id: userId,
+          name: "GCash",
+          type: "ewallet",
+          balance: 0.0,
+          currency: "PHP",
+          color: 1,
+          icon: "gcash",
+          is_liability: false,
+        },
+        {
+          id: `bdo_${userId}`,
+          user_id: userId,
+          name: "BDO",
+          type: "savings",
+          balance: 0.0,
+          currency: "PHP",
+          color: 2,
+          icon: "bdo",
+          is_liability: false,
+        },
+      ]
+      await supabase.from("accounts").upsert(starterAccounts)
     }
   }
 
   const loadSampleData = async () => {
     const sampleState: State = {
-      wallets: defaultWallets,
-      transactions: defaultTransactions,
-      goals: defaultGoals,
-      budgets: defaultBudgets,
-      debts: defaultDebts,
-      receivables: defaultReceivables,
-      plannedPayments: defaultPlannedPayments,
-      installments: defaultInstallments,
-      tags: defaultTags,
+      wallets: demoWallets,
+      transactions: demoTransactions,
+      goals: demoGoals,
+      budgets: demoBudgets,
+      debts: demoDebts,
+      receivables: demoReceivables,
+      plannedPayments: demoPlannedPayments,
+      installments: demoInstallments,
+      tags: demoTags,
       chatMessages: [
         {
           role: "assistant",
@@ -941,13 +1067,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     setState(sampleState)
 
-    if (user) {
+    if (user && !isGuest) {
       const userId = user.id || (user as any).uid
       await Promise.allSettled([
-        supabase.from("accounts").upsert(defaultWallets.map((w) => mapWalletToAccount(w, userId))),
-        supabase.from("categories").upsert(defaultBudgets.map((b) => mapBudgetToRow(b, userId))),
-        supabase.from("savings_goals").upsert(defaultGoals.map((g) => mapGoalToRow(g, userId))),
-        supabase.from("transactions").upsert(defaultTransactions.map((t) => mapTransactionToRow(t, userId))),
+        supabase.from("accounts").upsert(demoWallets.map((w) => mapWalletToAccount(w, userId))),
+        supabase.from("categories").upsert(demoBudgets.map((b) => mapBudgetToRow(b, userId))),
+        supabase.from("savings_goals").upsert(demoGoals.map((g) => mapGoalToRow(g, userId))),
+        supabase.from("transactions").upsert(demoTransactions.map((t) => mapTransactionToRow(t, userId))),
       ])
     }
   }

@@ -164,10 +164,11 @@ create policy "Users manage own bills" on public.recurring_bills for all using (
 create policy "Users manage own goals" on public.savings_goals for all using (auth.uid() = user_id);
 create policy "Users manage own push" on public.push_subscriptions for all using (auth.uid() = user_id);
 
--- 12. Auto-Profile Creation Trigger on auth.users Signup
+-- 12. Auto-Profile Creation & Starter Accounts Trigger on auth.users Signup
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
+  -- 1. Create User Profile
   insert into public.profiles (id, name, initials, avatar_url)
   values (
     new.id,
@@ -176,6 +177,14 @@ begin
     new.raw_user_meta_data->>'avatar_url'
   )
   on conflict (id) do nothing;
+
+  -- 2. Create Minimal Starter Accounts (GCash + BDO at ₱0.00)
+  insert into public.accounts (id, user_id, name, type, balance, currency, is_liability, icon, color)
+  values 
+    ('gcash_' || new.id, new.id, 'GCash', 'ewallet', 0.00, 'PHP', false, 'gcash', 1),
+    ('bdo_' || new.id, new.id, 'BDO', 'savings', 0.00, 'PHP', false, 'bdo', 2)
+  on conflict (id) do nothing;
+
   return new;
 end;
 $$ language plpgsql security definer;

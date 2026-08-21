@@ -216,7 +216,39 @@ export interface Tag {
   count?: number
 }
 
-export const wallets: Wallet[] = [
+// Minimal starter account set for real users (GCash + BDO at ₱0.00)
+export const starterWallets: Wallet[] = [
+  {
+    id: "gcash",
+    name: "GCash",
+    subtitle: "E-Wallet · PHP",
+    balance: 0,
+    currency: "PHP",
+    type: "ewallet",
+    group: "ewallet",
+    accent: "#007DFE",
+    spendable: 0,
+    notes: "Primary digital wallet for bills, food, and online transfers.",
+  },
+  {
+    id: "bdo",
+    name: "BDO",
+    subtitle: "Savings · PHP",
+    balance: 0,
+    currency: "PHP",
+    type: "savings",
+    group: "bank",
+    accent: "#003882",
+    spendable: 0,
+    notes: "Primary bank account.",
+  },
+]
+
+// Default export is the minimal starter set
+export const wallets: Wallet[] = starterWallets
+
+// Full demo dataset used ONLY for Guest / Interactive Demo Mode
+export const demoWallets: Wallet[] = [
   // E-wallets
   {
     id: "gcash",
@@ -633,6 +665,15 @@ export const tags: Tag[] = [
   { id: "tag_5", label: "Coffee", color: "#D97706", count: 12 },
   { id: "tag_6", label: "Travel", color: "#0D9488", count: 8 },
 ]
+
+export const demoTransactions = transactions
+export const demoGoals = goals
+export const demoBudgets = budgets
+export const demoDebts = debts
+export const demoReceivables = receivables
+export const demoPlannedPayments = plannedPayments
+export const demoInstallments = installments
+export const demoTags = tags
 
 export function formatMoney(amount: number, currency: CurrencyCode = "PHP") {
   return new Intl.NumberFormat("en-US", {
