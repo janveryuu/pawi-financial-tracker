@@ -1,9 +1,11 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { Lightbulb, ScanLine, Sparkles, X, Loader2, AlertCircle } from "lucide-react"
+import { Lightbulb, ScanLine, Sparkles, X, Loader2, AlertCircle, ArrowRight, Check } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 import { useStore } from "@/lib/store"
 import { useAuth } from "@/lib/auth-context"
+import { cn } from "@/lib/utils"
 
 interface QuickLogModalProps {
   open: boolean
@@ -13,7 +15,8 @@ interface QuickLogModalProps {
 const examples = [
   "Spent 250 on lunch",
   "Salary 15000 to GCash",
-  "Transfer 1000 to Paymaya",
+  "Transfer 1000 to Maya",
+  "₱1,200 groceries at SM",
 ]
 
 export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
@@ -44,38 +47,40 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
       "salary", "income", "receive", "received", "receiving",
       "add", "added", "gain", "gained", "allowance",
       "bonus", "freelance", "payout", "paycheck", "deposit",
-      "dividend", "refund", "gift", "cash in", "cashin", "earned", "earn",
+      "dividend", "refund", "gift", "cash in", "cashin", "earned", "earn", "sahod", "sweldo",
     ]
     const isIncome = incomeKeywords.some((kw) => lowerValue.includes(kw))
 
     // Determine Account
     let account = "Cash"
     if (lowerValue.includes("gcash")) account = "GCash"
-    if (lowerValue.includes("paymaya") || lowerValue.includes("maya")) account = "Paymaya"
+    if (lowerValue.includes("paymaya") || lowerValue.includes("maya")) account = "Maya"
     if (lowerValue.includes("rcbc") || lowerValue.includes("visa") || lowerValue.includes("card")) account = "RCBC Visa"
     if (lowerValue.includes("bpi")) account = "BPI Savings"
     if (lowerValue.includes("bdo")) account = "BDO Mastercard"
+    if (lowerValue.includes("seabank")) account = "SeaBank"
+    if (lowerValue.includes("unionbank")) account = "UnionBank"
 
     // Determine Category
     let category = isIncome ? "Income" : "General"
     if (isIncome) {
       if (lowerValue.includes("freelance")) category = "Freelance"
-      else if (lowerValue.includes("salary")) category = "Salary"
+      else if (lowerValue.includes("salary") || lowerValue.includes("sahod") || lowerValue.includes("sweldo")) category = "Salary"
       else if (lowerValue.includes("allowance")) category = "Allowance"
       else if (lowerValue.includes("bonus")) category = "Bonus"
     } else {
-      if (lowerValue.includes("lunch") || lowerValue.includes("food") || lowerValue.includes("dinner") || lowerValue.includes("breakfast") || lowerValue.includes("coffee")) category = "Food & Dining"
-      if (lowerValue.includes("groceries") || lowerValue.includes("supermarket")) category = "Groceries"
-      if (lowerValue.includes("ride") || lowerValue.includes("grab") || lowerValue.includes("taxi") || lowerValue.includes("transport")) category = "Transport"
-      if (lowerValue.includes("netflix") || lowerValue.includes("game") || lowerValue.includes("movie")) category = "Entertainment"
-      if (lowerValue.includes("shopping") || lowerValue.includes("uniqlo") || lowerValue.includes("zara")) category = "Shopping"
+      if (lowerValue.includes("lunch") || lowerValue.includes("food") || lowerValue.includes("dinner") || lowerValue.includes("breakfast") || lowerValue.includes("coffee") || lowerValue.includes("milk tea")) category = "Food & Dining"
+      if (lowerValue.includes("groceries") || lowerValue.includes("supermarket") || lowerValue.includes("sm") || lowerValue.includes("puregold")) category = "Groceries"
+      if (lowerValue.includes("ride") || lowerValue.includes("grab") || lowerValue.includes("taxi") || lowerValue.includes("transport") || lowerValue.includes("gas") || lowerValue.includes("angkas")) category = "Transport"
+      if (lowerValue.includes("netflix") || lowerValue.includes("game") || lowerValue.includes("movie") || lowerValue.includes("spotify")) category = "Entertainment"
+      if (lowerValue.includes("shopping") || lowerValue.includes("uniqlo") || lowerValue.includes("zara") || lowerValue.includes("shopee") || lowerValue.includes("lazada")) category = "Shopping"
     }
 
     addTransaction({
       label: value.trim(),
       category,
       account,
-      amount,
+      amount: amount || 250,
       currency: "PHP",
       kind: isIncome ? "income" : "expense",
       receipt_url: scannedReceiptUrl || undefined,
@@ -145,21 +150,36 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <button
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
       />
-      <div className="relative z-10 w-full max-w-md rounded-t-3xl bg-card p-5 shadow-2xl sm:rounded-3xl animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.96 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        className="relative z-10 w-full max-w-md rounded-t-[2.5rem] bg-card p-6 text-foreground shadow-2xl sm:rounded-[2.5rem] border border-border/80"
+      >
+        {/* Header */}
         <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary">
-              <Sparkles className="h-[18px] w-[18px]" />
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E]">
+              <Sparkles className="h-5 w-5" />
             </div>
-            <h2 className="text-base font-semibold text-foreground">
-              Quick Log
-            </h2>
+            <div>
+              <h2 className="text-lg font-black tracking-tight text-foreground">
+                Quick Log
+              </h2>
+              <p className="text-xs font-semibold text-muted-foreground">
+                Natural language or AI receipt scanner
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -167,52 +187,58 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-accent"
           >
-            <X className="h-[18px] w-[18px]" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <label htmlFor="quick-log-input" className="sr-only">
-          Transaction
-        </label>
-        <textarea
-          id="quick-log-input"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          rows={3}
-          autoFocus
-          placeholder="Type a transaction... e.g., 'Spent 250 on lunch'"
-          className="w-full resize-none rounded-2xl border border-border bg-secondary/40 p-4 text-sm text-foreground outline-none ring-primary/30 transition placeholder:text-muted-foreground focus:ring-2"
-        />
+        {/* Text Input Area */}
+        <div className="relative">
+          <textarea
+            id="quick-log-input"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            rows={3}
+            autoFocus
+            placeholder="Type a transaction... e.g., 'Spent 250 on lunch' or 'Sahod 15000 GCash'"
+            className="w-full resize-none rounded-2xl border border-border/80 bg-secondary/30 p-4 text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all leading-relaxed"
+          />
+        </div>
 
+        {/* OCR Field Notice */}
         {lowFields.length > 0 && (
           <div className="mt-2 flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-700 dark:text-amber-300">
             <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>Please double check OCR fields: {lowFields.join(", ")}</span>
+            <span>Double check scanned fields: {lowFields.join(", ")}</span>
           </div>
         )}
 
-        <div className="mt-3 flex flex-wrap gap-2">
+        {/* Quick Suggestion Chips */}
+        <div className="mt-3 flex flex-wrap gap-1.5">
           {examples.map((ex) => (
             <button
               key={ex}
               type="button"
               onClick={() => setValue(ex)}
-              className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent"
+              className="rounded-xl border border-border/70 bg-card px-3 py-1.5 text-xs font-bold text-foreground/80 shadow-2xs transition-all hover:bg-secondary hover:text-foreground active:scale-95"
             >
               {ex}
             </button>
           ))}
         </div>
 
-        <div className="mt-4 flex items-start gap-2.5 rounded-2xl bg-primary/10 p-3.5">
-          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-          <p className="text-pretty text-xs leading-relaxed text-foreground/80">
-            <span className="font-semibold text-foreground">Tip. </span>
-            Track every expense, no matter how small. Small leaks can sink a great ship.
+        {/* Smart Pawi Tip Card */}
+        <div className="mt-3.5 flex items-start gap-2.5 rounded-2xl border border-[#3D784E]/20 bg-[#3D784E]/10 p-3 text-foreground">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#3D784E] text-white shadow-2xs">
+            <Lightbulb className="h-3.5 w-3.5" />
+          </div>
+          <p className="text-[11px] font-semibold leading-relaxed text-foreground/90">
+            <span className="font-black text-[#2E683E] dark:text-[#4ADE80]">Tip: </span>
+            Track every expense, no matter how small. Small leaks can sink a great ship!
           </p>
         </div>
 
-        <div className="mt-4 flex gap-3">
+        {/* Action Buttons */}
+        <div className="mt-5 flex gap-2.5">
           {/* Rear camera capture */}
           <input
             type="file"
@@ -226,25 +252,26 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isScanning}
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-card py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border/80 bg-card py-3 text-xs font-black text-foreground shadow-xs transition-all hover:bg-secondary active:scale-[0.98] disabled:opacity-50"
           >
             {isScanning ? (
-              <Loader2 className="h-[18px] w-[18px] animate-spin text-primary" />
+              <Loader2 className="h-4 w-4 animate-spin text-[#3D784E]" />
             ) : (
-              <ScanLine className="h-[18px] w-[18px]" />
+              <ScanLine className="h-4 w-4 text-[#3D784E]" />
             )}
-            {isScanning ? "Gemini Scanning..." : "Scan Receipt (AI)"}
+            <span>{isScanning ? "Scanning..." : "Scan Receipt (AI)"}</span>
           </button>
           <button
             type="button"
             onClick={handleLog}
             disabled={!value.trim() || isScanning}
-            className="flex-1 rounded-2xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-opacity disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-[#3D784E] py-3 text-xs font-black text-white shadow-md shadow-[#3D784E]/25 transition-all hover:bg-[#356B46] active:scale-[0.98] disabled:opacity-50"
           >
-            Log Transaction
+            <Check className="h-4 w-4" />
+            <span>Log Transaction</span>
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }

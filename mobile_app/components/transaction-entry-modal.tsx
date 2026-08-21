@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 interface TransactionEntryModalProps {
   open: boolean
   kind: "income" | "expense"
+  initialAccount?: string
   onClose: () => void
 }
 
@@ -51,7 +52,7 @@ const RECENT_EXPENSE_TEMPLATES = [
   { wallet: "RCBC Visa", amount: 549, note: "Netflix Premium", category: "Entertainment" },
 ]
 
-export function TransactionEntryModal({ open, kind, onClose }: TransactionEntryModalProps) {
+export function TransactionEntryModal({ open, kind, initialAccount, onClose }: TransactionEntryModalProps) {
   const { wallets, addTransaction, defaultCurrency } = useStore()
 
   const [displayValue, setDisplayValue] = useState("0")
@@ -75,13 +76,15 @@ export function TransactionEntryModal({ open, kind, onClose }: TransactionEntryM
       setTag("")
       setShowTagInput(false)
       setSelectedCategory(categories[0]?.label || "")
-      if (wallets.length > 0) {
+      if (initialAccount) {
+        setSelectedWalletName(initialAccount)
+      } else if (wallets.length > 0) {
         setSelectedWalletName(wallets[0].name)
       } else {
         setSelectedWalletName("Cash")
       }
     }
-  }, [open, kind, wallets, categories])
+  }, [open, kind, initialAccount, wallets, categories])
 
   if (!open) return null
 
