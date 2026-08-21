@@ -21,7 +21,7 @@ export interface SettingsModuleProps {
 }
 
 export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
-  const { user, logout } = useAuth()
+  const { user, signOut } = useAuth()
   const { theme, setTheme } = useTheme()
   const { defaultCurrency, setDefaultCurrency, resetAccountData, loadSampleData, wallets, goals, budgets } = useStore()
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
@@ -359,8 +359,7 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
               <button
                 type="button"
                 onClick={async () => {
-                  const { auth } = await import("@/lib/firebase")
-                  await auth.signOut()
+                  await signOut()
                   setShowLogoutDialog(false)
                 }}
                 className="flex-1 rounded-xl bg-destructive py-3 text-sm font-semibold text-white transition-colors hover:bg-destructive/90"

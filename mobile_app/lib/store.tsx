@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react"
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react"
 import {
   Wallet,
   Transaction,
@@ -23,8 +23,7 @@ import {
   tags as defaultTags,
 } from "./pawi-data"
 import { useAuth } from "./auth-context"
-import { db } from "./firebase"
-import { doc, setDoc, onSnapshot } from "firebase/firestore"
+import { supabase } from "./supabase"
 
 export interface ChatMessage {
   role: "user" | "assistant"
@@ -98,18 +97,145 @@ interface StoreContextType extends State {
 
 const StoreContext = createContext<StoreContextType | null>(null)
 
+// -------------------------------------------------------------
+// Data Mapping Layer: Frontend Models <-> Supabase PostgreSQL
+// -------------------------------------------------------------
+
+function mapAccountToWallet(row: any): Wallet {
+  return {
+    id: row.id,
+    name: row.name,
+    subtitle: `${row.type === "credit" ? "Credit" : row.type === "loan" ? "Loans" : "Debit"} · ${row.currency || "PHP"}`,
+    balance: Number(row.balance) || 0,
+    currency: (row.currency as CurrencyCode) || "PHP",
+    type: row.type || "cash",
+    group: row.type === "credit" ? "credit" : row.type === "loan" ? "loan" : row.type === "ewallet" ? "ewallet" : "bank",
+    accent: row.type === "credit" ? "#D97706" : row.type === "loan" ? "#0D9488" : "#3D784E",
+    isLiability: Boolean(row.is_liability),
+    creditLimit: Number(row.credit_limit) || undefined,
+    usedCredit: Number(row.used_credit) || undefined,
+    interestRate: row.interest_rate || undefined,
+    dueDay: row.due_day || undefined,
+    notes: row.notes || undefined,
+    spendable: Number(row.balance) || 0,
+  }
+}
+
+function mapWalletToAccount(w: Wallet, userId: string): any {
+  return {
+    id: w.id,
+    user_id: userId,
+    name: w.name,
+    type: w.type,
+    balance: w.balance,
+    currency: w.currency,
+    is_liability: Boolean(w.isLiability),
+    credit_limit: w.creditLimit || 0,
+    used_credit: w.usedCredit || 0,
+    interest_rate: w.interestRate || null,
+    due_day: w.dueDay || null,
+    notes: w.notes || null,
+    updated_at: new Date().toISOString(),
+  }
+}
+
+function mapTxRowToTransaction(row: any): Transaction {
+  return {
+    id: row.id,
+    label: row.title,
+    category: row.merchant || "General",
+    account: row.account_id || "Cash",
+    time: row.transaction_time || "12:00 PM",
+    amount: Number(row.amount) || 0,
+    currency: (row.currency as CurrencyCode) || "PHP",
+    kind: row.type === "income" ? "income" : "expense",
+    date: row.transaction_date || "Today",
+    dateHeader: "Today",
+    note: row.notes || undefined,
+    tag: row.tags?.[0] || undefined,
+    receipt_url: row.receipt_url || undefined,
+  }
+}
+
+function mapTransactionToRow(t: Transaction, userId: string): any {
+  return {
+    id: t.id,
+    user_id: userId,
+    title: t.label,
+    type: t.kind,
+    amount: t.amount,
+    currency: t.currency,
+    merchant: t.category,
+    account_id: t.account,
+    transaction_date: t.date === "Today" ? new Date().toISOString().split("T")[0] : t.date || new Date().toISOString().split("T")[0],
+    transaction_time: t.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    notes: t.note || null,
+    tags: t.tag ? [t.tag] : [],
+    receipt_url: t.receipt_url || null,
+  }
+}
+
+function mapGoalRowToGoal(row: any): Goal {
+  return {
+    id: row.id,
+    name: row.title,
+    due: row.target_date || "Dec 31",
+    saved: Number(row.current_amount) || 0,
+    target: Number(row.target_amount) || 0,
+    accent: "#3D784E",
+    icon: row.icon || "🎯",
+  }
+}
+
+function mapGoalToRow(g: Goal, userId: string): any {
+  return {
+    id: g.id,
+    user_id: userId,
+    title: g.name,
+    target_amount: g.target,
+    current_amount: g.saved,
+    target_date: g.due || null,
+    icon: g.icon || "🎯",
+    completed: g.saved >= g.target,
+  }
+}
+
+function mapCatRowToBudget(row: any): Budget {
+  return {
+    id: row.id,
+    category: row.name,
+    spent: Number(row.spent) || 0,
+    limit: Number(row.monthly_limit) || 0,
+    accent: "#3D784E",
+    icon: row.icon || "🍽️",
+  }
+}
+
+function mapBudgetToRow(b: Budget, userId: string): any {
+  return {
+    id: b.id,
+    user_id: userId,
+    name: b.category,
+    type: "expense",
+    monthly_limit: b.limit,
+    spent: b.spent,
+    icon: b.icon || "🍽️",
+    updated_at: new Date().toISOString(),
+  }
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [state, setState] = useState<State>({
-    wallets: [],
-    transactions: [],
-    goals: [],
-    budgets: [],
-    debts: [],
-    receivables: [],
-    plannedPayments: [],
-    installments: [],
-    tags: [],
+    wallets: defaultWallets,
+    transactions: defaultTransactions,
+    goals: defaultGoals,
+    budgets: defaultBudgets,
+    debts: defaultDebts,
+    receivables: defaultReceivables,
+    plannedPayments: defaultPlannedPayments,
+    installments: defaultInstallments,
+    tags: defaultTags,
     chatMessages: [
       {
         role: "assistant",
@@ -123,118 +249,120 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     paydayDate: "May 15",
   })
 
-  // Load and sync from Firestore
+  // Load and sync from Supabase PostgreSQL tables
   useEffect(() => {
     if (!user) {
-      setState({
-        wallets: [],
-        transactions: [],
-        goals: [],
-        budgets: [],
-        debts: [],
-        receivables: [],
-        plannedPayments: [],
-        installments: [],
-        tags: [],
-        chatMessages: [],
-        defaultCurrency: "PHP",
-        streakDays: 6,
-        daysUntilPayday: 25,
-        paydayAmount: 18500,
-        paydayDate: "May 15",
-      })
+      // Local fallback state
+      setState((prev) => ({
+        ...prev,
+        wallets: defaultWallets,
+        transactions: defaultTransactions,
+        goals: defaultGoals,
+        budgets: defaultBudgets,
+        debts: defaultDebts,
+        receivables: defaultReceivables,
+        plannedPayments: defaultPlannedPayments,
+        installments: defaultInstallments,
+        tags: defaultTags,
+      }))
       return
     }
 
-    const unsubscribe = onSnapshot(
-      doc(db, "users", user.uid),
-      (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.data()
-          setState({
-            wallets: data.wallets || defaultWallets,
-            transactions: data.transactions || defaultTransactions,
-            goals: data.goals || defaultGoals,
-            budgets: data.budgets || defaultBudgets,
-            debts: data.debts || defaultDebts,
-            receivables: data.receivables || defaultReceivables,
-            plannedPayments: data.plannedPayments || defaultPlannedPayments,
-            installments: data.installments || defaultInstallments,
-            tags: data.tags || defaultTags,
-            chatMessages: data.chatMessages || [
-              {
-                role: "assistant",
-                content: "Hi! I'm Pawi 🐢. Ask me about your money, balances, or a specific account. You can also type or dictate transactions, and I can log them for you whenever you're ready.",
-              },
-            ],
-            defaultCurrency: data.defaultCurrency || "PHP",
-            streakDays: data.streakDays ?? 6,
-            daysUntilPayday: data.daysUntilPayday ?? 25,
-            paydayAmount: data.paydayAmount ?? 18500,
-            paydayDate: data.paydayDate ?? "May 15",
-          })
-        } else {
-          // Initialize with rich default sample data
-          const initialData: State = {
-            wallets: defaultWallets,
-            transactions: defaultTransactions,
-            goals: defaultGoals,
-            budgets: defaultBudgets,
-            debts: defaultDebts,
-            receivables: defaultReceivables,
-            plannedPayments: defaultPlannedPayments,
-            installments: defaultInstallments,
-            tags: defaultTags,
-            chatMessages: [
-              {
-                role: "assistant",
-                content: "Hi! I'm Pawi 🐢. Ask me about your money, balances, or a specific account. You can also type or dictate transactions, and I can log them for you whenever you're ready.",
-              },
-            ],
-            defaultCurrency: "PHP",
-            streakDays: 6,
-            daysUntilPayday: 25,
-            paydayAmount: 18500,
-            paydayDate: "May 15",
-          }
-          setDoc(doc(db, "users", user.uid), initialData)
-          setState(initialData)
-        }
-      },
-      (error) => {
-        console.error("Firestore sync error:", error)
-        // Fallback to local default data if offline or error
-        setState({
-          wallets: defaultWallets,
-          transactions: defaultTransactions,
-          goals: defaultGoals,
-          budgets: defaultBudgets,
-          debts: defaultDebts,
-          receivables: defaultReceivables,
-          plannedPayments: defaultPlannedPayments,
-          installments: defaultInstallments,
-          tags: defaultTags,
-          chatMessages: [
-            {
-              role: "assistant",
-              content: "Hi! I'm Pawi 🐢. Ask me about your money, balances, or a specific account. You can also type or dictate transactions, and I can log them for you whenever you're ready.",
-            },
-          ],
-          defaultCurrency: "PHP",
-          streakDays: 6,
-          daysUntilPayday: 25,
-          paydayAmount: 18500,
-          paydayDate: "May 15",
-        })
-      }
-    )
+    const userId = user.id || (user as any).uid
 
-    return () => unsubscribe()
+    const fetchSupabaseData = async () => {
+      try {
+        const [
+          { data: accountsData },
+          { data: txData },
+          { data: goalsData },
+          { data: catData },
+          { data: billsData },
+        ] = await Promise.all([
+          supabase.from("accounts").select("*").eq("user_id", userId),
+          supabase.from("transactions").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+          supabase.from("savings_goals").select("*").eq("user_id", userId),
+          supabase.from("categories").select("*").eq("user_id", userId),
+          supabase.from("recurring_bills").select("*").eq("user_id", userId),
+        ])
+
+        // If user already has accounts in database, hydrate state from Supabase
+        if (accountsData && accountsData.length > 0) {
+          setState((prev) => ({
+            ...prev,
+            wallets: accountsData.map(mapAccountToWallet),
+            transactions: txData ? txData.map(mapTxRowToTransaction) : prev.transactions,
+            goals: goalsData ? goalsData.map(mapGoalRowToGoal) : prev.goals,
+            budgets: catData ? catData.map(mapCatRowToBudget) : prev.budgets,
+            plannedPayments: billsData && billsData.length > 0
+              ? billsData.map((b) => ({
+                  id: b.id,
+                  label: b.name,
+                  amount: Number(b.amount) || 0,
+                  dueDate: b.next_due_date || "Monthly",
+                  frequency: (b.billing_cycle as any) || "recurring",
+                  category: "Bills",
+                  account: b.account_name || "Cash",
+                  icon: "📅",
+                }))
+              : prev.plannedPayments,
+          }))
+        } else {
+          // Seed initial default accounts & categories into Supabase for this new user
+          const accountsToSeed = defaultWallets.map((w) => mapWalletToAccount(w, userId))
+          const categoriesToSeed = defaultBudgets.map((b) => mapBudgetToRow(b, userId))
+          const goalsToSeed = defaultGoals.map((g) => mapGoalToRow(g, userId))
+          const txToSeed = defaultTransactions.map((t) => mapTransactionToRow(t, userId))
+
+          await Promise.allSettled([
+            supabase.from("accounts").upsert(accountsToSeed),
+            supabase.from("categories").upsert(categoriesToSeed),
+            supabase.from("savings_goals").upsert(goalsToSeed),
+            supabase.from("transactions").upsert(txToSeed),
+          ])
+        }
+      } catch (err) {
+        console.warn("Supabase initial fetch info:", err)
+      }
+    }
+
+    fetchSupabaseData()
+
+    // Setup Supabase Realtime channel subscription for instant multi-device / multi-tab synchronization
+    const channel = supabase
+      .channel(`pawi-realtime-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "transactions", filter: `user_id=eq.${userId}` },
+        () => fetchSupabaseData()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "accounts", filter: `user_id=eq.${userId}` },
+        () => fetchSupabaseData()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "categories", filter: `user_id=eq.${userId}` },
+        () => fetchSupabaseData()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "savings_goals", filter: `user_id=eq.${userId}` },
+        () => fetchSupabaseData()
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [user])
 
-  const addTransaction = async (tx: Omit<Transaction, "id" | "time">) => {
-    if (!user) return
+  // -------------------------------------------------------------
+  // CRUD Actions with Optimistic UI & Supabase Persistence
+  // -------------------------------------------------------------
 
+  const addTransaction = async (tx: Omit<Transaction, "id" | "time">) => {
     const now = new Date()
     const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     const newTx: Transaction = {
@@ -257,19 +385,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return w
     })
 
-    const newState = {
-      ...state,
-      transactions: [newTx, ...state.transactions],
+    // Optimistic UI Update
+    setState((prev) => ({
+      ...prev,
+      transactions: [newTx, ...prev.transactions],
       wallets: updatedWallets,
-    }
+    }))
 
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    if (user) {
+      const userId = user.id || (user as any).uid
+      const row = mapTransactionToRow(newTx, userId)
+      await supabase.from("transactions").insert(row)
+
+      const targetWallet = updatedWallets.find(
+        (w) => w.name.toLowerCase() === tx.account.toLowerCase() || tx.account.toLowerCase().includes(w.name.toLowerCase())
+      )
+      if (targetWallet) {
+        await supabase.from("accounts").upsert(mapWalletToAccount(targetWallet, userId))
+      }
+    }
   }
 
   const editTransaction = async (tx: Transaction) => {
-    if (!user) return
-
     const oldTx = state.transactions.find((t) => t.id === tx.id)
     let updatedWallets = state.wallets
 
@@ -291,19 +428,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       })
     }
 
-    const newState = {
-      ...state,
-      transactions: state.transactions.map((t) => (t.id === tx.id ? tx : t)),
+    setState((prev) => ({
+      ...prev,
+      transactions: prev.transactions.map((t) => (t.id === tx.id ? tx : t)),
       wallets: updatedWallets,
-    }
+    }))
 
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    if (user) {
+      const userId = user.id || (user as any).uid
+      await supabase.from("transactions").upsert(mapTransactionToRow(tx, userId))
+    }
   }
 
   const deleteTransaction = async (transactionId: string) => {
-    if (!user) return
-
     const txToDelete = state.transactions.find((t) => t.id === transactionId)
     let updatedWallets = state.wallets
 
@@ -317,55 +454,52 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       })
     }
 
-    const newState = {
-      ...state,
-      transactions: state.transactions.filter((t) => t.id !== transactionId),
+    setState((prev) => ({
+      ...prev,
+      transactions: prev.transactions.filter((t) => t.id !== transactionId),
       wallets: updatedWallets,
-    }
+    }))
 
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    if (user) {
+      await supabase.from("transactions").delete().eq("id", transactionId)
+    }
   }
 
   const addWallet = async (wallet: Omit<Wallet, "id">) => {
-    if (!user) return
-
     const newWallet: Wallet = {
       ...wallet,
       id: "w_" + Date.now(),
     }
 
-    const newState = {
-      ...state,
-      wallets: [...state.wallets, newWallet],
-    }
+    setState((prev) => ({ ...prev, wallets: [...prev.wallets, newWallet] }))
 
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    if (user) {
+      const userId = user.id || (user as any).uid
+      await supabase.from("accounts").insert(mapWalletToAccount(newWallet, userId))
+    }
   }
 
   const updateWallet = async (wallet: Wallet) => {
-    if (!user) return
+    setState((prev) => ({
+      ...prev,
+      wallets: prev.wallets.map((w) => (w.id === wallet.id ? wallet : w)),
+    }))
 
-    const newState = {
-      ...state,
-      wallets: state.wallets.map((w) => (w.id === wallet.id ? wallet : w)),
+    if (user) {
+      const userId = user.id || (user as any).uid
+      await supabase.from("accounts").upsert(mapWalletToAccount(wallet, userId))
     }
-
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
   }
 
   const deleteWallet = async (walletId: string) => {
-    if (!user) return
+    setState((prev) => ({
+      ...prev,
+      wallets: prev.wallets.filter((w) => w.id !== walletId),
+    }))
 
-    const newState = {
-      ...state,
-      wallets: state.wallets.filter((w) => w.id !== walletId),
+    if (user) {
+      await supabase.from("accounts").delete().eq("id", walletId)
     }
-
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
   }
 
   const transferFunds = async ({
@@ -379,7 +513,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     amount: number
     note?: string
   }) => {
-    if (!user || amount <= 0) return
+    if (amount <= 0) return
 
     const updatedWallets = state.wallets.map((w) => {
       if (w.name.toLowerCase() === fromWalletName.toLowerCase()) {
@@ -405,208 +539,200 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
     }
 
-    const newState = {
-      ...state,
+    setState((prev) => ({
+      ...prev,
       wallets: updatedWallets,
-      transactions: [transferTx, ...state.transactions],
-    }
+      transactions: [transferTx, ...prev.transactions],
+    }))
 
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    if (user) {
+      const userId = user.id || (user as any).uid
+      await Promise.allSettled([
+        supabase.from("transactions").insert(mapTransactionToRow(transferTx, userId)),
+        ...updatedWallets.map((w) => supabase.from("accounts").upsert(mapWalletToAccount(w, userId))),
+      ])
+    }
   }
 
   const addGoal = async (goal: Omit<Goal, "id">) => {
-    if (!user) return
+    const newGoal: Goal = { ...goal, id: "g_" + Date.now() }
+    setState((prev) => ({ ...prev, goals: [...prev.goals, newGoal] }))
 
-    const newGoal: Goal = {
-      ...goal,
-      id: "g_" + Date.now(),
+    if (user) {
+      const userId = user.id || (user as any).uid
+      await supabase.from("savings_goals").insert(mapGoalToRow(newGoal, userId))
     }
-
-    const newState = {
-      ...state,
-      goals: [...state.goals, newGoal],
-    }
-
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
   }
 
   const editGoal = async (goal: Goal) => {
-    if (!user) return
+    setState((prev) => ({
+      ...prev,
+      goals: prev.goals.map((g) => (g.id === goal.id ? goal : g)),
+    }))
 
-    const newState = {
-      ...state,
-      goals: state.goals.map((g) => (g.id === goal.id ? goal : g)),
+    if (user) {
+      const userId = user.id || (user as any).uid
+      await supabase.from("savings_goals").upsert(mapGoalToRow(goal, userId))
     }
-
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
   }
 
   const deleteGoal = async (goalId: string) => {
-    if (!user) return
+    setState((prev) => ({
+      ...prev,
+      goals: prev.goals.filter((g) => g.id !== goalId),
+    }))
 
-    const newState = {
-      ...state,
-      goals: state.goals.filter((g) => g.id !== goalId),
+    if (user) {
+      await supabase.from("savings_goals").delete().eq("id", goalId)
     }
-
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
   }
 
   const addBudget = async (budget: Omit<Budget, "id">) => {
-    if (!user) return
+    const newBudget: Budget = { ...budget, id: "b_" + Date.now() }
+    setState((prev) => ({ ...prev, budgets: [...prev.budgets, newBudget] }))
 
-    const newBudget: Budget = {
-      ...budget,
-      id: "b_" + Date.now(),
+    if (user) {
+      const userId = user.id || (user as any).uid
+      await supabase.from("categories").insert(mapBudgetToRow(newBudget, userId))
     }
-
-    const newState = {
-      ...state,
-      budgets: [...state.budgets, newBudget],
-    }
-
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
   }
 
   const editBudget = async (budget: Budget) => {
-    if (!user) return
+    setState((prev) => ({
+      ...prev,
+      budgets: prev.budgets.map((b) => (b.id === budget.id ? budget : b)),
+    }))
 
-    const newState = {
-      ...state,
-      budgets: state.budgets.map((b) => (b.id === budget.id ? budget : b)),
+    if (user) {
+      const userId = user.id || (user as any).uid
+      await supabase.from("categories").upsert(mapBudgetToRow(budget, userId))
     }
-
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
   }
 
   const deleteBudget = async (budgetId: string) => {
-    if (!user) return
+    setState((prev) => ({
+      ...prev,
+      budgets: prev.budgets.filter((b) => b.id !== budgetId),
+    }))
 
-    const newState = {
-      ...state,
-      budgets: state.budgets.filter((b) => b.id !== budgetId),
+    if (user) {
+      await supabase.from("categories").delete().eq("id", budgetId)
     }
-
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
   }
 
   // Debt CRUD
   const addDebt = async (debt: Omit<Debt, "id">) => {
-    if (!user) return
     const newDebt: Debt = { ...debt, id: "d_" + Date.now() }
-    const newState = { ...state, debts: [...state.debts, newDebt] }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({ ...prev, debts: [...prev.debts, newDebt] }))
   }
 
   const editDebt = async (debt: Debt) => {
-    if (!user) return
-    const newState = { ...state, debts: state.debts.map((d) => (d.id === debt.id ? debt : d)) }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({
+      ...prev,
+      debts: prev.debts.map((d) => (d.id === debt.id ? debt : d)),
+    }))
   }
 
   const deleteDebt = async (debtId: string) => {
-    if (!user) return
-    const newState = { ...state, debts: state.debts.filter((d) => d.id !== debtId) }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({
+      ...prev,
+      debts: prev.debts.filter((d) => d.id !== debtId),
+    }))
   }
 
   // Receivable CRUD
   const addReceivable = async (receivable: Omit<Receivable, "id">) => {
-    if (!user) return
     const newRec: Receivable = { ...receivable, id: "rec_" + Date.now() }
-    const newState = { ...state, receivables: [...state.receivables, newRec] }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({ ...prev, receivables: [...prev.receivables, newRec] }))
   }
 
   const editReceivable = async (receivable: Receivable) => {
-    if (!user) return
-    const newState = { ...state, receivables: state.receivables.map((r) => (r.id === receivable.id ? receivable : r)) }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({
+      ...prev,
+      receivables: prev.receivables.map((r) => (r.id === receivable.id ? receivable : r)),
+    }))
   }
 
   const deleteReceivable = async (receivableId: string) => {
-    if (!user) return
-    const newState = { ...state, receivables: state.receivables.filter((r) => r.id !== receivableId) }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({
+      ...prev,
+      receivables: prev.receivables.filter((r) => r.id !== receivableId),
+    }))
   }
 
   // Planned Payment CRUD
   const addPlannedPayment = async (payment: Omit<PlannedPayment, "id">) => {
-    if (!user) return
     const newPay: PlannedPayment = { ...payment, id: "pp_" + Date.now() }
-    const newState = { ...state, plannedPayments: [...state.plannedPayments, newPay] }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({ ...prev, plannedPayments: [...prev.plannedPayments, newPay] }))
+
+    if (user) {
+      const userId = user.id || (user as any).uid
+      await supabase.from("recurring_bills").insert({
+        id: newPay.id,
+        user_id: userId,
+        name: newPay.label,
+        amount: newPay.amount,
+        billing_cycle: newPay.frequency,
+        due_day: 15,
+        next_due_date: newPay.dueDate || "Monthly",
+        account_name: newPay.account,
+      })
+    }
   }
 
   const editPlannedPayment = async (payment: PlannedPayment) => {
-    if (!user) return
-    const newState = { ...state, plannedPayments: state.plannedPayments.map((p) => (p.id === payment.id ? payment : p)) }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({
+      ...prev,
+      plannedPayments: prev.plannedPayments.map((p) => (p.id === payment.id ? payment : p)),
+    }))
   }
 
   const deletePlannedPayment = async (paymentId: string) => {
-    if (!user) return
-    const newState = { ...state, plannedPayments: state.plannedPayments.filter((p) => p.id !== paymentId) }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({
+      ...prev,
+      plannedPayments: prev.plannedPayments.filter((p) => p.id !== paymentId),
+    }))
+
+    if (user) {
+      await supabase.from("recurring_bills").delete().eq("id", paymentId)
+    }
   }
 
   // Installment CRUD
   const addInstallment = async (installment: Omit<Installment, "id">) => {
-    if (!user) return
     const newInst: Installment = { ...installment, id: "inst_" + Date.now() }
-    const newState = { ...state, installments: [...state.installments, newInst] }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({ ...prev, installments: [...prev.installments, newInst] }))
   }
 
   const editInstallment = async (installment: Installment) => {
-    if (!user) return
-    const newState = { ...state, installments: state.installments.map((i) => (i.id === installment.id ? installment : i)) }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({
+      ...prev,
+      installments: prev.installments.map((i) => (i.id === installment.id ? installment : i)),
+    }))
   }
 
   const deleteInstallment = async (installmentId: string) => {
-    if (!user) return
-    const newState = { ...state, installments: state.installments.filter((i) => i.id !== installmentId) }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({
+      ...prev,
+      installments: prev.installments.filter((i) => i.id !== installmentId),
+    }))
   }
 
   // Tag CRUD
   const addTag = async (tag: Omit<Tag, "id">) => {
-    if (!user) return
     const newTag: Tag = { ...tag, id: "tag_" + Date.now() }
-    const newState = { ...state, tags: [...state.tags, newTag] }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({ ...prev, tags: [...prev.tags, newTag] }))
   }
 
   const deleteTag = async (tagId: string) => {
-    if (!user) return
-    const newState = { ...state, tags: state.tags.filter((t) => t.id !== tagId) }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((t) => t.id !== tagId),
+    }))
   }
 
   const addFundsToGoal = async (goalId: string, amount: number, fromWalletName?: string) => {
-    if (!user || amount <= 0) return
+    if (amount <= 0) return
 
     const updatedGoals = state.goals.map((g) =>
       g.id === goalId ? { ...g, saved: g.saved + amount } : g
@@ -636,29 +762,39 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
     }
 
-    const newState = {
-      ...state,
+    setState((prev) => ({
+      ...prev,
       goals: updatedGoals,
       wallets: updatedWallets,
-      transactions: [goalTx, ...state.transactions],
-    }
+      transactions: [goalTx, ...prev.transactions],
+    }))
 
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    if (user) {
+      const userId = user.id || (user as any).uid
+      const modGoal = updatedGoals.find((g) => g.id === goalId)
+      if (modGoal) {
+        await supabase.from("savings_goals").upsert(mapGoalToRow(modGoal, userId))
+      }
+      await supabase.from("transactions").insert(mapTransactionToRow(goalTx, userId))
+    }
   }
 
   const updateWalletNotes = async (walletId: string, notes: string) => {
-    if (!user) return
     const updatedWallets = state.wallets.map((w) =>
       w.id === walletId ? { ...w, notes } : w
     )
-    const newState = { ...state, wallets: updatedWallets }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({ ...prev, wallets: updatedWallets }))
+
+    if (user) {
+      const target = updatedWallets.find((w) => w.id === walletId)
+      if (target) {
+        const userId = user.id || (user as any).uid
+        await supabase.from("accounts").upsert(mapWalletToAccount(target, userId))
+      }
+    }
   }
 
   const adjustWalletBalance = async (walletId: string, newBalance: number, reason?: string) => {
-    if (!user) return
     const targetWallet = state.wallets.find((w) => w.id === walletId)
     if (!targetWallet) return
 
@@ -685,18 +821,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       w.id === walletId ? { ...w, balance: newBalance } : w
     )
 
-    const newState = {
-      ...state,
+    setState((prev) => ({
+      ...prev,
       wallets: updatedWallets,
-      transactions: [adjustTx, ...state.transactions],
-    }
+      transactions: [adjustTx, ...prev.transactions],
+    }))
 
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    if (user) {
+      const userId = user.id || (user as any).uid
+      const target = updatedWallets.find((w) => w.id === walletId)
+      if (target) {
+        await supabase.from("accounts").upsert(mapWalletToAccount(target, userId))
+      }
+      await supabase.from("transactions").insert(mapTransactionToRow(adjustTx, userId))
+    }
   }
 
   const resetAccountData = async () => {
-    if (!user) return
     const cleanState: State = {
       wallets: [
         {
@@ -730,11 +871,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       paydayDate: "May 15",
     }
     setState(cleanState)
-    await setDoc(doc(db, "users", user.uid), cleanState)
+
+    if (user) {
+      const userId = user.id || (user as any).uid
+      await Promise.allSettled([
+        supabase.from("transactions").delete().eq("user_id", userId),
+        supabase.from("savings_goals").delete().eq("user_id", userId),
+        supabase.from("categories").delete().eq("user_id", userId),
+        supabase.from("recurring_bills").delete().eq("user_id", userId),
+      ])
+    }
   }
 
   const loadSampleData = async () => {
-    if (!user) return
     const sampleState: State = {
       wallets: defaultWallets,
       transactions: defaultTransactions,
@@ -758,21 +907,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       paydayDate: "May 15",
     }
     setState(sampleState)
-    await setDoc(doc(db, "users", user.uid), sampleState)
+
+    if (user) {
+      const userId = user.id || (user as any).uid
+      await Promise.allSettled([
+        supabase.from("accounts").upsert(defaultWallets.map((w) => mapWalletToAccount(w, userId))),
+        supabase.from("categories").upsert(defaultBudgets.map((b) => mapBudgetToRow(b, userId))),
+        supabase.from("savings_goals").upsert(defaultGoals.map((g) => mapGoalToRow(g, userId))),
+        supabase.from("transactions").upsert(defaultTransactions.map((t) => mapTransactionToRow(t, userId))),
+      ])
+    }
   }
 
   const setChatMessages = async (msgs: ChatMessage[]) => {
-    if (!user) return
-    const newState = { ...state, chatMessages: msgs }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({ ...prev, chatMessages: msgs }))
   }
 
   const setDefaultCurrency = async (currency: CurrencyCode) => {
-    if (!user) return
-    const newState = { ...state, defaultCurrency: currency }
-    setState(newState)
-    await setDoc(doc(db, "users", user.uid), newState, { merge: true })
+    setState((prev) => ({ ...prev, defaultCurrency: currency }))
+    if (user) {
+      const userId = user.id || (user as any).uid
+      await supabase.from("profiles").upsert({ id: userId, currency })
+    }
   }
 
   return (

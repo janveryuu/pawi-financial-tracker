@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { Lightbulb, ScanLine, Sparkles, X, Loader2 } from "lucide-react"
+import { Lightbulb, ScanLine, Sparkles, X, Loader2, AlertCircle } from "lucide-react"
 import { useStore } from "@/lib/store"
+import { useAuth } from "@/lib/auth-context"
 
 interface QuickLogModalProps {
   open: boolean
@@ -15,23 +16,18 @@ const examples = [
   "Transfer 1000 to Paymaya",
 ]
 
-const receiptSimulations = [
-  "Spent 3500 on Groceries from SM Supermarket",
-  "Spent 250 on Coffee at Starbucks",
-  "Spent 1850 on Shopping at Uniqlo",
-  "Spent 850 on Dinner at Jollibee",
-  "Spent 320 on Transport via Grab"
-]
-
 export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
   const [value, setValue] = useState("")
   const [isScanning, setIsScanning] = useState(false)
+  const [lowFields, setLowFields] = useState<string[]>([])
+  const [scannedReceiptUrl, setScannedReceiptUrl] = useState<string | null>(null)
   const { addTransaction } = useStore()
+  const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleLog = () => {
     if (!value.trim()) return
-    
+
     const lowerValue = value.toLowerCase()
     const cleanNumText = value.replace(/,/g, "")
     const amountMatch = cleanNumText.match(/(\d+(?:\.\d+)?)\s*(k|m)?/i)
@@ -42,22 +38,24 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
       if (unit === "k") amount *= 1000
       if (unit === "m") amount *= 1000000
     }
-    
+
     // Determine Income/Expense comprehensive keywords
     const incomeKeywords = [
       "salary", "income", "receive", "received", "receiving",
       "add", "added", "gain", "gained", "allowance",
       "bonus", "freelance", "payout", "paycheck", "deposit",
-      "dividend", "refund", "gift", "cash in", "cashin", "earned", "earn"
+      "dividend", "refund", "gift", "cash in", "cashin", "earned", "earn",
     ]
-    const isIncome = incomeKeywords.some(kw => lowerValue.includes(kw))
-    
+    const isIncome = incomeKeywords.some((kw) => lowerValue.includes(kw))
+
     // Determine Account
     let account = "Cash"
     if (lowerValue.includes("gcash")) account = "GCash"
     if (lowerValue.includes("paymaya") || lowerValue.includes("maya")) account = "Paymaya"
     if (lowerValue.includes("rcbc") || lowerValue.includes("visa") || lowerValue.includes("card")) account = "RCBC Visa"
-    
+    if (lowerValue.includes("bpi")) account = "BPI Savings"
+    if (lowerValue.includes("bdo")) account = "BDO Mastercard"
+
     // Determine Category
     let category = isIncome ? "Income" : "General"
     if (isIncome) {
@@ -79,82 +77,51 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
       account,
       amount,
       currency: "PHP",
-      kind: isIncome ? "income" : "expense"
+      kind: isIncome ? "income" : "expense",
+      receipt_url: scannedReceiptUrl || undefined,
     })
-    
+
     setValue("")
+    setLowFields([])
+    setScannedReceiptUrl(null)
     onClose()
   }
-
-function extractReceiptDetails(ocrText: string): string {
-  const lines = ocrText.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
-  
-  // 1. Extract store/merchant name
-  let merchant = "Store"
-  for (const line of lines) {
-    if (line.length > 2 && !/address|shop #|ph :|date|time|shift|cashier|description|qty|rate|amount/i.test(line)) {
-      merchant = line.replace(/[^a-zA-Z0-9\s&'-]/g, "").trim()
-      if (merchant.length > 2) break
-    }
-  }
-
-  // 2. Extract total amount
-  let amount = 0
-  for (const line of lines) {
-    if (/grand total|total|payment|sub total|amount/i.test(line)) {
-      const nums = line.replace(/,/g, "").match(/\d+(?:\.\d+)?/g)
-      if (nums) {
-        for (const n of nums) {
-          const val = parseFloat(n)
-          if (val > amount && val < 1000000) amount = val
-        }
-      }
-    }
-  }
-
-  if (amount === 0) {
-    for (const line of lines) {
-      const nums = line.replace(/,/g, "").match(/\d+(?:\.\d{2})/g)
-      if (nums) {
-        for (const n of nums) {
-          const val = parseFloat(n)
-          if (val > amount && val < 1000000) amount = val
-        }
-      }
-    }
-  }
-
-  // 3. Payment method
-  let method = "Cash"
-  if (/gcash/i.test(ocrText)) method = "GCash"
-  else if (/maya|paymaya/i.test(ocrText)) method = "Paymaya"
-
-  // 4. Category detection
-  let category = "General"
-  if (/suit|shirt|pant|dress|cloth|mall|uniqlo|zara|fashion|valvet|vasecoat/i.test(ocrText)) category = "Shopping"
-  else if (/supermarket|grocery|food mart|market/i.test(ocrText)) category = "Groceries"
-  else if (/coffee|starbucks|jollibee|mcdo|dining|restaurant|cafe/i.test(ocrText)) category = "Food & Dining"
-
-  if (amount > 0) {
-    return `Spent ${amount.toLocaleString()} on ${category} at ${merchant} (${method})`
-  }
-
-  return "Spent 5,685 on Shopping at Jan Mall (Cash)"
-}
 
   const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     setIsScanning(true)
+    setLowFields([])
+
     try {
-      const Tesseract = (await import("tesseract.js")).default
-      const result = await Tesseract.recognize(file, "eng")
-      const text = result.data.text || ""
-      const parsed = extractReceiptDetails(text)
-      setValue(parsed)
+      const formData = new FormData()
+      formData.append("image", file)
+      formData.append("userId", user?.id || (user as any)?.uid || "anonymous")
+
+      const res = await fetch("/api/receipt-scan", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        if (data.raw_summary) {
+          setValue(data.raw_summary)
+        } else if (data.merchant && data.amount) {
+          setValue(`Spent ${data.amount} on ${data.category || "General"} at ${data.merchant} (${data.payment_method_guess || "Cash"})`)
+        }
+        if (data.low_fields && data.low_fields.length > 0) {
+          setLowFields(data.low_fields)
+        }
+        if (data.receipt_url) {
+          setScannedReceiptUrl(data.receipt_url)
+        }
+      } else {
+        setValue("Spent 250 on Food at Store (Cash)")
+      }
     } catch (err) {
-      console.error("OCR scan error:", err)
-      setValue("Spent 5,685 on Shopping at Jan Mall (Cash)")
+      console.error("Gemini OCR scan error:", err)
+      setValue("Spent 250 on Food at Store (Cash)")
     } finally {
       setIsScanning(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
@@ -217,6 +184,13 @@ function extractReceiptDetails(ocrText: string): string {
           className="w-full resize-none rounded-2xl border border-border bg-secondary/40 p-4 text-sm text-foreground outline-none ring-primary/30 transition placeholder:text-muted-foreground focus:ring-2"
         />
 
+        {lowFields.length > 0 && (
+          <div className="mt-2 flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-700 dark:text-amber-300">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>Please double check OCR fields: {lowFields.join(", ")}</span>
+          </div>
+        )}
+
         <div className="mt-3 flex flex-wrap gap-2">
           {examples.map((ex) => (
             <button
@@ -234,20 +208,19 @@ function extractReceiptDetails(ocrText: string): string {
           <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <p className="text-pretty text-xs leading-relaxed text-foreground/80">
             <span className="font-semibold text-foreground">Tip. </span>
-            Track every expense, no matter how small. Small leaks can sink a
-            great ship.
+            Track every expense, no matter how small. Small leaks can sink a great ship.
           </p>
         </div>
 
         <div className="mt-4 flex gap-3">
-          {/* capture="environment" forces the mobile browser to open the rear camera directly */}
-          <input 
-            type="file" 
-            accept="image/*" 
+          {/* Rear camera capture */}
+          <input
+            type="file"
+            accept="image/*"
             capture="environment"
-            className="hidden" 
-            ref={fileInputRef} 
-            onChange={handleScan} 
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleScan}
           />
           <button
             type="button"
@@ -255,8 +228,12 @@ function extractReceiptDetails(ocrText: string): string {
             disabled={isScanning}
             className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-card py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
           >
-            {isScanning ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <ScanLine className="h-[18px] w-[18px]" />}
-            {isScanning ? "Scanning..." : "Scan Receipt"}
+            {isScanning ? (
+              <Loader2 className="h-[18px] w-[18px] animate-spin text-primary" />
+            ) : (
+              <ScanLine className="h-[18px] w-[18px]" />
+            )}
+            {isScanning ? "Gemini Scanning..." : "Scan Receipt (AI)"}
           </button>
           <button
             type="button"

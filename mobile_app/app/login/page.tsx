@@ -1,83 +1,92 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signInAnonymously, GoogleAuthProvider } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import Image from "next/image"
+import { useAuth } from "@/lib/auth-context"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [error, setError] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const router = useRouter();
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [name, setName] = useState("")
+  const [isSignUp, setIsSignUp] = useState(false)
+  const [error, setError] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const router = useRouter()
+
+  const { signIn, signUp, signInWithGoogle, signInGuest } = useAuth()
 
   const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    
+    e.preventDefault()
+    setError("")
+
     if (isSignUp && password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
+      setError("Passwords do not match")
+      return
     }
 
+    setSubmitting(true)
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const { error: signUpError } = await signUp(email, password, name)
+        if (signUpError) {
+          setError(signUpError)
+          return
+        }
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
-      }
-      router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Authentication failed");
-    }
-  };
-
-  const handleGoogleAuth = async () => {
-    setError("");
-    try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
-      await signInWithPopup(auth, provider);
-      router.push("/");
-    } catch (err: any) {
-      const msg = String(err?.message || "");
-      if (msg.includes("storage") || msg.includes("initial state") || msg.includes("popup") || msg.includes("partitioned")) {
-        setError("Safari iOS blocks cross-site Google login. Tap 'Continue as Guest' below for instant access!");
-      } else {
-        setError(msg || "Google authentication failed");
-      }
-    }
-  };
-
-  const handleGuestAuth = async () => {
-    setError("");
-    try {
-      await signInAnonymously(auth);
-      router.push("/");
-    } catch {
-      try {
-        await signInWithEmailAndPassword(auth, "demo@pawi.app", "pawidemo2026");
-        router.push("/");
-      } catch {
-        try {
-          await createUserWithEmailAndPassword(auth, "demo@pawi.app", "pawidemo2026");
-          router.push("/");
-        } catch (err: any) {
-          setError("Could not launch demo session. Please sign up with an email above!");
+        const { error: signInError } = await signIn(email, password)
+        if (signInError) {
+          setError(signInError)
+          return
         }
       }
+      router.push("/")
+    } catch (err: any) {
+      setError(err.message || "Authentication failed")
+    } finally {
+      setSubmitting(false)
     }
-  };
+  }
+
+  const handleGoogleAuth = async () => {
+    setError("")
+    setSubmitting(true)
+    try {
+      const { error: gError } = await signInWithGoogle()
+      if (gError) {
+        setError(gError)
+      }
+    } catch (err: any) {
+      setError(err.message || "Google authentication failed")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleGuestAuth = async () => {
+    setError("")
+    setSubmitting(true)
+    try {
+      const { error: guestError } = await signInGuest()
+      if (guestError) {
+        setError(guestError)
+      } else {
+        router.push("/")
+      }
+    } catch {
+      router.push("/")
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-2 text-center">
           <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-primary/20">
-            <Image src="/pawikan-logo.png" alt="Pawi Logo" fill className="object-cover" />
+            <Image src="/pawikan-logo.png" alt="Pawi Logo" fill priority className="object-cover" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             {isSignUp ? "Create an account" : "Welcome back to Pawi"}
@@ -91,20 +100,35 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setIsSignUp(false)}
-            className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all ${!isSignUp ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all ${
+              !isSignUp ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
           >
             Log In
           </button>
           <button
             type="button"
             onClick={() => setIsSignUp(true)}
-            className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all ${isSignUp ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all ${
+              isSignUp ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
           >
             Sign Up
           </button>
         </div>
 
         <form onSubmit={handleEmailAuth} className="space-y-4">
+          {isSignUp && (
+            <div className="space-y-2">
+              <input
+                type="text"
+                placeholder="Full Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="flex h-12 w-full rounded-xl border border-border/60 bg-card px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <input
               type="email"
@@ -112,7 +136,7 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="flex h-12 w-full rounded-xl border border-border/60 bg-card px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-12 w-full rounded-xl border border-border/60 bg-card px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
           </div>
           <div className="space-y-2">
@@ -122,10 +146,10 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="flex h-12 w-full rounded-xl border border-border/60 bg-card px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-12 w-full rounded-xl border border-border/60 bg-card px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
           </div>
-          
+
           {isSignUp && (
             <div className="space-y-2">
               <input
@@ -134,18 +158,19 @@ export default function LoginPage() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="flex h-12 w-full rounded-xl border border-border/60 bg-card px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-12 w-full rounded-xl border border-border/60 bg-card px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               />
             </div>
           )}
 
-          {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+          {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
 
           <button
             type="submit"
-            className="inline-flex h-12 w-full items-center justify-center whitespace-nowrap rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+            disabled={submitting}
+            className="inline-flex h-12 w-full items-center justify-center whitespace-nowrap rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50"
           >
-            {isSignUp ? "Create Account" : "Log In"}
+            {submitting ? "Processing..." : isSignUp ? "Create Account" : "Log In"}
           </button>
         </form>
 
@@ -161,7 +186,8 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={handleGoogleAuth}
-          className="inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+          disabled={submitting}
+          className="inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5">
             <path
@@ -187,11 +213,12 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={handleGuestAuth}
+          disabled={submitting}
           className="inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-primary/50 bg-primary/10 px-4 py-2 text-sm font-bold text-primary shadow-sm transition-colors hover:bg-primary/20 focus-visible:outline-none"
         >
           🐢 Continue as Guest (Instant Access)
         </button>
       </div>
     </div>
-  );
+  )
 }
