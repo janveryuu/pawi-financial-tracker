@@ -87,7 +87,7 @@ export function HomeScreen({
   const [showCommunityModal, setShowCommunityModal] = useState(false)
 
   // Determine user name
-  const rawName = user?.displayName?.split(" ")[0] || user?.email?.split("@")[0] || "Bryl"
+  const rawName = user?.displayName?.split(" ")[0] || user?.email?.split("@")[0] || "Janver"
   const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1)
 
   // Dynamic greeting based on current hour

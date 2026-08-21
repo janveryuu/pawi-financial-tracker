@@ -195,7 +195,7 @@ export default function LoginPage() {
                     <User className="absolute left-3.5 h-4 w-4 text-muted-foreground" />
                     <input
                       type="text"
-                      placeholder="e.g. Bryl"
+                      placeholder="e.g. Janver"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="h-12 w-full rounded-2xl border border-border/80 bg-secondary/30 pl-10 pr-4 text-sm font-semibold text-foreground placeholder:text-muted-foreground/70 focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"

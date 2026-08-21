@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               id: "guest-demo-user",
               uid: "guest-demo-user",
               email: "demo@pawi.app",
-              user_metadata: { name: "Bryl (Guest)", full_name: "Bryl" },
+              user_metadata: { name: "Janver (Guest)", full_name: "Janver" },
               is_anonymous: true,
             }
             setUser(guestUser)
@@ -224,7 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: "guest-demo-user",
         uid: "guest-demo-user",
         email: "demo@pawi.app",
-        user_metadata: { name: "Bryl", full_name: "Bryl" },
+        user_metadata: { name: "Janver", full_name: "Janver" },
         is_anonymous: true,
       }
       setUser(demoUser)
@@ -237,7 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: "guest-demo-user",
         uid: "guest-demo-user",
         email: "demo@pawi.app",
-        user_metadata: { name: "Bryl", full_name: "Bryl" },
+        user_metadata: { name: "Janver", full_name: "Janver" },
         is_anonymous: true,
       }
       setUser(demoUser)
