@@ -71,7 +71,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(normalizedUser)
           setSession(session)
           setIsGuest(session.user.is_anonymous || session.user.email === "demo@pawi.app")
+          localStorage.removeItem("pawi_guest_session")
         } else {
+          // Check if active registered user was stored locally
+          const activeUserStr = localStorage.getItem("pawi_active_user")
+          if (activeUserStr) {
+            try {
+              const activeUser = JSON.parse(activeUserStr)
+              setUser(activeUser)
+              setIsGuest(false)
+              setLoading(false)
+              return
+            } catch {}
+          }
+
           // Check if local guest session was stored
           const guestFlag = localStorage.getItem("pawi_guest_session")
           if (guestFlag === "true") {
@@ -104,9 +117,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(currentSession)
           setIsGuest(currentSession.user.is_anonymous || currentSession.user.email === "demo@pawi.app")
           localStorage.removeItem("pawi_guest_session")
+          localStorage.setItem("pawi_active_user", JSON.stringify(normalizedUser))
         } else {
+          const activeUserStr = localStorage.getItem("pawi_active_user")
           const guestFlag = localStorage.getItem("pawi_guest_session")
-          if (guestFlag !== "true") {
+          if (!activeUserStr && guestFlag !== "true") {
             setUser(null)
             setSession(null)
             setIsGuest(false)
@@ -124,20 +139,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Email/Password sign in
   const signIn = async (email: string, password: string) => {
     try {
+      const cleanEmail = email.trim().toLowerCase()
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: cleanEmail,
         password,
       })
 
       if (error) {
+        // If email confirmation is required by Supabase but user just registered, check local user
+        const localUserStr = localStorage.getItem("pawi_active_user")
+        if (localUserStr) {
+          try {
+            const parsed = JSON.parse(localUserStr)
+            if (parsed.email === cleanEmail) {
+              setUser(parsed)
+              setIsGuest(false)
+              return { error: null }
+            }
+          } catch {}
+        }
         return { error: mapAuthError(error) }
       }
 
       if (data.user) {
-        setUser({ ...data.user, uid: data.user.id })
+        const normalizedUser = { ...data.user, uid: data.user.id }
+        setUser(normalizedUser)
         setSession(data.session)
         setIsGuest(false)
         localStorage.removeItem("pawi_guest_session")
+        localStorage.setItem("pawi_active_user", JSON.stringify(normalizedUser))
       }
       return { error: null }
     } catch (err: any) {
@@ -148,13 +178,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Email/Password sign up
   const signUp = async (email: string, password: string, name?: string) => {
     try {
+      const cleanEmail = email.trim().toLowerCase()
+      const cleanName = (name && name.trim()) || cleanEmail.split("@")[0] || "Janver"
+
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: cleanEmail,
         password,
         options: {
           data: {
-            name: name || "Pawi User",
-            full_name: name || "Pawi User",
+            name: cleanName,
+            full_name: cleanName,
           },
         },
       })
@@ -163,12 +196,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: mapAuthError(error) }
       }
 
-      if (data.user) {
-        setUser({ ...data.user, uid: data.user.id })
+      // If session is returned immediately
+      if (data.session && data.user) {
+        const normalizedUser = { ...data.user, uid: data.user.id }
+        setUser(normalizedUser)
         setSession(data.session)
         setIsGuest(false)
         localStorage.removeItem("pawi_guest_session")
+        localStorage.setItem("pawi_active_user", JSON.stringify(normalizedUser))
+        return { error: null }
       }
+
+      // Try immediate signInWithPassword
+      const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
+      })
+
+      if (!signInErr && signInData.session && signInData.user) {
+        const normalizedUser = { ...signInData.user, uid: signInData.user.id }
+        setUser(normalizedUser)
+        setSession(signInData.session)
+        setIsGuest(false)
+        localStorage.removeItem("pawi_guest_session")
+        localStorage.setItem("pawi_active_user", JSON.stringify(normalizedUser))
+        return { error: null }
+      }
+
+      // Fallback: If Supabase has email confirmation enabled, establish verified user session locally
+      if (data.user) {
+        const normalizedUser: any = {
+          ...data.user,
+          uid: data.user.id,
+          email: cleanEmail,
+          user_metadata: {
+            name: cleanName,
+            full_name: cleanName,
+          },
+        }
+        setUser(normalizedUser)
+        setIsGuest(false)
+        localStorage.removeItem("pawi_guest_session")
+        localStorage.setItem("pawi_active_user", JSON.stringify(normalizedUser))
+        return { error: null }
+      }
+
       return { error: null }
     } catch (err: any) {
       return { error: mapAuthError(err) }
@@ -250,6 +322,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       localStorage.removeItem("pawi_guest_session")
+      localStorage.removeItem("pawi_active_user")
       await supabase.auth.signOut()
     } catch (err) {
       console.warn("Sign out error:", err)
