@@ -259,31 +259,47 @@ export function WalletsScreen() {
             <span className="uppercase tracking-wider text-[#3D784E]">INSIGHT</span>
             <span className="text-muted-foreground flex items-center gap-0.5">Forecast &gt;</span>
           </div>
-          <p className="my-2 text-[11px] leading-tight font-medium text-foreground/80">
+          <p className="my-2 text-[11px] leading-tight font-semibold text-foreground/85">
             {activeFilter === "liabilities"
-              ? "Keep debt utilization below 30% to maintain a stellar financial credit score."
-              : "&quot;You&apos;re in the zone where the money starts looking deliberate and mature, not just well-behaved.&quot;"}
+              ? "Panatilihing mababa sa 30% ang utang utilization para laging healthy ang credit score mo!"
+              : "Nasa green zone ka ngayon! Proud ako sa'yo, kontrolado mo ang finances mo."}
           </p>
         </div>
 
         {/* Daily Balance Mini Chart */}
         <div className="flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-3.5 shadow-xs">
-          <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-            {activeFilter === "liabilities" ? "DEBT TREND" : "DAILY BALANCE"}
-          </p>
-          <div className="my-1 flex items-end justify-between gap-1 h-12 pt-2">
-            {DAILY_DOTS.map((dot, idx) => (
-              <div key={idx} className="flex flex-col items-center gap-1 flex-1">
-                <div
-                  className={cn(
-                    "w-full rounded-full transition-all",
-                    activeFilter === "liabilities" ? "bg-rose-500/80" : "bg-[#3D784E]"
-                  )}
-                  style={{ height: `${dot.height}%` }}
-                />
-                <span className="text-[8px] font-bold text-muted-foreground">{dot.day}</span>
-              </div>
-            ))}
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+              {activeFilter === "liabilities" ? "DEBT TREND" : "DAILY BALANCE"}
+            </p>
+            <span className="text-[9px] font-black text-[#3D784E]">
+              {activeFilter === "liabilities" ? "Controlled" : "+12% wk"}
+            </span>
+          </div>
+
+          {/* 7 Vertical Bars */}
+          <div className="my-1 flex h-14 items-end justify-between gap-1 px-0.5">
+            {DAILY_DOTS.map((dot, idx) => {
+              const isToday = dot.day === "M"
+              return (
+                <div key={idx} className="flex flex-col items-center gap-1 flex-1">
+                  <div className="h-10 w-full flex items-end justify-center">
+                    <div
+                      className={cn(
+                        "w-2 rounded-full transition-all",
+                        activeFilter === "liabilities"
+                          ? isToday ? "bg-rose-500" : "bg-rose-500/30"
+                          : isToday ? "bg-[#3D784E]" : "bg-[#3D784E]/30 hover:bg-[#3D784E]/60"
+                      )}
+                      style={{ height: `${dot.height}%` }}
+                    />
+                  </div>
+                  <span className={cn("text-[8px] font-black", isToday ? "text-foreground font-extrabold" : "text-muted-foreground")}>
+                    {dot.day}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
