@@ -108,6 +108,18 @@ export function PawiTutorialModal({ open, onClose }: PawiTutorialModalProps) {
   const handleFinish = () => {
     try {
       localStorage.setItem("pawi_has_seen_tutorial", "true")
+      if (typeof window !== "undefined") {
+        const activeUserStr = localStorage.getItem("pawi_active_user")
+        if (activeUserStr) {
+          try {
+            const parsed = JSON.parse(activeUserStr)
+            const uid = parsed.id || parsed.uid
+            if (uid) {
+              localStorage.setItem(`pawi_has_seen_tutorial_${uid}`, "true")
+            }
+          } catch {}
+        }
+      }
     } catch {
       // ignore storage errors
     }

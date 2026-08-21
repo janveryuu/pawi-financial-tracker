@@ -1216,6 +1216,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("pawi_receivables")
         localStorage.removeItem("pawi_planned_payments")
         localStorage.removeItem("pawi_payday_config")
+        localStorage.removeItem("pawi_has_seen_tutorial")
+        localStorage.removeItem("theme")
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith("pawi_has_seen_tutorial")) {
+            localStorage.removeItem(key)
+          }
+        })
         localStorage.removeItem("sentimo_insight_history")
         localStorage.removeItem("pawi_user_data_wiped")
       } catch (e) {

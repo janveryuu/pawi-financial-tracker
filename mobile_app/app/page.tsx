@@ -35,6 +35,22 @@ export default function Page() {
     }
   }, [user, loading, router])
 
+  useEffect(() => {
+    if (!loading && user) {
+      const userId = user.id || (user as any).uid || "guest"
+      const tutorialKey = `pawi_has_seen_tutorial_${userId}`
+      const hasSeenSpecific = localStorage.getItem(tutorialKey)
+      const hasSeenGlobal = localStorage.getItem("pawi_has_seen_tutorial")
+
+      if (!hasSeenSpecific && !hasSeenGlobal) {
+        const timer = setTimeout(() => {
+          setTutorialOpen(true)
+        }, 600)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [user, loading])
+
   if (loading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">

@@ -283,6 +283,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(signInData.session)
         setIsGuest(false)
         localStorage.removeItem("pawi_guest_session")
+        localStorage.removeItem("pawi_has_seen_tutorial")
+        localStorage.removeItem(`pawi_has_seen_tutorial_${loggedUser.id}`)
+        localStorage.setItem("theme", "light")
         localStorage.setItem("pawi_active_user", JSON.stringify(loggedUser))
         return { error: null }
       }
@@ -291,6 +294,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userToStore)
       setIsGuest(false)
       localStorage.removeItem("pawi_guest_session")
+      localStorage.removeItem("pawi_has_seen_tutorial")
+      localStorage.removeItem(`pawi_has_seen_tutorial_${userToStore.id}`)
+      localStorage.setItem("theme", "light")
       localStorage.setItem("pawi_active_user", JSON.stringify(userToStore))
       return { error: null }
     } catch (err: any) {
