@@ -313,11 +313,13 @@ export function WalletsScreen() {
                     style={{ backgroundColor: wallet.accent || "#007DFE" }}
                   >
                     <div className="flex items-start justify-between">
-                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
+                      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full drop-shadow-sm">
                         {brandLogo ? (
                           <Image src={brandLogo} alt={wallet.name} fill className="object-contain" />
                         ) : (
-                          <span className="text-xs font-black text-neutral-800">{wallet.name.slice(0, 2)}</span>
+                          <div className="flex h-full w-full items-center justify-center rounded-full bg-white/20 text-xs font-black">
+                            {wallet.name.slice(0, 2)}
+                          </div>
                         )}
                       </div>
                       <MoreHorizontal className="h-4 w-4 text-white/70" />
@@ -369,11 +371,13 @@ export function WalletsScreen() {
                     style={{ backgroundColor: wallet.accent || "#0033A0" }}
                   >
                     <div className="flex items-start justify-between">
-                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
+                      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full drop-shadow-sm">
                         {brandLogo ? (
                           <Image src={brandLogo} alt={wallet.name} fill className="object-contain" />
                         ) : (
-                          <span className="text-xs font-black text-neutral-800">{wallet.name.slice(0, 2)}</span>
+                          <div className="flex h-full w-full items-center justify-center rounded-full bg-white/20 text-xs font-black">
+                            {wallet.name.slice(0, 2)}
+                          </div>
                         )}
                       </div>
                       <MoreHorizontal className="h-4 w-4 text-white/70" />
@@ -430,11 +434,13 @@ export function WalletsScreen() {
                     style={{ backgroundColor: wallet.accent || "#7C3AED" }}
                   >
                     <div className="flex items-start justify-between">
-                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
+                      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full drop-shadow-sm">
                         {brandLogo ? (
                           <Image src={brandLogo} alt={wallet.name} fill className="object-contain" />
                         ) : (
-                          <CreditCard className="h-4 w-4 text-neutral-800" />
+                          <div className="flex h-full w-full items-center justify-center rounded-full bg-white/20">
+                            <CreditCard className="h-4 w-4" />
+                          </div>
                         )}
                       </div>
                       <MoreHorizontal className="h-4 w-4 text-white/70" />
