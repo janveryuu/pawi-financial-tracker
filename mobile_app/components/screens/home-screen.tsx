@@ -82,7 +82,7 @@ export function HomeScreen({
   onOpenNotifications,
 }: HomeScreenProps) {
   const { user } = useAuth()
-  const { streakDays, daysUntilPayday, paydayAmount, paydayDate, transactions } = useStore()
+  const { streakDays, daysUntilPayday, paydayAmount, paydayDate, transactions = [], plannedPayments = [] } = useStore()
   const [timeFilter, setTimeFilter] = useState<"day" | "week" | "month">("day")
   const [showCommunityModal, setShowCommunityModal] = useState(false)
 
@@ -115,15 +115,49 @@ export function HomeScreen({
   // Calculate today's flow
   const todayIncome = transactions
     .filter((t) => t.kind === "income")
-    .reduce((sum, t) => sum + t.amount, 0)
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0)
   const todayExpense = transactions
     .filter((t) => t.kind === "expense")
-    .reduce((sum, t) => sum + t.amount, 0)
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0)
 
-  // Default matching screenshot values if fresh
-  const displayIncome = todayIncome > 0 ? todayIncome : 2200
-  const displayExpense = todayExpense > 0 ? todayExpense : 469
+  const displayIncome = todayIncome
+  const displayExpense = todayExpense
   const isOverspending = displayExpense > displayIncome
+
+  // Dynamic Last 7 Days Bars calculated from real transactions
+  const last7DaysBars = useMemo(() => {
+    const dayLetters = ["S", "M", "T", "W", "T", "F", "S"]
+    const result = []
+    const now = new Date()
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(now.getDate() - i)
+      const dateStr = d.toISOString().split("T")[0]
+      const dayIdx = d.getDay()
+
+      const dayExpenses = transactions
+        .filter((t) => t.kind === "expense" && t.date && t.date.startsWith(dateStr))
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0)
+
+      result.push({
+        day: dayLetters[dayIdx],
+        isToday: i === 0,
+        amount: dayExpenses,
+        fallbackHeight: [28, 50, 85, 95, 20, 45, 35][6 - i],
+      })
+    }
+
+    const maxSpend = Math.max(...result.map((r) => r.amount), 0)
+    const hasData = maxSpend > 0
+
+    return result.map((r) => ({
+      ...r,
+      height: hasData
+        ? Math.max(15, Math.min(100, Math.round((r.amount / maxSpend) * 100)))
+        : transactions.length === 0 ? 10 : r.fallbackHeight,
+    }))
+  }, [transactions])
 
   // Smart Tagalog Financial Dialogue Engine for Pawi
   const pawiDialogueList = useMemo(() => {
@@ -295,17 +329,16 @@ export function HomeScreen({
           <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
             LAST 7 DAYS
           </p>
-
           {/* 7 Vertical Bars */}
           <div className="my-2 flex h-24 items-end justify-between gap-1 px-1">
-            {LAST_7_DAYS_BARS.map((bar, i) => (
+            {last7DaysBars.map((bar, i) => (
               <div key={i} className="flex flex-col items-center gap-1.5 flex-1">
                 <div className="h-16 w-full flex items-end justify-center">
                   <div
                     className={cn(
-                      "w-2.5 rounded-full transition-all",
+                      "w-2.5 rounded-full transition-all duration-300",
                       bar.isToday
-                        ? "bg-[#3D784E]"
+                        ? "bg-[#3D784E] shadow-2xs scale-y-105"
                         : "bg-[#3D784E]/30 hover:bg-[#3D784E]/60"
                     )}
                     style={{ height: `${bar.height}%` }}
@@ -314,43 +347,53 @@ export function HomeScreen({
                 <div className="flex flex-col items-center">
                   <span
                     className={cn(
-                      "text-[9px] font-black",
-                      bar.isToday ? "text-foreground" : "text-muted-foreground"
+                      "text-[9px] font-black leading-none",
+                      bar.isToday
+                        ? "text-foreground font-extrabold"
+                        : "text-muted-foreground"
                     )}
                   >
                     {bar.day}
                   </span>
                   {bar.isToday && (
-                    <div className="h-1 w-1 rounded-full bg-[#3D784E] mt-0.5" />
+                    <span className="mt-0.5 h-1 w-1 rounded-full bg-[#3D784E]" />
                   )}
                 </div>
               </div>
             ))}
           </div>
+
+          <div className="flex items-center justify-between text-[9px] font-bold text-muted-foreground/80">
+            <span>Past 7 Days</span>
+            <span className="text-[#3D784E]">Track Active</span>
+          </div>
         </div>
 
-        {/* Right Widget: Today Flow */}
+        {/* Right Widget: TODAY FLOW */}
         <div className="flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-4 shadow-xs">
-          <p className="text-sm font-black text-foreground">Today</p>
-
-          {/* Income & Expense rows */}
-          <div className="my-2 space-y-2">
-            <div className="flex items-center gap-1.5">
-              <ArrowUpRight className="h-4 w-4 text-emerald-600 stroke-[2.5] shrink-0" />
-              <span className="text-sm font-black text-foreground tabular-nums">
-                {formatMoney(displayIncome)}
-              </span>
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-foreground">Today</span>
+              <span className="text-[10px] font-bold text-muted-foreground/70">Flow</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <ArrowDownLeft className="h-4 w-4 text-rose-500 stroke-[2.5] shrink-0" />
-              <span className="text-sm font-black text-foreground tabular-nums">
-                {formatMoney(displayExpense)}
-              </span>
+            <div className="mt-2 space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <ArrowUpRight className="h-4 w-4 text-[#3D784E] stroke-[2.5] shrink-0" />
+                <span className="text-sm font-black text-foreground tabular-nums">
+                  {formatMoney(displayIncome)}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ArrowDownLeft className="h-4 w-4 text-rose-500 stroke-[2.5] shrink-0" />
+                <span className="text-sm font-black text-foreground tabular-nums">
+                  {formatMoney(displayExpense)}
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Time Filter Pills: Day / Week / Month */}
-          <div className="flex items-center rounded-xl bg-secondary/80 p-0.5">
+          <div className="flex items-center rounded-xl bg-secondary/80 p-0.5 mt-2">
             <button
               type="button"
               onClick={() => setTimeFilter("day")}
@@ -409,7 +452,7 @@ export function HomeScreen({
 
         <div className="text-right">
           <p className="text-sm font-black text-foreground tabular-nums">
-            {formatMoney(paydayAmount || 18500)}
+            {formatMoney(paydayAmount || 0)}
           </p>
           <p className="text-[11px] font-semibold text-muted-foreground mt-0.5">
             {paydayDate || "May 15"}
@@ -432,80 +475,36 @@ export function HomeScreen({
           </div>
         </div>
 
-        {/* INCOME Subheading */}
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-wider text-[#3D784E] mb-2 px-0.5">
-            INCOME
-          </p>
-          {UPCOMING_INCOME.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between py-2 border-b border-border/40 last:border-none"
-            >
-              <div className="flex items-center gap-3">
-                {/* Official Brand Logo Icon */}
-                <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-card p-1 shadow-xs">
-                  <Image src="/logos/gcash.png" alt="GCash" fill className="object-contain" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-foreground">{item.title}</p>
-                  <p className="text-[10px] text-muted-foreground font-medium">{item.date}</p>
-                </div>
-              </div>
-              <span className="text-xs font-black text-[#3D784E] tabular-nums">
-                {formatMoney(item.amount)}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* EXPENSES Subheading */}
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-wider text-rose-500 mb-2 px-0.5">
-            EXPENSES
-          </p>
-          <div className="space-y-1">
-            {UPCOMING_EXPENSES.map((item) => {
-              const logoPath =
-                item.iconType === "globe"
-                  ? "/logos/globe.png"
-                  : item.iconType === "netflix"
-                  ? "/logos/netflix.png"
-                  : item.iconType === "converge"
-                  ? "/logos/converge.png"
-                  : "/logos/rcbc.png"
-
-              return (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between py-2 border-b border-border/40 last:border-none"
-                >
-                  <div className="flex items-center gap-3">
-                    {/* Official Brand Icon */}
-                    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-card p-1 shadow-xs">
-                      <Image src={logoPath} alt={item.title} fill className="object-contain" />
-                    </div>
-
-                    <div>
-                      <p className="text-xs font-bold text-foreground">{item.title}</p>
-                      <p className="text-[10px] text-muted-foreground font-medium">{item.date}</p>
-                    </div>
-                  </div>
-
-                <div className="text-right">
-                  {item.badge && (
-                    <span className="block text-[9px] font-black uppercase tracking-wider text-rose-600 mb-0.5">
-                      {item.badge}
-                    </span>
-                  )}
-                  <span className="text-xs font-black text-foreground tabular-nums">
-                    {formatMoney(item.amount)}
-                  </span>
-                </div>
-              </div>
-            )})}
+        {plannedPayments.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border/70 p-5 text-center">
+            <p className="text-xs font-bold text-foreground">No upcoming bills scheduled</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Add subscriptions, bills, or installments under the Plan tab to track them here.
+            </p>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-1">
+            {plannedPayments.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between py-2 border-b border-border/40 last:border-none"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary text-base">
+                    {item.icon || "📅"}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-foreground">{item.label}</p>
+                    <p className="text-[10px] text-muted-foreground font-medium">{item.dueDate}</p>
+                  </div>
+                </div>
+                <span className="text-xs font-black text-foreground tabular-nums">
+                  {formatMoney(item.amount)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Financial Community & Circles Modal */}

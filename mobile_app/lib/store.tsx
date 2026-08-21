@@ -12,6 +12,7 @@ import {
   Installment,
   Tag,
   CurrencyCode,
+  getWalletBrandColor,
   wallets as defaultWallets,
   transactions as defaultTransactions,
   goals as defaultGoals,
@@ -102,6 +103,7 @@ const StoreContext = createContext<StoreContextType | null>(null)
 // -------------------------------------------------------------
 
 function mapAccountToWallet(row: any): Wallet {
+  const brandColor = getWalletBrandColor(row.name, row.type, row.accent)
   return {
     id: row.id,
     name: row.name,
@@ -110,7 +112,7 @@ function mapAccountToWallet(row: any): Wallet {
     currency: (row.currency as CurrencyCode) || "PHP",
     type: row.type || "cash",
     group: row.type === "credit" ? "credit" : row.type === "loan" ? "loan" : row.type === "ewallet" ? "ewallet" : "bank",
-    accent: row.type === "credit" ? "#D97706" : row.type === "loan" ? "#0D9488" : "#3D784E",
+    accent: brandColor,
     isLiability: Boolean(row.is_liability),
     creditLimit: Number(row.credit_limit) || undefined,
     usedCredit: Number(row.used_credit) || undefined,
@@ -226,16 +228,18 @@ function mapBudgetToRow(b: Budget, userId: string): any {
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
+  const isWipedInitially = typeof window !== "undefined" && localStorage.getItem("pawi_user_data_wiped") === "true"
+
   const [state, setState] = useState<State>({
-    wallets: defaultWallets,
-    transactions: defaultTransactions,
-    goals: defaultGoals,
-    budgets: defaultBudgets,
-    debts: defaultDebts,
-    receivables: defaultReceivables,
-    plannedPayments: defaultPlannedPayments,
-    installments: defaultInstallments,
-    tags: defaultTags,
+    wallets: isWipedInitially ? [] : defaultWallets,
+    transactions: isWipedInitially ? [] : defaultTransactions,
+    goals: isWipedInitially ? [] : defaultGoals,
+    budgets: isWipedInitially ? [] : defaultBudgets,
+    debts: isWipedInitially ? [] : defaultDebts,
+    receivables: isWipedInitially ? [] : defaultReceivables,
+    plannedPayments: isWipedInitially ? [] : defaultPlannedPayments,
+    installments: isWipedInitially ? [] : defaultInstallments,
+    tags: isWipedInitially ? [] : defaultTags,
     chatMessages: [
       {
         role: "assistant",
@@ -243,7 +247,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
     ],
     defaultCurrency: "PHP",
-    streakDays: 6,
+    streakDays: 1,
     daysUntilPayday: 25,
     paydayAmount: 18500,
     paydayDate: "May 15",
@@ -252,6 +256,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Load and sync from Supabase PostgreSQL tables
   useEffect(() => {
     if (!user) {
+      const isWiped = typeof window !== "undefined" && localStorage.getItem("pawi_user_data_wiped") === "true"
+      if (isWiped) {
+        setState((prev) => ({
+          ...prev,
+          wallets: [],
+          transactions: [],
+          goals: [],
+          budgets: [],
+          debts: [],
+          receivables: [],
+          plannedPayments: [],
+          installments: [],
+          tags: [],
+        }))
+        return
+      }
+
       // Local fallback state
       setState((prev) => ({
         ...prev,
@@ -286,14 +307,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           supabase.from("recurring_bills").select("*").eq("user_id", userId),
         ])
 
-        // If user already has accounts in database, hydrate state from Supabase
+        // If user has accounts in database, hydrate state from Supabase
         if (accountsData && accountsData.length > 0) {
           setState((prev) => ({
             ...prev,
             wallets: accountsData.map(mapAccountToWallet),
-            transactions: txData ? txData.map(mapTxRowToTransaction) : prev.transactions,
-            goals: goalsData ? goalsData.map(mapGoalRowToGoal) : prev.goals,
-            budgets: catData ? catData.map(mapCatRowToBudget) : prev.budgets,
+            transactions: txData ? txData.map(mapTxRowToTransaction) : [],
+            goals: goalsData ? goalsData.map(mapGoalRowToGoal) : [],
+            budgets: catData ? catData.map(mapCatRowToBudget) : [],
             plannedPayments: billsData && billsData.length > 0
               ? billsData.map((b) => ({
                   id: b.id,
@@ -305,21 +326,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                   account: b.account_name || "Cash",
                   icon: "📅",
                 }))
-              : prev.plannedPayments,
+              : [],
           }))
         } else {
-          // Seed initial default accounts & categories into Supabase for this new user
-          const accountsToSeed = defaultWallets.map((w) => mapWalletToAccount(w, userId))
-          const categoriesToSeed = defaultBudgets.map((b) => mapBudgetToRow(b, userId))
-          const goalsToSeed = defaultGoals.map((g) => mapGoalToRow(g, userId))
-          const txToSeed = defaultTransactions.map((t) => mapTransactionToRow(t, userId))
-
-          await Promise.allSettled([
-            supabase.from("accounts").upsert(accountsToSeed),
-            supabase.from("categories").upsert(categoriesToSeed),
-            supabase.from("savings_goals").upsert(goalsToSeed),
-            supabase.from("transactions").upsert(txToSeed),
-          ])
+          // If no accounts found in Supabase (empty database or user wiped data),
+          // maintain clean empty state without auto-seeding mock data
+          setState((prev) => ({
+            ...prev,
+            wallets: [],
+            transactions: [],
+            goals: [],
+            budgets: [],
+            debts: [],
+            receivables: [],
+            plannedPayments: [],
+            installments: [],
+            tags: [],
+          }))
         }
       } catch (err) {
         console.warn("Supabase initial fetch info:", err)
@@ -839,17 +862,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const resetAccountData = async () => {
     const cleanState: State = {
-      wallets: [
-        {
-          id: "cash",
-          name: "Cash",
-          subtitle: "Default · PHP",
-          balance: 0,
-          currency: "PHP",
-          type: "cash",
-          accent: "#3D784E",
-        },
-      ],
+      wallets: [],
       transactions: [],
       goals: [],
       budgets: [],
@@ -867,14 +880,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       defaultCurrency: "PHP",
       streakDays: 1,
       daysUntilPayday: 25,
-      paydayAmount: 18500,
+      paydayAmount: 0,
       paydayDate: "May 15",
     }
     setState(cleanState)
 
+    // Clear all client-side storage layers
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("pawi_guest_session")
+        localStorage.removeItem("pawi_state")
+        localStorage.removeItem("pawi_wallets")
+        localStorage.removeItem("pawi_transactions")
+        localStorage.removeItem("pawi_goals")
+        localStorage.removeItem("pawi_budgets")
+        localStorage.removeItem("pawi_debts")
+        localStorage.removeItem("pawi_receivables")
+        localStorage.removeItem("pawi_planned_payments")
+        localStorage.removeItem("sentimo_insight_history")
+        localStorage.setItem("pawi_user_data_wiped", "true")
+      } catch (e) {
+        console.warn("Error clearing localStorage:", e)
+      }
+    }
+
     if (user) {
       const userId = user.id || (user as any).uid
       await Promise.allSettled([
+        supabase.from("accounts").delete().eq("user_id", userId),
         supabase.from("transactions").delete().eq("user_id", userId),
         supabase.from("savings_goals").delete().eq("user_id", userId),
         supabase.from("categories").delete().eq("user_id", userId),

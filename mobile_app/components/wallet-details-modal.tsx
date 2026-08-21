@@ -1,16 +1,18 @@
 "use client"
 
 import { useEffect } from "react"
-import { X, ArrowDownRight, ArrowUpRight, Banknote, Smartphone, CreditCard, PiggyBank, Trash2 } from "lucide-react"
+import { useState, useEffect } from "react"
+import { X, ArrowDownRight, ArrowUpRight, Banknote, Smartphone, CreditCard, PiggyBank, Trash2, FileText, Plus, Minus, History, Wallet as WalletIcon } from "lucide-react"
 import Image from "next/image"
 import { useStore } from "@/lib/store"
-import { Wallet, formatMoney, WalletType, getWalletBrandLogo } from "@/lib/pawi-data"
+import { Wallet, formatMoney, WalletType, getWalletBrandLogo, getWalletBrandColor } from "@/lib/pawi-data"
 import { cn } from "@/lib/utils"
 
 interface WalletDetailsModalProps {
   wallet: Wallet | null
   open: boolean
   onClose: () => void
+  onAddTransaction?: (type: "expense" | "income", walletName: string) => void
 }
 
 const icons: Record<WalletType, typeof Banknote> = {
@@ -18,20 +20,21 @@ const icons: Record<WalletType, typeof Banknote> = {
   ewallet: Smartphone,
   card: CreditCard,
   savings: PiggyBank,
+  credit: CreditCard,
+  loan: FileText,
 }
 
-function getWalletMonogram(name: string): string | null {
-  const generic = ["cash", "savings", "ewallet", "card", "wallet", "my wallet"]
-  if (generic.includes(name.trim().toLowerCase())) return null
+function getWalletMonogram(name: string): string {
   const words = name.trim().split(/\s+/)
-  if (words.length > 1) {
+  if (words.length >= 2) {
     return (words[0][0] + words[1][0]).toUpperCase()
   }
   return name.slice(0, 2).toUpperCase()
 }
 
-export function WalletDetailsModal({ wallet, open, onClose }: WalletDetailsModalProps) {
+export function WalletDetailsModal({ wallet, open, onClose, onAddTransaction }: WalletDetailsModalProps) {
   const { transactions, deleteWallet } = useStore()
+  const [activeTab, setActiveTab] = useState<"overview" | "history">("overview")
 
   useEffect(() => {
     if (!open) return
@@ -50,6 +53,7 @@ export function WalletDetailsModal({ wallet, open, onClose }: WalletDetailsModal
 
   const Icon = icons[wallet.type] || Banknote
   const brandLogo = getWalletBrandLogo(wallet.name)
+  const brandColor = getWalletBrandColor(wallet.name, wallet.type, wallet.accent)
   const monogram = !brandLogo ? getWalletMonogram(wallet.name) : null
   const walletTransactions = transactions.filter(t => t.account === wallet.name)
 
@@ -68,7 +72,7 @@ export function WalletDetailsModal({ wallet, open, onClose }: WalletDetailsModal
           <div className="flex items-center gap-3">
             <div
               className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-white font-black text-base tracking-wide shadow-sm"
-              style={{ backgroundColor: brandLogo ? "transparent" : wallet.accent }}
+              style={{ backgroundColor: brandLogo ? "transparent" : brandColor }}
             >
               {brandLogo ? (
                 <Image src={brandLogo} alt={wallet.name} fill className="object-contain" />

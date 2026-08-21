@@ -42,6 +42,50 @@ export function getWalletBrandLogo(name: string): string | undefined {
   return undefined
 }
 
+export function getWalletBrandColor(name?: string, type?: string, fallback?: string): string {
+  const lower = (name || "").toLowerCase()
+
+  // 1. Specific Institutions & Brands
+  if (lower.includes("gcash")) return "#007DFE" // GCash Blue
+  if (lower.includes("maya") || lower.includes("paymaya")) return "#059652" // Maya Mint/Green
+  if (lower.includes("bpi")) return "#C8102E" // BPI Vibrant Red
+  if (lower.includes("bdo")) return "#003882" // BDO Deep Navy Blue
+  if (lower.includes("rcbc")) return "#0055B8" // RCBC Royal Blue
+  if (lower.includes("union") || lower.includes("ub_") || lower.includes("unionbank")) return "#EA580C" // UnionBank Orange
+  if (lower.includes("gotyme") || lower.includes("tyme")) return "#5A31F4" // GoTyme Violet/Purple
+  if (lower.includes("wise")) return "#143C3C" // Wise Forest Teal-Green
+  if (lower.includes("paypal")) return "#003087" // PayPal Deep Blue
+  if (lower.includes("metrobank") || lower.includes("metro")) return "#0033A0" // Metrobank Blue
+  if (lower.includes("seabank") || lower.includes("sea")) return "#E64A19" // SeaBank Orange
+  if (lower.includes("cimb")) return "#ED1C24" // CIMB Red
+  if (lower.includes("komo")) return "#00B4D8" // Komo Blue
+
+  // 2. Loans / Debts / Mortgages (Distinct Slate/Charcoal Neutral)
+  if (
+    type === "loan" ||
+    lower.includes("loan") ||
+    lower.includes("housing") ||
+    lower.includes("pag-ibig") ||
+    lower.includes("pagibig") ||
+    lower.includes("motorcycle") ||
+    lower.includes("car loan") ||
+    lower.includes("sss") ||
+    lower.includes("gsis") ||
+    lower.includes("debt") ||
+    lower.includes("payable")
+  ) {
+    return "#334155" // Neutral Slate
+  }
+
+  // 3. Fallbacks by Type
+  if (type === "cash" || lower === "cash" || lower.includes("cash")) return "#2E683E" // Neutral Green
+  if (type === "credit") return "#4338CA" // Default Credit Card Indigo
+  if (type === "savings" || type === "bank") return "#1E40AF" // Default Bank Blue
+  if (type === "ewallet") return "#0284C7" // Default E-Wallet Blue
+
+  return fallback || "#2E683E"
+}
+
 export function getTransactionMerchantLogo(label: string, category?: string, account?: string): string | undefined {
   const text = `${label} ${category || ""} ${account || ""}`.toLowerCase()
   
@@ -182,7 +226,7 @@ export const wallets: Wallet[] = [
     currency: "PHP",
     type: "ewallet",
     group: "ewallet",
-    accent: "#1A73E8",
+    accent: "#007DFE",
     spendable: 31420,
     notes: "Primary digital wallet for bills, food, and online transfers.",
   },
@@ -195,7 +239,7 @@ export const wallets: Wallet[] = [
     currency: "PHP",
     type: "savings",
     group: "bank",
-    accent: "#E53E3E",
+    accent: "#C8102E",
     interestRate: "1.25% yearly",
     spendable: 20751,
     goalsLinked: 30000,
@@ -209,7 +253,7 @@ export const wallets: Wallet[] = [
     currency: "USD",
     type: "savings",
     group: "bank",
-    accent: "#48D065",
+    accent: "#143C3C",
     spendable: 420,
     notes: "Wise multi-currency account for international freelance payouts.",
   },
@@ -222,7 +266,7 @@ export const wallets: Wallet[] = [
     currency: "PHP",
     type: "credit",
     group: "credit",
-    accent: "#D97706",
+    accent: "#003882",
     isLiability: true,
     dueDay: 12,
     usedCredit: 11850,
@@ -237,7 +281,7 @@ export const wallets: Wallet[] = [
     currency: "PHP",
     type: "credit",
     group: "credit",
-    accent: "#0284C7",
+    accent: "#0055B8",
     isLiability: true,
     dueDay: 18,
     usedCredit: 6300,
@@ -252,7 +296,7 @@ export const wallets: Wallet[] = [
     currency: "PHP",
     type: "credit",
     group: "credit",
-    accent: "#10B981",
+    accent: "#EA580C",
     isLiability: true,
     dueDay: 24,
     usedCredit: 2950,
@@ -268,7 +312,7 @@ export const wallets: Wallet[] = [
     currency: "PHP",
     type: "loan",
     group: "loan",
-    accent: "#0D9488",
+    accent: "#334155",
     isLiability: true,
     notes: "Monthly installment: ₱2,850. Paid via auto-debit.",
   },
@@ -280,7 +324,7 @@ export const wallets: Wallet[] = [
     currency: "PHP",
     type: "loan",
     group: "loan",
-    accent: "#1E3A8A",
+    accent: "#334155",
     isLiability: true,
     notes: "Pag-IBIG Housing loan amortization: ₱8,450 / month.",
   },

@@ -14,15 +14,18 @@ interface AddWalletModalProps {
 }
 
 const PRESET_BANKS = [
-  { name: "Cash", type: "cash", group: "cash", icon: "cash", color: "#3D784E" },
+  { name: "Cash", type: "cash", group: "cash", icon: "cash", color: "#2E683E" },
   { name: "GCash", type: "ewallet", group: "ewallet", icon: "gcash", color: "#007DFE" },
-  { name: "Maya", type: "ewallet", group: "ewallet", icon: "paymaya", color: "#22C55E" },
-  { name: "BDO", type: "savings", group: "bank", icon: "bdo", color: "#0033A0" },
-  { name: "BPI", type: "savings", group: "bank", icon: "bpi", color: "#B11116" },
-  { name: "UnionBank", type: "savings", group: "bank", icon: "unionbank", color: "#F37021" },
-  { name: "SeaBank", type: "savings", group: "bank", icon: "seabank", color: "#FF5722" },
-  { name: "RCBC", type: "savings", group: "bank", icon: "rcbc", color: "#0072CE" },
-  { name: "Credit Card", type: "card", group: "credit", icon: "card", color: "#7C3AED", isLiability: true },
+  { name: "Maya", type: "ewallet", group: "ewallet", icon: "paymaya", color: "#059652" },
+  { name: "BDO", type: "savings", group: "bank", icon: "bdo", color: "#003882" },
+  { name: "BPI", type: "savings", group: "bank", icon: "bpi", color: "#C8102E" },
+  { name: "RCBC", type: "savings", group: "bank", icon: "rcbc", color: "#0055B8" },
+  { name: "UnionBank", type: "savings", group: "bank", icon: "unionbank", color: "#EA580C" },
+  { name: "GoTyme", type: "savings", group: "bank", icon: "gotyme", color: "#5A31F4" },
+  { name: "Wise", type: "savings", group: "bank", icon: "wise", color: "#143C3C" },
+  { name: "SeaBank", type: "savings", group: "bank", icon: "seabank", color: "#E64A19" },
+  { name: "Credit Card", type: "card", group: "credit", icon: "card", color: "#4338CA", isLiability: true },
+  { name: "Loan", type: "loan", group: "loan", icon: "card", color: "#334155", isLiability: true },
 ]
 
 export function AddWalletModal({ open, onClose }: AddWalletModalProps) {

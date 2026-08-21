@@ -18,7 +18,7 @@ import {
   Layers,
   X,
 } from "lucide-react"
-import { formatMoney, getWalletBrandLogo, type Wallet } from "@/lib/pawi-data"
+import { formatMoney, getWalletBrandLogo, getWalletBrandColor, type Wallet } from "@/lib/pawi-data"
 import { useStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import { AddWalletModal } from "../add-wallet-modal"
@@ -62,17 +62,17 @@ export function WalletsScreen() {
   const bannerConfig = {
     all: {
       title: "TOTAL NET WORTH",
-      amount: netWorthPhp > 0 ? netWorthPhp : (totalAssetsPhp || 77810),
+      amount: netWorthPhp,
       subtitle: "Total net balance across accounts",
     },
     assets: {
       title: "ASSETS",
-      amount: totalAssetsPhp || 77810,
+      amount: totalAssetsPhp,
       subtitle: "Accounts and receivables",
     },
     liabilities: {
       title: "LIABILITIES",
-      amount: totalLiabilitiesPhp || 0,
+      amount: totalLiabilitiesPhp,
       subtitle: "Debts and credit cards",
     },
   }[activeFilter]
@@ -478,12 +478,13 @@ export function WalletsScreen() {
             <div className={cn("grid gap-2.5", eWallets.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
               {eWallets.map((wallet) => {
                 const brandLogo = getWalletBrandLogo(wallet.name)
+                const brandColor = getWalletBrandColor(wallet.name, wallet.type, wallet.accent)
                 return (
                   <div
                     key={wallet.id}
                     onClick={() => setSelectedWallet(wallet)}
                     className="flex flex-col justify-between rounded-3xl p-4 text-white shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    style={{ backgroundColor: wallet.accent || "#007DFE" }}
+                    style={{ backgroundColor: brandColor }}
                   >
                     <div className="flex items-start justify-between">
                       <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full drop-shadow-sm">
@@ -536,12 +537,13 @@ export function WalletsScreen() {
             <div className={cn("grid gap-2.5", bankAccounts.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
               {bankAccounts.map((wallet) => {
                 const brandLogo = getWalletBrandLogo(wallet.name)
+                const brandColor = getWalletBrandColor(wallet.name, wallet.type, wallet.accent)
                 return (
                   <div
                     key={wallet.id}
                     onClick={() => setSelectedWallet(wallet)}
                     className="flex flex-col justify-between rounded-3xl p-4 text-white shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    style={{ backgroundColor: wallet.accent || "#0033A0" }}
+                    style={{ backgroundColor: brandColor }}
                   >
                     <div className="flex items-start justify-between">
                       <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full drop-shadow-sm">
@@ -594,6 +596,7 @@ export function WalletsScreen() {
             <div className="grid grid-cols-2 gap-2.5">
               {creditCards.map((wallet) => {
                 const brandLogo = getWalletBrandLogo(wallet.name)
+                const brandColor = getWalletBrandColor(wallet.name, wallet.type, wallet.accent)
                 const used = wallet.usedCredit || wallet.balance || 0
                 const limit = wallet.creditLimit || 50000
                 const percentUsed = Math.min(100, Math.round((used / limit) * 100)) || 16
@@ -604,7 +607,7 @@ export function WalletsScreen() {
                     key={wallet.id}
                     onClick={() => setSelectedWallet(wallet)}
                     className="flex flex-col justify-between rounded-3xl p-4 text-white shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    style={{ backgroundColor: wallet.accent || "#7C3AED" }}
+                    style={{ backgroundColor: brandColor }}
                   >
                     <div className="flex items-start justify-between">
                       <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full drop-shadow-sm">
@@ -659,47 +662,71 @@ export function WalletsScreen() {
           <div className="space-y-2">
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-1.5">
-                <FileText className="h-4 w-4 text-amber-500" />
+                <FileText className="h-4 w-4 text-slate-400" />
                 <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
                   Loans & Payables
                 </h3>
               </div>
-              <span className="text-xs font-black text-amber-500 tabular-nums">
+              <span className="text-xs font-black text-slate-400 tabular-nums">
                 {formatMoney(loansTotal)}
               </span>
             </div>
 
             <div className={cn("grid gap-2.5", loans.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
-              {loans.map((wallet) => (
-                <div
-                  key={wallet.id}
-                  onClick={() => setSelectedWallet(wallet)}
-                  className="flex flex-col justify-between rounded-3xl p-4 text-white shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                  style={{ backgroundColor: wallet.accent || "#0D9488" }}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20">
-                      <FileText className="h-4 w-4" />
+              {loans.map((wallet) => {
+                const brandColor = getWalletBrandColor(wallet.name, wallet.type, wallet.accent)
+                return (
+                  <div
+                    key={wallet.id}
+                    onClick={() => setSelectedWallet(wallet)}
+                    className="flex flex-col justify-between rounded-3xl p-4 text-white shadow-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    style={{ backgroundColor: brandColor }}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <MoreHorizontal className="h-4 w-4 text-white/70" />
                     </div>
-                    <MoreHorizontal className="h-4 w-4 text-white/70" />
-                  </div>
 
-                  <div className="mt-3">
-                    <p className="text-xs font-black leading-tight truncate">{wallet.name}</p>
-                    <p className="text-[9px] text-white/80 font-medium truncate mt-0.5">{wallet.subtitle}</p>
-                  </div>
+                    <div className="mt-3">
+                      <p className="text-xs font-black leading-tight truncate">{wallet.name}</p>
+                      <p className="text-[9px] text-white/80 font-medium truncate mt-0.5">{wallet.subtitle}</p>
+                    </div>
 
-                  <div className="mt-2">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-white/70">
-                      AMOUNT OWED
-                    </span>
-                    <p className="text-sm font-black tracking-tight tabular-nums">
-                      {formatMoney(wallet.balance, wallet.currency)}
-                    </p>
+                    <div className="mt-2">
+                      <span className="text-[8px] font-black uppercase tracking-widest text-white/70">
+                        AMOUNT OWED
+                      </span>
+                      <p className="text-sm font-black tracking-tight tabular-nums">
+                        {formatMoney(wallet.balance, wallet.currency)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
+          </div>
+        )}
+
+        {/* Empty State when no accounts exist */}
+        {wallets.length === 0 && (
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border/80 bg-card/60 p-8 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E]">
+              <Building className="h-6 w-6" />
+            </div>
+            <h3 className="mt-3 text-sm font-extrabold text-foreground">No accounts yet</h3>
+            <p className="mt-1 text-xs text-muted-foreground max-w-xs leading-relaxed">
+              Add your cash, e-wallets, bank accounts, or credit cards to begin tracking your net worth and balances.
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsAddOpen(true)}
+              className="mt-4 flex items-center gap-1.5 rounded-2xl bg-[#3D784E] px-4 py-2.5 text-xs font-black text-white shadow-xs hover:bg-[#356B46] active:scale-95 transition-all"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Your First Account</span>
+            </button>
           </div>
         )}
       </div>

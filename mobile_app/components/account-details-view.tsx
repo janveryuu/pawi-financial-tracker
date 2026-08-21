@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Wallet, Transaction, formatMoney, getWalletBrandLogo } from "@/lib/pawi-data"
+import { Wallet, Transaction, formatMoney, getWalletBrandLogo, getWalletBrandColor } from "@/lib/pawi-data"
 import { useStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
 
@@ -155,7 +155,7 @@ export function AccountDetailsView({
           {/* Card Front (Image 3) */}
           <div
             className="backface-hidden absolute inset-0 flex flex-col justify-between rounded-[2rem] p-5 text-white shadow-md overflow-hidden"
-            style={{ backgroundColor: wallet.accent || "#E53E3E" }}
+            style={{ backgroundColor: getWalletBrandColor(wallet.name, wallet.type, wallet.accent) }}
           >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
@@ -197,7 +197,7 @@ export function AccountDetailsView({
           {/* Card Back (Image 4) */}
           <div
             className="backface-hidden rotate-y-180 absolute inset-0 flex flex-col justify-between rounded-[2rem] p-5 text-white shadow-md overflow-hidden"
-            style={{ backgroundColor: wallet.accent || "#E53E3E" }}
+            style={{ backgroundColor: getWalletBrandColor(wallet.name, wallet.type, wallet.accent) }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
