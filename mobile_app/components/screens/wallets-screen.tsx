@@ -176,14 +176,14 @@ export function WalletsScreen() {
       {/* Hero Mascot Banner: Tight Capsule with Big Pop-Out Mascot */}
       <div className="relative rounded-[2.25rem] bg-[#3D784E] p-1.5 pl-2 text-white shadow-md select-none mt-2">
         <div className="flex items-center gap-2">
-          {/* Pop-out Mascot Graphic (Large & breaking over border like Home screen) */}
-          <div className="relative -mt-9 -mb-6 -ml-2 h-28 w-28 shrink-0 z-10 pointer-events-none">
+          {/* Pop-out Mascot Graphic: Centered vertically in the green rectangle */}
+          <div className="relative -my-7 -ml-2 h-28 w-28 shrink-0 z-10 pointer-events-none">
             <Image
               src="/pawi-holding-wallet.png"
               alt="Pawi"
               fill
               priority
-              className="object-contain drop-shadow-xl scale-150 origin-bottom"
+              className="object-contain drop-shadow-xl scale-150 origin-center"
             />
           </div>
 
