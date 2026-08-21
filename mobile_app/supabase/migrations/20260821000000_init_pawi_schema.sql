@@ -39,7 +39,7 @@ create table if not exists public.accounts (
   due_day integer,
   notes text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null default timezone('utc'::text, now())
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- 3. Categories / Budgets Table
@@ -53,7 +53,7 @@ create table if not exists public.categories (
   monthly_limit numeric(12, 2) default 0.00,
   spent numeric(12, 2) default 0.00,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null default timezone('utc'::text, now())
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- 4. Transactions Table
