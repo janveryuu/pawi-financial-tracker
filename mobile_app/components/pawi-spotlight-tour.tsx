@@ -4,11 +4,10 @@
  * PawiSpotlightTour — Mandatory, interactive, spotlight-driven product tour.
  *
  * Key guarantees:
- *  - Full-screen SVG scrim with a glowing cutout over the real, live UI element.
- *  - All pointer events outside the spotlight are blocked.
- *  - Steps requiring real interactions (FAB tap, nav tap, category tap) advance ONLY
- *    when the actual interaction occurs — not via a generic "Next" button.
- *  - Steps with no useful real interaction use a "Got it" acknowledgement button.
+ *  - Full-screen SVG scrim with an even-odd cutout over the real, live UI element.
+ *  - Transparent spotlight hole passes all taps directly through to the underlying element.
+ *  - Direct forwarder triggers underlying action and advances tour seamlessly.
+ *  - Callout card includes advance actions so user is never stuck.
  *  - Hidden accessibility escape hatch: triple-tap top-left corner OR 5× Tab+Enter.
  *  - Tutorial progress (currentStep) is persisted to Supabase profiles.tutorial_step.
  *  - On app restart mid-tour, the tour resumes at the exact last-persisted step.
@@ -17,7 +16,7 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { CheckCircle2 } from "lucide-react"
+import { CheckCircle2, ArrowRight } from "lucide-react"
 import Image from "next/image"
 import { useSpotlightRect } from "@/hooks/use-spotlight-rect"
 
@@ -32,8 +31,7 @@ export interface SpotlightStep {
   speech: string
   tip?: string
   advanceMode: AdvanceMode
-  // For steps managed by page.tsx (e.g. open modal before spotlighting inside it)
-  requiresPageAction?: string
+  actionHint?: string
 }
 
 export const TOUR_STEPS: SpotlightStep[] = [
@@ -61,6 +59,7 @@ export const TOUR_STEPS: SpotlightStep[] = [
     speech:
       "That glowing green button at the bottom-right is the FAB — your fastest path to logging money. Tap it now to see what you can do!",
     advanceMode: "real-interaction",
+    actionHint: "Tap the + button to open menu",
   },
   {
     id: 3,
@@ -69,6 +68,7 @@ export const TOUR_STEPS: SpotlightStep[] = [
     speech:
       "Here's the speed dial! You can log Income, Expenses, Transfers, or even Scan a receipt with AI. Tap 'Expense' to try adding a practice expense entry.",
     advanceMode: "real-interaction",
+    actionHint: "Tap Expense to open entry sheet",
   },
   {
     id: 4,
@@ -77,6 +77,7 @@ export const TOUR_STEPS: SpotlightStep[] = [
     speech:
       "Every expense gets a category — Food, Transport, Shopping, and more. Tap any category to select it. (Don't worry, this is just practice — nothing will be saved!)",
     advanceMode: "real-interaction",
+    actionHint: "Select any category to continue",
   },
   {
     id: 5,
@@ -85,6 +86,7 @@ export const TOUR_STEPS: SpotlightStep[] = [
     speech:
       "Now let's explore the tabs! Tap the Wallet tab to see all your accounts — GCash, bank cards, cash — and your total balances across currencies.",
     advanceMode: "real-interaction",
+    actionHint: "Tap Wallet tab to continue",
   },
   {
     id: 6,
@@ -93,6 +95,7 @@ export const TOUR_STEPS: SpotlightStep[] = [
     speech:
       "Tap Plan to access budgets, savings goals, debt tracking, and installment plans. This is where you control your money's future!",
     advanceMode: "real-interaction",
+    actionHint: "Tap Plan tab to continue",
   },
   {
     id: 7,
@@ -101,6 +104,7 @@ export const TOUR_STEPS: SpotlightStep[] = [
     speech:
       "Tap History to see every peso you've ever logged — filterable by date, category, and account. Perfect for monthly reviews!",
     advanceMode: "real-interaction",
+    actionHint: "Tap History tab to continue",
   },
   {
     id: 8,
@@ -114,7 +118,7 @@ export const TOUR_STEPS: SpotlightStep[] = [
 ]
 
 const SPOTLIGHT_PADDING = 12
-const CALLOUT_WIDTH = 308
+const CALLOUT_WIDTH = 316
 
 // ── Sub-components ──────────────────────────────────────────────────────────────
 
@@ -125,7 +129,7 @@ interface CalloutCardProps {
   spotlightRect: DOMRect | null
   notFound: boolean
   onAdvance: () => void
-  onAccessibilityExit: () => void
+  onActionClick: () => void
 }
 
 function CalloutCard({
@@ -135,32 +139,31 @@ function CalloutCard({
   spotlightRect,
   notFound,
   onAdvance,
-  onAccessibilityExit,
+  onActionClick,
 }: CalloutCardProps) {
   const vw = typeof window !== "undefined" ? window.innerWidth : 390
   const vh = typeof window !== "undefined" ? window.innerHeight : 844
 
-  let top = vh / 2 - 100
+  let top = vh / 2 - 120
   let left = (vw - CALLOUT_WIDTH) / 2
   let arrowSide: "top" | "bottom" | null = null
 
   if (spotlightRect && !notFound) {
     const spBottom = spotlightRect.top + spotlightRect.height
     const spTop = spotlightRect.top
-    const cardHeight = 220
+    const cardHeight = 240
 
-    // Position below spotlight unless in bottom 35% of screen
-    if (spBottom < vh * 0.65) {
-      top = spBottom + 16
+    if (spBottom < vh * 0.60) {
+      top = spBottom + 14
       arrowSide = "top"
     } else {
-      top = spTop - cardHeight - 16
+      top = spTop - cardHeight - 14
       arrowSide = "bottom"
     }
 
     left = spotlightRect.left + spotlightRect.width / 2 - CALLOUT_WIDTH / 2
     left = Math.max(12, Math.min(vw - CALLOUT_WIDTH - 12, left))
-    top = Math.max(60, Math.min(vh - cardHeight - 60, top))
+    top = Math.max(50, Math.min(vh - cardHeight - 50, top))
   }
 
   return (
@@ -169,7 +172,7 @@ function CalloutCard({
       initial={{ opacity: 0, y: 12, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.97 }}
-      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       className="fixed z-[9999] pointer-events-auto"
       style={{ top, left, width: CALLOUT_WIDTH }}
       role="dialog"
@@ -230,8 +233,8 @@ function CalloutCard({
         </div>
 
         {/* Speech */}
-        <div className="px-4 py-3.5">
-          <div className="flex items-start gap-2.5">
+        <div className="px-4 py-3">
+          <div className="flex items-start gap-2">
             <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#3D784E]/15 text-xs">
               🐢
             </span>
@@ -249,21 +252,8 @@ function CalloutCard({
         </div>
 
         {/* Action row */}
-        <div className="border-t border-border/30 bg-secondary/20 px-4 py-3">
-          {notFound ? (
-            <div className="space-y-2">
-              <p className="text-[11px] text-muted-foreground text-center">
-                Can't find that element. Try rotating or zooming out.
-              </p>
-              <button
-                type="button"
-                onClick={onAdvance}
-                className="w-full rounded-2xl bg-[#3D784E] py-2.5 text-xs font-bold text-white transition-all active:scale-95"
-              >
-                Skip this step
-              </button>
-            </div>
-          ) : step.advanceMode === "got-it" ? (
+        <div className="border-t border-border/30 bg-secondary/20 p-3">
+          {step.advanceMode === "got-it" ? (
             <button
               type="button"
               onClick={onAdvance}
@@ -273,14 +263,18 @@ function CalloutCard({
               Got it!
             </button>
           ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-semibold text-muted-foreground">
-                👆 Tap the highlighted element
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={onActionClick}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#3D784E] py-2.5 text-xs font-bold text-white shadow-md shadow-[#3D784E]/20 transition-all hover:bg-[#356B46] active:scale-[0.97]"
+              >
+                <span>{step.actionHint || "Tap to continue"}</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+              <p className="text-[10px] font-semibold text-muted-foreground text-center">
+                👆 Or tap the highlighted element directly
               </p>
-              <div
-                className="h-2 w-2 animate-ping rounded-full bg-[#3D784E]"
-                aria-hidden="true"
-              />
             </div>
           )}
         </div>
@@ -294,84 +288,84 @@ function CalloutCard({
 interface SpotlightScrimProps {
   rect: DOMRect | null
   onBlockedTap: () => void
+  onSpotlightTap: () => void
 }
 
-function SpotlightScrim({ rect, onBlockedTap }: SpotlightScrimProps) {
+function SpotlightScrim({ rect, onBlockedTap, onSpotlightTap }: SpotlightScrimProps) {
   const vw = typeof window !== "undefined" ? window.innerWidth : 390
   const vh = typeof window !== "undefined" ? window.innerHeight : 844
 
   const rx = rect ? Math.min(18, rect.height / 3) : 18
 
-  return (
-    <svg
-      className="fixed inset-0 z-[9990] pointer-events-none"
-      width={vw}
-      height={vh}
-      viewBox={`0 0 ${vw} ${vh}`}
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <defs>
-        <mask id="spotlight-mask">
-          {/* White = scrim is opaque here */}
-          <rect width={vw} height={vh} fill="white" />
-          {/* Black = scrim is transparent here (the spotlight hole) */}
-          {rect && (
-            <rect
-              x={rect.left}
-              y={rect.top}
-              width={rect.width}
-              height={rect.height}
-              rx={rx}
-              ry={rx}
-              fill="black"
-              style={{
-                transition: "x 350ms cubic-bezier(0.16,1,0.3,1), y 350ms cubic-bezier(0.16,1,0.3,1), width 350ms cubic-bezier(0.16,1,0.3,1), height 350ms cubic-bezier(0.16,1,0.3,1)",
-              }}
-            />
-          )}
-        </mask>
-      </defs>
+  // Cut out hole using SVG even-odd fill rule
+  const pathD = rect
+    ? `M 0 0 H ${vw} V ${vh} H 0 Z M ${rect.left} ${rect.top} V ${rect.top + rect.height} H ${rect.left + rect.width} V ${rect.top} Z`
+    : `M 0 0 H ${vw} V ${vh} H 0 Z`
 
-      {/* Full-screen scrim with spotlight hole cut via mask */}
-      <rect
+  return (
+    <div className="fixed inset-0 z-[9990] pointer-events-none">
+      <svg
+        className="fixed inset-0 pointer-events-none"
         width={vw}
         height={vh}
-        fill="rgba(0, 0, 0, 0.80)"
-        mask="url(#spotlight-mask)"
-        className="pointer-events-auto"
-        onClick={onBlockedTap}
-        onTouchStart={onBlockedTap}
-      />
+        viewBox={`0 0 ${vw} ${vh}`}
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        {/* Scrim path: only dark backdrop captures clicks */}
+        <path
+          d={pathD}
+          fillRule="evenodd"
+          fill="rgba(0, 0, 0, 0.78)"
+          className="pointer-events-auto"
+          onClick={onBlockedTap}
+          onTouchStart={onBlockedTap}
+        />
 
-      {/* Glowing ring around spotlight */}
-      {rect && (
-        <>
+        {/* Glowing ring around spotlight */}
+        {rect && (
           <rect
-            x={rect.left - 2}
-            y={rect.top - 2}
-            width={rect.width + 4}
-            height={rect.height + 4}
-            rx={rx + 2}
-            ry={rx + 2}
+            x={rect.left}
+            y={rect.top}
+            width={rect.width}
+            height={rect.height}
+            rx={rx}
+            ry={rx}
             fill="none"
-            stroke="rgba(61, 120, 78, 0.7)"
-            strokeWidth={2.5}
+            stroke="rgba(61, 120, 78, 0.95)"
+            strokeWidth={3}
             style={{
-              transition: "x 350ms cubic-bezier(0.16,1,0.3,1), y 350ms cubic-bezier(0.16,1,0.3,1), width 350ms cubic-bezier(0.16,1,0.3,1), height 350ms cubic-bezier(0.16,1,0.3,1)",
-              filter: "drop-shadow(0 0 8px rgba(61, 120, 78, 0.8))",
+              filter: "drop-shadow(0 0 12px rgba(61, 120, 78, 0.9))",
             }}
           >
             <animate
               attributeName="stroke-opacity"
-              values="0.5;1;0.5"
-              dur="2s"
+              values="0.6;1;0.6"
+              dur="1.8s"
               repeatCount="indefinite"
             />
           </rect>
-        </>
+        )}
+      </svg>
+
+      {/* Transparent Clickable Forwarder over the spotlight hole */}
+      {rect && (
+        <div
+          onClick={onSpotlightTap}
+          onTouchEnd={onSpotlightTap}
+          className="fixed pointer-events-auto cursor-pointer"
+          style={{
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            borderRadius: rx,
+            zIndex: 9991,
+          }}
+          title="Tap highlighted element"
+        />
       )}
-    </svg>
+    </div>
   )
 }
 
@@ -404,7 +398,6 @@ export interface PawiSpotlightTourProps {
   initialStep?: number
   onStepComplete: (step: number) => void
   onComplete: () => void
-  // Callbacks for page.tsx to open/close modals on tour's behalf
   onOpenExpenseModal?: () => void
   onCloseExpenseModal?: () => void
 }
@@ -458,12 +451,9 @@ export function PawiSpotlightTour({
     }
   }, [open])
 
-  // Open expense modal automatically when tour reaches step 3 (speed dial) or step 4 (category grid)
+  // Open expense modal automatically when tour reaches step 4 (category grid)
   useEffect(() => {
     if (!open) return
-    if (currentStep === 3 && onOpenExpenseModal) {
-      // Small delay to let the speed dial animation finish
-    }
     if (currentStep === 4 && onOpenExpenseModal) {
       const t = setTimeout(() => onOpenExpenseModal(), 200)
       return () => clearTimeout(t)
@@ -486,7 +476,7 @@ export function PawiSpotlightTour({
 
       if (fromInteraction) {
         setShowSuccess(true)
-        setTimeout(() => setShowSuccess(false), 600)
+        setTimeout(() => setShowSuccess(false), 500)
       }
 
       const nextStep = currentStep + 1
@@ -500,38 +490,60 @@ export function PawiSpotlightTour({
         }
         setIsTransitioning(false)
         advanceLock.current = false
-      }, fromInteraction ? 650 : 200)
+      }, fromInteraction ? 500 : 150)
     },
     [currentStep, isTransitioning, onComplete, onStepComplete]
   )
 
-  // Handle real interactions from DOM elements the tour spotlights.
-  // We listen at the document level for events on the spotlighted element.
+  // Handle tap on spotlighted target or forwarder
+  const handleSpotlightTap = useCallback(() => {
+    if (!step) return
+    const tutorialId = step.tutorialId
+
+    if (tutorialId) {
+      const el = document.querySelector<HTMLElement>(`[data-tutorial-id="${tutorialId}"]`)
+      if (el) {
+        // Dispatch real click to underlying element if button/clickable
+        try {
+          el.click()
+        } catch {}
+      }
+    }
+
+    doAdvance(true)
+  }, [step, doAdvance])
+
+  // Also listen for clicks on the target element directly
   useEffect(() => {
     if (!open || !step || step.advanceMode !== "real-interaction") return
 
     const tutorialId = step.tutorialId
     if (!tutorialId) return
 
-    const handler = (e: Event) => {
-      const target = e.target as HTMLElement
-      const el = document.querySelector(`[data-tutorial-id="${tutorialId}"]`)
-      if (!el) return
+    let cleanup: (() => void) | null = null
 
-      // Check if the event came from inside the spotlighted element
-      if (el.contains(target) || el === target) {
-        e.stopPropagation()
-        doAdvance(true)
+    const interval = setInterval(() => {
+      const el = document.querySelector<HTMLElement>(`[data-tutorial-id="${tutorialId}"]`)
+      if (el) {
+        clearInterval(interval)
+
+        const onTargetClick = () => {
+          doAdvance(true)
+        }
+
+        el.addEventListener("click", onTargetClick)
+        cleanup = () => {
+          el.removeEventListener("click", onTargetClick)
+        }
       }
-    }
+    }, 50)
 
-    // Use capture phase so we intercept before the element's own handler
-    document.addEventListener("click", handler, { capture: false })
-    document.addEventListener("touchend", handler, { capture: false })
+    const timer = setTimeout(() => clearInterval(interval), 2500)
 
     return () => {
-      document.removeEventListener("click", handler, { capture: false })
-      document.removeEventListener("touchend", handler, { capture: false })
+      clearInterval(interval)
+      clearTimeout(timer)
+      if (cleanup) cleanup()
     }
   }, [open, step, doAdvance])
 
@@ -551,7 +563,6 @@ export function PawiSpotlightTour({
           completeTourViaAccessibility("keyboard")
         }
       }
-      // Prevent Escape from dismissing
       if (e.key === "Escape") {
         e.preventDefault()
         e.stopPropagation()
@@ -588,7 +599,7 @@ export function PawiSpotlightTour({
   }, [completeTourViaAccessibility])
 
   const handleBlockedTap = useCallback(() => {
-    // Gentle nudge — flash the spotlight ring briefly
+    // Backdrop click blocked
   }, [])
 
   if (!open || !mounted) return null
@@ -605,8 +616,12 @@ export function PawiSpotlightTour({
         {step?.title}: {step?.speech}
       </div>
 
-      {/* SVG Scrim with spotlight hole */}
-      <SpotlightScrim rect={rect} onBlockedTap={handleBlockedTap} />
+      {/* SVG Scrim with spotlight cutout */}
+      <SpotlightScrim
+        rect={rect}
+        onBlockedTap={handleBlockedTap}
+        onSpotlightTap={handleSpotlightTap}
+      />
 
       {/* Success pulse animation */}
       <AnimatePresence>
@@ -634,12 +649,12 @@ export function PawiSpotlightTour({
             spotlightRect={rect}
             notFound={notFound}
             onAdvance={() => doAdvance(false)}
-            onAccessibilityExit={() => completeTourViaAccessibility("manual")}
+            onActionClick={handleSpotlightTap}
           />
         )}
       </AnimatePresence>
 
-      {/* Hidden accessibility escape hatch — invisible 44×44px tap zone in top-left */}
+      {/* Hidden accessibility escape hatch */}
       <button
         type="button"
         aria-label="Accessibility help — close tutorial"
