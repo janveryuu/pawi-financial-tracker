@@ -13,8 +13,10 @@ import {
   ArrowDownLeft,
   X,
   Sparkles,
+  Wallet,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
+import { useProfile } from "@/lib/use-profile"
 import { useStore } from "@/lib/store"
 import { formatMoney } from "@/lib/pawi-data"
 import { cn } from "@/lib/utils"
@@ -30,6 +32,7 @@ export function HomeScreen({
   onOpenNotifications,
 }: HomeScreenProps) {
   const { user } = useAuth()
+  const { profile } = useProfile()
   const { streakDays, paydayCountdown, transactions = [], plannedPayments = [] } = useStore()
   const [timeFilter, setTimeFilter] = useState<"day" | "week" | "month">("day")
   const [showCommunityModal, setShowCommunityModal] = useState(false)
@@ -59,7 +62,7 @@ export function HomeScreen({
   // Format properly (e.g. "Gojo Satoru")
   const displayName = rawName
     .split(" ")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(" ")
 
   // Dynamic greeting based on current local hour
@@ -410,8 +413,39 @@ export function HomeScreen({
         </div>
       </div>
 
-      {/* Payday Countdown Card */}
-      {paydayCountdown?.configured ? (
+      {/* Allowance / Payday Card */}
+      {(profile?.profile_type === "student" || profile?.profile_type === "working_student" || (profile?.weekly_allowance || 0) > 0) ? (
+        <div
+          onClick={onOpenSettings}
+          className="flex items-center justify-between rounded-3xl border border-[#3D784E]/20 bg-gradient-to-r from-[#3D784E]/10 via-[#3D784E]/5 to-transparent p-4 shadow-xs cursor-pointer hover:border-[#3D784E]/40 active:scale-[0.99] transition-all"
+          title="Tap to manage allowance in Settings"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E]">
+              <Wallet className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-wider text-[#3D784E]">
+                WEEKLY ALLOWANCE PACING
+              </p>
+              <p className="text-base font-black text-foreground mt-0.5">
+                {(profile?.weekly_allowance || 0) > 0
+                  ? `${formatMoney(profile?.weekly_allowance || 0)} / week`
+                  : "Allowance Tracking Active"}
+              </p>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <span className="rounded-full bg-[#3D784E]/15 px-2.5 py-1 text-[10px] font-black text-[#3D784E]">
+              Active
+            </span>
+            <p className="text-[11px] font-semibold text-muted-foreground mt-1">
+              Baon Tracker 🐢
+            </p>
+          </div>
+        </div>
+      ) : paydayCountdown?.configured ? (
         <div
           onClick={() => setShowPaydayModal(true)}
           className="flex items-center justify-between rounded-3xl border border-[#3D784E]/20 bg-gradient-to-r from-[#3D784E]/10 via-[#3D784E]/5 to-transparent p-4 shadow-xs cursor-pointer hover:border-[#3D784E]/40 active:scale-[0.99] transition-all"

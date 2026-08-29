@@ -21,7 +21,7 @@ import { PawiOnboardingFlow } from "@/components/pawi-onboarding-flow"
 
 export default function Page() {
   const { user, loading, isGuest } = useAuth()
-  const { profile, loadingProfile } = useProfile()
+  const { profile, loadingProfile, completeTutorial } = useProfile()
   const router = useRouter()
 
   const [tab, setTab] = useState<TabId>("home")
@@ -57,30 +57,32 @@ export default function Page() {
     }
   }, [loading, loadingProfile, user, isGuest, profile])
 
-  // Tutorial gate: show after onboarding is complete (but only once per user)
+  // Tutorial gate: show after onboarding is complete, ONLY if tutorial_completed is false on profiles
   useEffect(() => {
-    if (!loading && user && !showOnboarding) {
-      const userId = user.id || (user as any).uid || "guest"
-      const tutorialKey = `pawi_has_seen_tutorial_${userId}`
-      const hasSeenSpecific = localStorage.getItem(tutorialKey)
-      const hasSeenGlobal = localStorage.getItem("pawi_has_seen_tutorial")
-
-      if (!hasSeenSpecific && !hasSeenGlobal) {
+    if (!loading && !loadingProfile && user && !isGuest && !showOnboarding) {
+      if (profile && profile.onboarding_completed && !profile.tutorial_completed) {
         const timer = setTimeout(() => {
           setTutorialOpen(true)
-        }, 800)
+        }, 600)
         return () => clearTimeout(timer)
       }
     }
-  }, [user, loading, showOnboarding])
+  }, [user, loading, loadingProfile, isGuest, showOnboarding, profile])
 
-  // Onboarding complete handler — dismiss onboarding, let tutorial follow naturally
+  // Onboarding complete handler — dismiss onboarding, let tutorial follow naturally via profiles check
   const handleOnboardingComplete = () => {
     setShowOnboarding(false)
     if (typeof window !== "undefined" && window.location.search.includes("onboarding")) {
       router.replace("/")
     }
-    // Tutorial will be triggered by the useEffect above after showOnboarding becomes false
+  }
+
+  // Tutorial close handler — mark tutorial as completed in Supabase profiles
+  const handleTutorialClose = () => {
+    setTutorialOpen(false)
+    if (user && !isGuest && profile && !profile.tutorial_completed) {
+      completeTutorial()
+    }
   }
 
   if (loading || loadingProfile || !user) {
@@ -164,7 +166,7 @@ export default function Page() {
       />
       <PawiTutorialModal
         open={tutorialOpen}
-        onClose={() => setTutorialOpen(false)}
+        onClose={handleTutorialClose}
       />
     </main>
   )

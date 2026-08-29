@@ -196,20 +196,19 @@ export function SettingsModule({ onStartTutorial, onStartOnboarding }: SettingsM
         </button>
       </div>
 
-      {/* Tutorial & Story Section */}
-
-      <div className="grid grid-cols-2 gap-3">
+      {/* Setup, Tutorial & Story Section */}
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <button
           type="button"
           onClick={onStartOnboarding}
-          className="flex items-center gap-3 rounded-3xl border border-[#3D784E]/25 bg-[#3D784E]/8 p-4 text-left transition-colors hover:bg-[#3D784E]/15"
+          className="flex items-center gap-3 rounded-3xl border border-[#3D784E]/25 bg-[#3D784E]/8 p-4 text-left transition-colors hover:bg-[#3D784E]/15 sm:col-span-2"
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#3D784E] text-white">
             <Activity className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Edit Your Setup</p>
-            <p className="text-[11px] text-muted-foreground">Update onboarding answers (name, income, payday, goal)</p>
+            <p className="text-sm font-bold text-foreground">Edit Your Setup</p>
+            <p className="text-[11px] text-muted-foreground">Update profile lifestyle, allowance/payday, or goals</p>
           </div>
         </button>
 
@@ -222,21 +221,21 @@ export function SettingsModule({ onStartTutorial, onStartOnboarding }: SettingsM
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Replay Tutorial</p>
-            <p className="text-[11px] text-muted-foreground">Learn Pawi basics</p>
+            <p className="text-sm font-bold text-foreground">Interactive Tour</p>
+            <p className="text-[11px] text-muted-foreground">Replay Pawi guide tour</p>
           </div>
         </button>
 
         <button
           type="button"
           onClick={() => setShowStoryModal(true)}
-          className="flex items-center gap-3 rounded-3xl border border-border/60 bg-card p-4 text-left shadow-sm transition-colors hover:bg-secondary"
+          className="flex items-center gap-3 rounded-3xl border border-border/60 bg-card p-4 text-left shadow-xs transition-colors hover:bg-secondary"
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
             <BookOpen className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Story of Pawi</p>
+            <p className="text-sm font-bold text-foreground">Story of Pawi</p>
             <p className="text-[11px] text-muted-foreground">Why a sea turtle?</p>
           </div>
         </button>
