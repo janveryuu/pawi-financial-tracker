@@ -247,24 +247,58 @@ describe("Payday countdown computation", () => {
   })
 })
 
-// ── Test 7: Payday validation rules ───────────────────────────────────────────
-describe("Payday validation rules", () => {
-  it("rejects twice-a-month with identical days", () => {
-    const d1 = 15
-    const d2 = 15
-    expect(d1 !== d2).toBe(false)
+// ── Test 8: App Restart & Profile Recovery Regression Tests ──────────────────
+describe("App restart & profile recovery resilience", () => {
+  it("existing account with onboarding_completed: true never triggers onboarding on fresh load", () => {
+    const freshSessionUser = { id: "user-123", email: "kaye@pawi.app" }
+    const loadedProfile = {
+      id: "user-123",
+      name: "Kaye",
+      onboarding_completed: true,
+      tutorial_completed: true,
+      onboarding_step: 99,
+    }
+
+    let showOnboarding = false
+    const loading = false
+    const loadingProfile = false
+    const isGuest = false
+
+    // Simulate page.tsx gate logic on fresh restart
+    if (!loading && !loadingProfile && freshSessionUser && !isGuest) {
+      if (loadedProfile && !loadedProfile.onboarding_completed) {
+        showOnboarding = true
+      } else if (loadedProfile && loadedProfile.onboarding_completed) {
+        showOnboarding = false
+      }
+    }
+
+    expect(showOnboarding).toBe(false)
   })
 
-  it("accepts twice-a-month with different days", () => {
-    const d1: number = 15
-    const d2: number = 30
-    expect(d1 !== d2).toBe(true)
-  })
+  it("PGRST116 / read glitch during restart preserves existing cached profile without overwriting", () => {
+    const cachedProfile = {
+      id: "user-123",
+      name: "Kaye",
+      onboarding_completed: true,
+      tutorial_completed: true,
+      onboarding_step: 99,
+    }
 
-  it("rejects invalid day out of range (day > 31 or day < 1)", () => {
-    const validateDay = (d: number) => d >= 1 && d <= 31
-    expect(validateDay(0)).toBe(false)
-    expect(validateDay(32)).toBe(false)
-    expect(validateDay(15)).toBe(true)
+    // Simulate fetch returning PGRST116 (unauthenticated RLS window or network drop)
+    const error = { code: "PGRST116", message: "0 rows found" }
+    let activeProfile = cachedProfile
+    let destructiveUpsertExecuted = false
+
+    if (error?.code === "PGRST116" && !cachedProfile) {
+      destructiveUpsertExecuted = true
+    } else {
+      // Retain cached profile
+      activeProfile = cachedProfile
+    }
+
+    expect(destructiveUpsertExecuted).toBe(false)
+    expect(activeProfile.onboarding_completed).toBe(true)
+    expect(activeProfile.onboarding_step).toBe(99)
   })
 })

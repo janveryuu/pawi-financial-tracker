@@ -53,6 +53,8 @@ export default function Page() {
     if (!loading && !loadingProfile && user && !isGuest) {
       if (profile && !profile.onboarding_completed) {
         setShowOnboarding(true)
+      } else if (profile && profile.onboarding_completed) {
+        setShowOnboarding(false)
       }
     }
   }, [loading, loadingProfile, user, isGuest, profile])

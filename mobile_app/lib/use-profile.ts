@@ -1,16 +1,16 @@
 "use client"
 
 /**
- * useProfile — Lightweight hook for reading and writing the user's Supabase `profiles` row.
+ * useProfile — Reliable hook for reading and writing the user's Supabase `profiles` row.
  *
- * Responsibilities:
- *  - Fetch the authenticated user's profile from `profiles` on mount.
- *  - Expose `saveProfile` to persist partial profile updates.
- *  - Expose `onboarding_completed`, `tutorial_completed`, and `onboarding_step` for flow gating.
- *  - Expose `completeOnboarding` and `completeTutorial` as dedicated flag setters.
+ * Resilience Guarantees:
+ *  - Reads from local cache (`pawi_profile_${userId}`) on mount for instant state recovery.
+ *  - Safely syncs with Supabase `profiles` table without destructively overwriting existing data.
+ *  - Prevents race conditions where cold starts or unauthenticated read glitches could wipe `onboarding_completed`.
+ *  - Exposes `saveProfile`, `completeOnboarding`, and `completeTutorial`.
  */
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useAuth } from "./auth-context"
 import { supabase } from "./supabase"
 
@@ -68,12 +68,24 @@ const DEFAULT_PROFILE: Omit<UserProfile, "id"> = {
   primary_goal: null,
 }
 
+function getCacheKey(userId: string) {
+  return `pawi_profile_${userId}`
+}
+
 export function useProfile() {
   const { user, isGuest } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
+  const isMounted = useRef(true)
 
-  // ── Fetch on mount ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    isMounted.current = true
+    return () => {
+      isMounted.current = false
+    }
+  }, [])
+
+  // ── Fetch on mount & auth state change ──────────────────────────────────────
   useEffect(() => {
     if (!user || isGuest) {
       setLoadingProfile(false)
@@ -81,54 +93,104 @@ export function useProfile() {
     }
 
     const userId = user.id || (user as any).uid
+    const cacheKey = getCacheKey(userId)
 
-    const fetchProfile = async () => {
-      setLoadingProfile(true)
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single()
-
-      if (!error && data) {
-        const rawProfileType = data.profile_type as ProfileType | undefined
-        const derivedProfileType: ProfileType =
-          rawProfileType || (data.is_student === false ? "professional" : "student")
-
-        setProfile({
-          id: data.id,
-          name: data.name || user.displayName || "Pawi User",
-          initials: data.initials || "PU",
-          avatar_url: data.avatar_url || null,
-          currency: data.currency || "PHP",
-          country: data.country || "PH",
-          monthly_income: Number(data.monthly_income) || 0,
-          weekly_allowance: Number(data.weekly_allowance) || 0,
-          monthly_budget_target: Number(data.monthly_budget_target) || 0,
-          profile_type: derivedProfileType,
-          is_student: derivedProfileType !== "professional",
-          onboarding_completed: data.onboarding_completed ?? false,
-          tutorial_completed: data.tutorial_completed ?? false,
-          onboarding_step: data.onboarding_step ?? 0,
-          notifications_enabled: data.notifications_enabled ?? false,
-          payday_type: (data.payday_type as PaydayType) || "once",
-          payday_day_1: data.payday_day_1 ?? null,
-          payday_day_2: data.payday_day_2 ?? null,
-          primary_goal: (data.primary_goal as PrimaryGoal) || null,
-        })
-      } else if (error?.code === "PGRST116") {
-        // Row not found — new user, insert a default profile row
-        const defaultRow = {
-          id: userId,
-          ...DEFAULT_PROFILE,
-          name: user.displayName || user.email?.split("@")[0] || "Pawi User",
-          initials: (user.displayName || "PU").slice(0, 2).toUpperCase(),
+    // 1. Check local cache first for instant load
+    let cachedProfile: UserProfile | null = null
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(cacheKey)
+        if (raw) {
+          cachedProfile = JSON.parse(raw)
+          if (cachedProfile && isMounted.current) {
+            setProfile(cachedProfile)
+            // If cache exists and is valid, we can release blocking load
+            setLoadingProfile(false)
+          }
         }
-        await supabase.from("profiles").upsert(defaultRow)
-        setProfile({ ...defaultRow, id: userId })
+      } catch (e) {
+        console.warn("Could not read profile cache:", e)
+      }
+    }
+
+    // 2. Fetch fresh profile row from Supabase
+    const fetchProfile = async () => {
+      if (!cachedProfile) {
+        setLoadingProfile(true)
       }
 
-      setLoadingProfile(false)
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .single()
+
+        if (!error && data) {
+          const rawProfileType = data.profile_type as ProfileType | undefined
+          const derivedProfileType: ProfileType =
+            rawProfileType || (data.is_student === false ? "professional" : "student")
+
+          const freshProfile: UserProfile = {
+            id: data.id,
+            name: data.name || user.displayName || "Pawi User",
+            initials: data.initials || "PU",
+            avatar_url: data.avatar_url || null,
+            currency: data.currency || "PHP",
+            country: data.country || "PH",
+            monthly_income: Number(data.monthly_income) || 0,
+            weekly_allowance: Number(data.weekly_allowance) || 0,
+            monthly_budget_target: Number(data.monthly_budget_target) || 0,
+            profile_type: derivedProfileType,
+            is_student: derivedProfileType !== "professional",
+            onboarding_completed: Boolean(data.onboarding_completed),
+            tutorial_completed: Boolean(data.tutorial_completed),
+            onboarding_step: data.onboarding_step ?? 0,
+            notifications_enabled: Boolean(data.notifications_enabled),
+            payday_type: (data.payday_type as PaydayType) || "once",
+            payday_day_1: data.payday_day_1 ?? null,
+            payday_day_2: data.payday_day_2 ?? null,
+            primary_goal: (data.primary_goal as PrimaryGoal) || null,
+          }
+
+          if (isMounted.current) {
+            setProfile(freshProfile)
+            setLoadingProfile(false)
+          }
+
+          // Update cache
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem(cacheKey, JSON.stringify(freshProfile))
+            } catch {}
+          }
+        } else if (error?.code === "PGRST116" && !cachedProfile) {
+          // Genuinely new user with no database row and no cache — insert initial row
+          const defaultRow = {
+            id: userId,
+            ...DEFAULT_PROFILE,
+            name: user.displayName || user.email?.split("@")[0] || "Pawi User",
+            initials: (user.displayName || "PU").slice(0, 2).toUpperCase(),
+          }
+
+          const { error: insertErr } = await supabase.from("profiles").upsert(defaultRow)
+          if (!insertErr && isMounted.current) {
+            setProfile({ ...defaultRow, id: userId })
+            if (typeof window !== "undefined") {
+              try {
+                localStorage.setItem(cacheKey, JSON.stringify({ ...defaultRow, id: userId }))
+              } catch {}
+            }
+          }
+          if (isMounted.current) setLoadingProfile(false)
+        } else {
+          // If error is a network failure or permission lag, preserve cached state
+          if (isMounted.current) setLoadingProfile(false)
+        }
+      } catch (err) {
+        console.warn("Profile fetch error:", err)
+        if (isMounted.current) setLoadingProfile(false)
+      }
     }
 
     fetchProfile()
@@ -139,21 +201,33 @@ export function useProfile() {
     async (updates: Partial<Omit<UserProfile, "id">>) => {
       if (!user || isGuest) return
       const userId = user.id || (user as any).uid
+      const cacheKey = getCacheKey(userId)
 
-      // If profile_type is updated, maintain is_student in sync
       const payload: Record<string, any> = { ...updates }
       if (updates.profile_type !== undefined) {
         payload.is_student = updates.profile_type !== "professional"
       }
 
-      // Optimistic local update
-      setProfile((prev) => (prev ? { ...prev, ...updates, ...payload } : prev))
-
-      await supabase.from("profiles").upsert({
-        id: userId,
-        ...payload,
-        updated_at: new Date().toISOString(),
+      // Optimistic local and cache update
+      setProfile((prev) => {
+        const next = prev ? { ...prev, ...updates, ...payload } : ({ id: userId, ...DEFAULT_PROFILE, ...updates, ...payload } as UserProfile)
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(next))
+          } catch {}
+        }
+        return next
       })
+
+      try {
+        await supabase.from("profiles").upsert({
+          id: userId,
+          ...payload,
+          updated_at: new Date().toISOString(),
+        })
+      } catch (e) {
+        console.warn("Profile save warning:", e)
+      }
     },
     [user, isGuest]
   )
@@ -162,13 +236,9 @@ export function useProfile() {
   const saveOnboardingStep = useCallback(
     async (step: number) => {
       if (!user || isGuest) return
-      setProfile((prev) => (prev ? { ...prev, onboarding_step: step } : prev))
-      const userId = user.id || (user as any).uid
-      await supabase
-        .from("profiles")
-        .upsert({ id: userId, onboarding_step: step, updated_at: new Date().toISOString() })
+      await saveProfile({ onboarding_step: step })
     },
-    [user, isGuest]
+    [saveProfile, user, isGuest]
   )
 
   // ── Mark onboarding done — sets onboarding_completed = true ─────────────────
