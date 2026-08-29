@@ -243,6 +243,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const cleanEmail = email.trim().toLowerCase()
       const cleanName = (name && name.trim()) || "Janver"
 
+      // 1. Try server-side signup first (bypasses Supabase shared email rate limits)
+      let apiSignupOk = false
+      try {
+        const res = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: cleanEmail, password, name: cleanName }),
+        })
+        const result = await res.json()
+        if (res.ok && result.user) {
+          apiSignupOk = true
+        } else if (result.error) {
+          const msg = String(result.error).toLowerCase()
+          if (msg.includes("already exists") || msg.includes("already registered")) {
+            return { error: "An account with this email already exists. Please log in instead." }
+          }
+        }
+      } catch (apiErr) {
+        console.warn("API signup fallback:", apiErr)
+      }
+
+      // 2. If API signup succeeded, sign in immediately with Supabase password auth
+      if (apiSignupOk) {
+        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+        })
+        if (!signInErr && signInData.session && signInData.user) {
+          const loggedUser = normalizeUserObject(signInData.user, cleanName)
+          setUser(loggedUser)
+          setSession(signInData.session)
+          setIsGuest(false)
+          localStorage.removeItem("pawi_guest_session")
+          localStorage.removeItem("pawi_has_seen_tutorial")
+          localStorage.removeItem(`pawi_has_seen_tutorial_${loggedUser.id}`)
+          localStorage.setItem("theme", "light")
+          localStorage.setItem("pawi_active_user", JSON.stringify(loggedUser))
+          return { error: null }
+        }
+      }
+
+      // 3. Client-side fallback if server-side signup was bypassed
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
