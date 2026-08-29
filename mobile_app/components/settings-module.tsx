@@ -8,6 +8,7 @@ import {
   Sparkles,
   Activity,
   Printer,
+  CheckCircle2,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useStore } from "@/lib/store"
@@ -20,9 +21,10 @@ import { Calendar } from "lucide-react"
 
 export interface SettingsModuleProps {
   onStartTutorial?: () => void
+  onStartOnboarding?: () => void
 }
 
-export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
+export function SettingsModule({ onStartTutorial, onStartOnboarding }: SettingsModuleProps) {
   const { user, signOut } = useAuth()
   const { theme, setTheme } = useTheme()
   const { defaultCurrency, setDefaultCurrency, resetAccountData, loadSampleData, wallets, goals, budgets, paydayCountdown } = useStore()
@@ -197,6 +199,20 @@ export function SettingsModule({ onStartTutorial }: SettingsModuleProps) {
       {/* Tutorial & Story Section */}
 
       <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={onStartOnboarding}
+          className="flex items-center gap-3 rounded-3xl border border-[#3D784E]/25 bg-[#3D784E]/8 p-4 text-left transition-colors hover:bg-[#3D784E]/15"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#3D784E] text-white">
+            <Activity className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Edit Your Setup</p>
+            <p className="text-[11px] text-muted-foreground">Update onboarding answers (name, income, payday, goal)</p>
+          </div>
+        </button>
+
         <button
           type="button"
           onClick={onStartTutorial}

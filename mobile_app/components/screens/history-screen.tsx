@@ -67,11 +67,13 @@ export function HistoryScreen() {
   // Filter transactions
   const filtered = useMemo(() => {
     const now = new Date()
-    const todayStr = now.toISOString().split("T")[0]
-    const yestDate = new Date()
-    yestDate.setDate(yestDate.getDate() - 1)
-    const yesterdayStr = yestDate.toISOString().split("T")[0]
-    const thisMonthPrefix = now.toISOString().substring(0, 7)
+    // FIX (Bug #4): Compute date strings in Asia/Manila timezone, not UTC.
+    // At 01:18 AM Manila time (UTC+8), UTC date is the previous day — causing
+    // transactions logged at midnight Manila time to be excluded from "Today" filter.
+    const todayStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })
+    const yestDate = new Date(now.getTime() - 86400000)
+    const yesterdayStr = yestDate.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })
+    const thisMonthPrefix = todayStr.substring(0, 7) // "YYYY-MM"
 
     return transactions.filter((t) => {
       if (filterType !== "all" && t.kind !== filterType) return false
@@ -137,10 +139,10 @@ export function HistoryScreen() {
   // Group by date header
   const groupedTransactions = useMemo(() => {
     const now = new Date()
-    const todayStr = now.toISOString().split("T")[0]
-    const yestDate = new Date()
-    yestDate.setDate(yestDate.getDate() - 1)
-    const yesterdayStr = yestDate.toISOString().split("T")[0]
+    // FIX (Bug #4): Same Manila-timezone fix for date grouping headers.
+    const todayStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })
+    const yestDate = new Date(now.getTime() - 86400000)
+    const yesterdayStr = yestDate.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })
 
     const groups: {
       header: string

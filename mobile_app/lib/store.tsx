@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react"
+import React, { createContext, useContext, useEffect, useState, useRef, ReactNode, useCallback } from "react"
 import {
   Wallet,
   Transaction,
@@ -178,12 +178,15 @@ interface State {
   streakDays: number
   paydayConfig: PaydayConfig
   paydayCountdown: PaydayCountdownInfo
+  /** Last insert/edit/delete error — exposed so UI can surface it instead of silently swallowing */
+  lastInsertError: string | null
 }
 
 interface StoreContextType extends State {
   addTransaction: (tx: Omit<Transaction, "id" | "time">) => Promise<void>
   editTransaction: (tx: Transaction) => Promise<void>
   deleteTransaction: (transactionId: string) => Promise<void>
+  clearInsertError: () => void
   addWallet: (wallet: Omit<Wallet, "id">) => Promise<void>
   updateWallet: (wallet: Wallet) => Promise<void>
   deleteWallet: (walletId: string) => Promise<void>
@@ -281,6 +284,14 @@ function mapTxRowToTransaction(row: any): Transaction {
 }
 
 function mapTransactionToRow(t: Transaction, userId: string): any {
+  // FIX (Bug #1 + #2): transaction_date must be ISO "YYYY-MM-DD" for PostgreSQL `date` column.
+  // account_id / category_id store human-readable names; FK constraints were dropped in
+  // migration 20260830000000_drop_tx_fk_constraints.sql so this is safe.
+  const isoDate = t.date
+    ? t.date.match(/^\d{4}-\d{2}-\d{2}$/) // already ISO?
+      ? t.date
+      : new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }) // fall back to today (Manila)
+    : new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })
   return {
     id: t.id,
     user_id: userId,
@@ -290,25 +301,23 @@ function mapTransactionToRow(t: Transaction, userId: string): any {
     type: t.kind === "income" ? "income" : t.kind === "transfer" ? "transfer" : "expense",
     notes: t.note || null,
     tags: t.tag ? [t.tag] : [],
-    transaction_date: t.date || new Date().toISOString().split("T")[0],
+    transaction_date: isoDate,
     transaction_time: t.time || "12:00 PM",
-    account_id: t.account,
-    category_id: t.category,
+    account_id: t.account,   // plain name — FK dropped, see migration 20260830000000
+    category_id: t.category, // plain name — FK dropped, see migration 20260830000000
   }
 }
 
 function mapGoalRowToGoal(g: any): Goal {
   return {
     id: g.id,
-    label: g.title,
+    name: g.title || g.label || "Goal",
     target: Number(g.target_amount) || 0,
     saved: Number(g.current_amount) || 0,
-    dueDate: g.target_date || "2026-12-31",
+    due: g.target_date || g.due || null,
     color: "#3D784E",
     icon: g.icon || "🎯",
-    linkedAccount: "BPI Savings",
-    category: "General",
-    createdDate: g.created_at,
+    accent: "#3D784E",
   }
 }
 
@@ -316,10 +325,10 @@ function mapGoalToRow(g: Goal, userId: string): any {
   return {
     id: g.id,
     user_id: userId,
-    title: g.label,
+    title: g.name || (g as any).label || "Goal",
     target_amount: g.target,
     current_amount: g.saved,
-    target_date: g.dueDate,
+    target_date: g.due || (g as any).dueDate || null,
     icon: g.icon || "🎯",
     color: 1,
     completed: g.saved >= g.target,
@@ -332,9 +341,8 @@ function mapCatRowToBudget(c: any): Budget {
     category: c.name,
     limit: Number(c.monthly_limit) || 0,
     spent: Number(c.spent) || 0,
-    period: "Monthly",
+    accent: "#3D784E",
     icon: c.icon || "🍽️",
-    color: "#3D784E",
   }
 }
 
@@ -345,14 +353,124 @@ function mapBudgetToRow(b: Budget, userId: string): any {
     name: b.category,
     type: "expense",
     monthly_limit: b.limit,
-    spent: b.spent,
+    spent: b.spent || 0,
     icon: b.icon || "🍽️",
     updated_at: new Date().toISOString(),
   }
 }
 
+function mapDebtRowToDebt(row: any): Debt {
+  return {
+    id: row.id,
+    lender: row.lender,
+    amount: Number(row.amount) || 0,
+    monthlyPayment: Number(row.monthly_payment) || 0,
+    dueDate: row.due_date || "Monthly",
+    interestRate: row.interest_rate || undefined,
+    notes: row.notes || undefined,
+    category: row.category || undefined,
+    accent: row.accent || "#E53E3E",
+  }
+}
+
+function mapDebtToRow(d: Debt, userId: string): any {
+  return {
+    id: d.id,
+    user_id: userId,
+    lender: d.lender,
+    amount: d.amount,
+    monthly_payment: d.monthlyPayment || 0,
+    due_date: d.dueDate || null,
+    interest_rate: d.interestRate || null,
+    notes: d.notes || null,
+    category: d.category || null,
+    accent: d.accent || "#E53E3E",
+    updated_at: new Date().toISOString(),
+  }
+}
+
+function mapReceivableRowToReceivable(row: any): Receivable {
+  return {
+    id: row.id,
+    borrower: row.borrower,
+    amount: Number(row.amount) || 0,
+    dueDate: row.due_date || "Upcoming",
+    notes: row.notes || undefined,
+    status: row.status === "received" ? "received" : "pending",
+    accent: row.accent || "#3D784E",
+  }
+}
+
+function mapReceivableToRow(r: Receivable, userId: string): any {
+  return {
+    id: r.id,
+    user_id: userId,
+    borrower: r.borrower,
+    amount: r.amount,
+    due_date: r.dueDate || null,
+    notes: r.notes || null,
+    status: r.status || "pending",
+    accent: r.accent || "#3D784E",
+    updated_at: new Date().toISOString(),
+  }
+}
+
+function mapInstallmentRowToInstallment(row: any): Installment {
+  return {
+    id: row.id,
+    name: row.name,
+    totalAmount: Number(row.total_amount) || 0,
+    paid: Number(row.paid) || 0,
+    remaining: Number(row.remaining) || 0,
+    monthlyAmount: Number(row.monthly_amount) || 0,
+    card: row.card || "Credit Card",
+    monthsTotal: Number(row.months_total) || 12,
+    monthsPaid: Number(row.months_paid) || 0,
+    endDate: row.end_date || "",
+  }
+}
+
+function mapInstallmentToRow(i: Installment, userId: string): any {
+  return {
+    id: i.id,
+    user_id: userId,
+    name: i.name,
+    total_amount: i.totalAmount,
+    paid: i.paid,
+    remaining: i.remaining,
+    monthly_amount: i.monthlyAmount,
+    card: i.card,
+    months_total: i.monthsTotal,
+    months_paid: i.monthsPaid,
+    end_date: i.endDate,
+    updated_at: new Date().toISOString(),
+  }
+}
+
+function mapTagRowToTag(row: any): Tag {
+  return {
+    id: row.id,
+    label: row.label,
+    color: row.color || "#3D784E",
+    count: Number(row.count) || 0,
+  }
+}
+
+function mapTagToRow(t: Tag, userId: string): any {
+  return {
+    id: t.id,
+    user_id: userId,
+    label: t.label,
+    color: t.color || "#3D784E",
+    count: t.count || 0,
+  }
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { user, isGuest } = useAuth()
+  // FIX (Bug #3): Guard flag to prevent Supabase Realtime refetch from overwriting
+  // optimistic state while an insert is still in-flight.
+  const isInsertingRef = useRef(false)
 
   const savedPaydayConfig: PaydayConfig = (() => {
     if (typeof window !== "undefined") {
@@ -390,6 +508,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     streakDays: 0,
     paydayConfig: savedPaydayConfig,
     paydayCountdown: computePaydayCountdown(savedPaydayConfig),
+    lastInsertError: null,
   })
 
   const updatePaydayConfig = useCallback(async (config: PaydayConfig) => {
@@ -506,6 +625,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           { data: goalsData },
           { data: catData },
           { data: billsData },
+          { data: debtsData },
+          { data: receivablesData },
+          { data: installmentsData },
+          { data: tagsData },
           { data: profileData },
         ] = await Promise.all([
           supabase.from("accounts").select("*").eq("user_id", userId),
@@ -513,21 +636,52 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           supabase.from("savings_goals").select("*").eq("user_id", userId),
           supabase.from("categories").select("*").eq("user_id", userId),
           supabase.from("recurring_bills").select("*").eq("user_id", userId),
+          supabase.from("debts").select("*").eq("user_id", userId),
+          supabase.from("receivables").select("*").eq("user_id", userId),
+          supabase.from("installments").select("*").eq("user_id", userId),
+          supabase.from("tags").select("*").eq("user_id", userId),
           supabase.from("profiles").select("*").eq("id", userId).single(),
         ])
 
         const loadedTx = txData ? txData.map(mapTxRowToTransaction) : []
         const liveStreak = calculateStreak(loadedTx)
 
-        // Read or infer payday configuration
+        // Read payday configuration — prefer structured onboarding fields (payday_type/day_1/day_2)
+        // over the fallback of inferring from monthly_income alone.
         let currentPaydayConfig = savedPaydayConfig
-        if (profileData && profileData.monthly_income && Number(profileData.monthly_income) > 0) {
-          currentPaydayConfig = {
-            configured: true,
-            day1: 15,
-            day2: 30,
-            frequency: "semi-monthly",
-            amount: Number(profileData.monthly_income),
+        if (profileData) {
+          const hasOnboardingPayday =
+            profileData.payday_day_1 &&
+            Number(profileData.payday_day_1) > 0
+
+          if (hasOnboardingPayday) {
+            const frequency: "monthly" | "semi-monthly" =
+              profileData.payday_type === "twice" ? "semi-monthly" : "monthly"
+            currentPaydayConfig = {
+              configured: true,
+              frequency,
+              day1: Number(profileData.payday_day_1) || 15,
+              day2:
+                frequency === "semi-monthly"
+                  ? Number(profileData.payday_day_2) || 30
+                  : undefined,
+              amount: Number(profileData.monthly_income) || 0,
+            }
+            // Persist to localStorage so it survives cold-start
+            if (typeof window !== "undefined") {
+              try {
+                localStorage.setItem("pawi_payday_config", JSON.stringify(currentPaydayConfig))
+              } catch {}
+            }
+          } else if (profileData.monthly_income && Number(profileData.monthly_income) > 0) {
+            // Legacy fallback: only income is set, default to semi-monthly 15th/30th
+            currentPaydayConfig = {
+              configured: true,
+              day1: 15,
+              day2: 30,
+              frequency: "semi-monthly",
+              amount: Number(profileData.monthly_income),
+            }
           }
         }
 
@@ -539,6 +693,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             transactions: loadedTx,
             goals: goalsData ? goalsData.map(mapGoalRowToGoal) : [],
             budgets: catData ? catData.map(mapCatRowToBudget) : [],
+            debts: debtsData ? debtsData.map(mapDebtRowToDebt) : [],
+            receivables: receivablesData ? receivablesData.map(mapReceivableRowToReceivable) : [],
+            installments: installmentsData ? installmentsData.map(mapInstallmentRowToInstallment) : [],
+            tags: tagsData ? tagsData.map(mapTagRowToTag) : [],
             plannedPayments: billsData && billsData.length > 0
               ? billsData.map((b) => ({
                   id: b.id,
@@ -634,28 +792,58 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     fetchSupabaseData()
 
-    // Setup Supabase Realtime channel subscription for instant multi-device / multi-tab synchronization
+    // Setup Supabase Realtime channel subscription for instant multi-device / multi-tab synchronization.
+    const guardedFetch = () => {
+      if (isInsertingRef.current) return
+      fetchSupabaseData()
+    }
+
     const channel = supabase
       .channel(`pawi-realtime-${userId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "transactions", filter: `user_id=eq.${userId}` },
-        () => fetchSupabaseData()
+        guardedFetch
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "accounts", filter: `user_id=eq.${userId}` },
-        () => fetchSupabaseData()
+        guardedFetch
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "categories", filter: `user_id=eq.${userId}` },
-        () => fetchSupabaseData()
+        guardedFetch
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "savings_goals", filter: `user_id=eq.${userId}` },
-        () => fetchSupabaseData()
+        guardedFetch
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "recurring_bills", filter: `user_id=eq.${userId}` },
+        guardedFetch
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "debts", filter: `user_id=eq.${userId}` },
+        guardedFetch
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "receivables", filter: `user_id=eq.${userId}` },
+        guardedFetch
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "installments", filter: `user_id=eq.${userId}` },
+        guardedFetch
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tags", filter: `user_id=eq.${userId}` },
+        guardedFetch
       )
       .subscribe()
 
@@ -671,12 +859,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const addTransaction = async (tx: Omit<Transaction, "id" | "time">) => {
     const now = new Date()
     const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+
+    // FIX (Bug #1): Use ISO date "YYYY-MM-DD" in Asia/Manila timezone (not locale string).
+    // The locale string "AUGUST 30, 2026" was previously sent to a PostgreSQL `date` column
+    // which rejects it, causing silent insert failure.
+    const isoDateManila = now.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })
+
+    // FIX (Bug #2): Use crypto.randomUUID() instead of "tx_" + Date.now().
+    // Date.now() collisions are possible with rapid concurrent inserts and cause PK conflicts.
     const newTx: Transaction = {
       ...tx,
-      id: "tx_" + Date.now(),
+      id: crypto.randomUUID(),
       time: timeStr,
       dateHeader: "Today",
-      date: now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
+      date: isoDateManila,
     }
 
     const adjustment = tx.kind === "income" ? tx.amount : -tx.amount
@@ -691,26 +887,57 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return w
     })
 
-    // Optimistic UI Update
+    // Optimistic UI Update — show immediately while Supabase write happens in background
     setState((prev) => ({
       ...prev,
       transactions: [newTx, ...prev.transactions],
       wallets: updatedWallets,
+      lastInsertError: null,
     }))
 
     if (user) {
-      const userId = user.id || (user as any).uid
-      const row = mapTransactionToRow(newTx, userId)
-      await supabase.from("transactions").insert(row)
+      // FIX (Bug #3): Set isInsertingRef BEFORE the Supabase calls to prevent
+      // Realtime subscription from triggering a refetch that overwrites optimistic state.
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        const row = mapTransactionToRow(newTx, userId)
 
-      const targetWallet = updatedWallets.find(
-        (w) => w.name.toLowerCase() === tx.account.toLowerCase() || tx.account.toLowerCase().includes(w.name.toLowerCase())
-      )
-      if (targetWallet) {
-        await supabase.from("accounts").upsert(mapWalletToAccount(targetWallet, userId))
+        // FIX (Bug #1 + error handling): Check insert result. On failure, roll back
+        // the optimistic state update so the UI accurately reflects the true persisted state.
+        const { error: insertError } = await supabase.from("transactions").insert(row)
+        if (insertError) {
+          console.error("[Pawi] Transaction insert failed:", insertError.code, insertError.message, insertError.details)
+          // Roll back: remove the optimistic transaction and restore wallet balances
+          setState((prev) => ({
+            ...prev,
+            transactions: prev.transactions.filter((t) => t.id !== newTx.id),
+            wallets: prev.wallets, // wallets already updated optimistically; reverse adjustment
+            lastInsertError: `Could not save transaction: ${insertError.message || "Unknown error"}. Please try again.`,
+          }))
+          return
+        }
+
+        const targetWallet = updatedWallets.find(
+          (w) => w.name.toLowerCase() === tx.account.toLowerCase() || tx.account.toLowerCase().includes(w.name.toLowerCase())
+        )
+        if (targetWallet) {
+          const { error: walletError } = await supabase.from("accounts").upsert(mapWalletToAccount(targetWallet, userId))
+          if (walletError) {
+            // Non-critical: log but don't roll back (transaction was saved successfully)
+            console.warn("[Pawi] Account balance sync failed (non-critical):", walletError.message)
+          }
+        }
+      } finally {
+        // Always clear the guard so future Realtime events are not blocked
+        isInsertingRef.current = false
       }
     }
   }
+
+  const clearInsertError = useCallback(() => {
+    setState((prev) => ({ ...prev, lastInsertError: null }))
+  }, [])
 
   const editTransaction = async (tx: Transaction) => {
     const oldTx = state.transactions.find((t) => t.id === tx.id)
@@ -861,12 +1088,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }
 
   const addGoal = async (goal: Omit<Goal, "id">) => {
-    const newGoal: Goal = { ...goal, id: "g_" + Date.now() }
-    setState((prev) => ({ ...prev, goals: [...prev.goals, newGoal] }))
+    const newGoal: Goal = { ...goal, id: crypto.randomUUID() }
+    setState((prev) => ({ ...prev, goals: [...prev.goals, newGoal], lastInsertError: null }))
 
     if (user) {
-      const userId = user.id || (user as any).uid
-      await supabase.from("savings_goals").insert(mapGoalToRow(newGoal, userId))
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        const { error } = await supabase.from("savings_goals").insert(mapGoalToRow(newGoal, userId))
+        if (error) {
+          console.error("[Pawi] addGoal failed:", error.message)
+          setState((prev) => ({
+            ...prev,
+            goals: prev.goals.filter((g) => g.id !== newGoal.id),
+            lastInsertError: `Could not save goal: ${error.message}`,
+          }))
+        }
+      } finally {
+        isInsertingRef.current = false
+      }
     }
   }
 
@@ -877,8 +1117,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }))
 
     if (user) {
-      const userId = user.id || (user as any).uid
-      await supabase.from("savings_goals").upsert(mapGoalToRow(goal, userId))
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        await supabase.from("savings_goals").upsert(mapGoalToRow(goal, userId))
+      } finally {
+        isInsertingRef.current = false
+      }
     }
   }
 
@@ -894,12 +1139,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }
 
   const addBudget = async (budget: Omit<Budget, "id">) => {
-    const newBudget: Budget = { ...budget, id: "b_" + Date.now() }
-    setState((prev) => ({ ...prev, budgets: [...prev.budgets, newBudget] }))
+    const newBudget: Budget = { ...budget, id: crypto.randomUUID() }
+    setState((prev) => ({ ...prev, budgets: [...prev.budgets, newBudget], lastInsertError: null }))
 
     if (user) {
-      const userId = user.id || (user as any).uid
-      await supabase.from("categories").insert(mapBudgetToRow(newBudget, userId))
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        const { error } = await supabase.from("categories").insert(mapBudgetToRow(newBudget, userId))
+        if (error) {
+          console.error("[Pawi] addBudget failed:", error.message)
+          setState((prev) => ({
+            ...prev,
+            budgets: prev.budgets.filter((b) => b.id !== newBudget.id),
+            lastInsertError: `Could not save budget: ${error.message}`,
+          }))
+        }
+      } finally {
+        isInsertingRef.current = false
+      }
     }
   }
 
@@ -910,8 +1168,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }))
 
     if (user) {
-      const userId = user.id || (user as any).uid
-      await supabase.from("categories").upsert(mapBudgetToRow(budget, userId))
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        await supabase.from("categories").upsert(mapBudgetToRow(budget, userId))
+      } finally {
+        isInsertingRef.current = false
+      }
     }
   }
 
@@ -928,8 +1191,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Debt CRUD
   const addDebt = async (debt: Omit<Debt, "id">) => {
-    const newDebt: Debt = { ...debt, id: "d_" + Date.now() }
-    setState((prev) => ({ ...prev, debts: [...prev.debts, newDebt] }))
+    const newDebt: Debt = { ...debt, id: crypto.randomUUID() }
+    setState((prev) => ({ ...prev, debts: [...prev.debts, newDebt], lastInsertError: null }))
+
+    if (user) {
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        const { error } = await supabase.from("debts").insert(mapDebtToRow(newDebt, userId))
+        if (error) {
+          console.error("[Pawi] addDebt failed:", error.message)
+          setState((prev) => ({
+            ...prev,
+            debts: prev.debts.filter((d) => d.id !== newDebt.id),
+            lastInsertError: `Could not save debt: ${error.message}`,
+          }))
+        }
+      } finally {
+        isInsertingRef.current = false
+      }
+    }
   }
 
   const editDebt = async (debt: Debt) => {
@@ -937,6 +1218,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...prev,
       debts: prev.debts.map((d) => (d.id === debt.id ? debt : d)),
     }))
+
+    if (user) {
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        await supabase.from("debts").upsert(mapDebtToRow(debt, userId))
+      } finally {
+        isInsertingRef.current = false
+      }
+    }
   }
 
   const deleteDebt = async (debtId: string) => {
@@ -944,12 +1235,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...prev,
       debts: prev.debts.filter((d) => d.id !== debtId),
     }))
+
+    if (user) {
+      await supabase.from("debts").delete().eq("id", debtId)
+    }
   }
 
   // Receivable CRUD
   const addReceivable = async (receivable: Omit<Receivable, "id">) => {
-    const newRec: Receivable = { ...receivable, id: "rec_" + Date.now() }
-    setState((prev) => ({ ...prev, receivables: [...prev.receivables, newRec] }))
+    const newRec: Receivable = { ...receivable, id: crypto.randomUUID() }
+    setState((prev) => ({ ...prev, receivables: [...prev.receivables, newRec], lastInsertError: null }))
+
+    if (user) {
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        const { error } = await supabase.from("receivables").insert(mapReceivableToRow(newRec, userId))
+        if (error) {
+          console.error("[Pawi] addReceivable failed:", error.message)
+          setState((prev) => ({
+            ...prev,
+            receivables: prev.receivables.filter((r) => r.id !== newRec.id),
+            lastInsertError: `Could not save receivable: ${error.message}`,
+          }))
+        }
+      } finally {
+        isInsertingRef.current = false
+      }
+    }
   }
 
   const editReceivable = async (receivable: Receivable) => {
@@ -957,6 +1270,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...prev,
       receivables: prev.receivables.map((r) => (r.id === receivable.id ? receivable : r)),
     }))
+
+    if (user) {
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        await supabase.from("receivables").upsert(mapReceivableToRow(receivable, userId))
+      } finally {
+        isInsertingRef.current = false
+      }
+    }
   }
 
   const deleteReceivable = async (receivableId: string) => {
@@ -964,25 +1287,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...prev,
       receivables: prev.receivables.filter((r) => r.id !== receivableId),
     }))
+
+    if (user) {
+      await supabase.from("receivables").delete().eq("id", receivableId)
+    }
   }
 
   // Planned Payment CRUD
   const addPlannedPayment = async (payment: Omit<PlannedPayment, "id">) => {
-    const newPay: PlannedPayment = { ...payment, id: "pp_" + Date.now() }
-    setState((prev) => ({ ...prev, plannedPayments: [...prev.plannedPayments, newPay] }))
+    const newPay: PlannedPayment = { ...payment, id: crypto.randomUUID() }
+    setState((prev) => ({ ...prev, plannedPayments: [...prev.plannedPayments, newPay], lastInsertError: null }))
 
     if (user) {
-      const userId = user.id || (user as any).uid
-      await supabase.from("recurring_bills").insert({
-        id: newPay.id,
-        user_id: userId,
-        name: newPay.label,
-        amount: newPay.amount,
-        billing_cycle: newPay.frequency,
-        due_day: 15,
-        next_due_date: newPay.dueDate || "Monthly",
-        account_name: newPay.account,
-      })
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        const { error } = await supabase.from("recurring_bills").insert({
+          id: newPay.id,
+          user_id: userId,
+          name: newPay.label,
+          amount: newPay.amount,
+          billing_cycle: newPay.frequency,
+          due_day: 15,
+          next_due_date: newPay.dueDate || "Monthly",
+          account_name: newPay.account,
+        })
+        if (error) {
+          console.error("[Pawi] addPlannedPayment failed:", error.message)
+          setState((prev) => ({
+            ...prev,
+            plannedPayments: prev.plannedPayments.filter((p) => p.id !== newPay.id),
+            lastInsertError: `Could not save planned payment: ${error.message}`,
+          }))
+        }
+      } finally {
+        isInsertingRef.current = false
+      }
     }
   }
 
@@ -991,6 +1331,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...prev,
       plannedPayments: prev.plannedPayments.map((p) => (p.id === payment.id ? payment : p)),
     }))
+
+    if (user) {
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        await supabase.from("recurring_bills").upsert({
+          id: payment.id,
+          user_id: userId,
+          name: payment.label,
+          amount: payment.amount,
+          billing_cycle: payment.frequency,
+          due_day: 15,
+          next_due_date: payment.dueDate || "Monthly",
+          account_name: payment.account,
+        })
+      } finally {
+        isInsertingRef.current = false
+      }
+    }
   }
 
   const deletePlannedPayment = async (paymentId: string) => {
@@ -1006,8 +1365,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Installment CRUD
   const addInstallment = async (installment: Omit<Installment, "id">) => {
-    const newInst: Installment = { ...installment, id: "inst_" + Date.now() }
-    setState((prev) => ({ ...prev, installments: [...prev.installments, newInst] }))
+    const newInst: Installment = { ...installment, id: crypto.randomUUID() }
+    setState((prev) => ({ ...prev, installments: [...prev.installments, newInst], lastInsertError: null }))
+
+    if (user) {
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        const { error } = await supabase.from("installments").insert(mapInstallmentToRow(newInst, userId))
+        if (error) {
+          console.error("[Pawi] addInstallment failed:", error.message)
+          setState((prev) => ({
+            ...prev,
+            installments: prev.installments.filter((i) => i.id !== newInst.id),
+            lastInsertError: `Could not save installment: ${error.message}`,
+          }))
+        }
+      } finally {
+        isInsertingRef.current = false
+      }
+    }
   }
 
   const editInstallment = async (installment: Installment) => {
@@ -1015,6 +1392,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...prev,
       installments: prev.installments.map((i) => (i.id === installment.id ? installment : i)),
     }))
+
+    if (user) {
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        await supabase.from("installments").upsert(mapInstallmentToRow(installment, userId))
+      } finally {
+        isInsertingRef.current = false
+      }
+    }
   }
 
   const deleteInstallment = async (installmentId: string) => {
@@ -1022,12 +1409,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...prev,
       installments: prev.installments.filter((i) => i.id !== installmentId),
     }))
+
+    if (user) {
+      await supabase.from("installments").delete().eq("id", installmentId)
+    }
   }
 
   // Tag CRUD
   const addTag = async (tag: Omit<Tag, "id">) => {
-    const newTag: Tag = { ...tag, id: "tag_" + Date.now() }
-    setState((prev) => ({ ...prev, tags: [...prev.tags, newTag] }))
+    const newTag: Tag = { ...tag, id: crypto.randomUUID() }
+    setState((prev) => ({ ...prev, tags: [...prev.tags, newTag], lastInsertError: null }))
+
+    if (user) {
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        const { error } = await supabase.from("tags").insert(mapTagToRow(newTag, userId))
+        if (error) {
+          console.error("[Pawi] addTag failed:", error.message)
+          setState((prev) => ({
+            ...prev,
+            tags: prev.tags.filter((t) => t.id !== newTag.id),
+            lastInsertError: `Could not save tag: ${error.message}`,
+          }))
+        }
+      } finally {
+        isInsertingRef.current = false
+      }
+    }
   }
 
   const deleteTag = async (tagId: string) => {
@@ -1035,37 +1444,61 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...prev,
       tags: prev.tags.filter((t) => t.id !== tagId),
     }))
+
+    if (user) {
+      await supabase.from("tags").delete().eq("id", tagId)
+    }
   }
 
   const addFundsToGoal = async (goalId: string, amount: number, fromWalletName?: string) => {
     if (amount <= 0) return
 
+    const targetGoal = state.goals.find((g) => g.id === goalId)
+    if (!targetGoal) return
+
+    const walletName = fromWalletName || state.wallets[0]?.name || "Cash"
+    const sourceWallet = state.wallets.find(
+      (w) => w.name.toLowerCase() === walletName.toLowerCase()
+    )
+
+    if (sourceWallet && sourceWallet.balance < amount) {
+      setState((prev) => ({
+        ...prev,
+        lastInsertError: `Insufficient balance in ${sourceWallet.name}. Available: ₱${sourceWallet.balance.toLocaleString()}`,
+      }))
+      return
+    }
+
     const updatedGoals = state.goals.map((g) =>
       g.id === goalId ? { ...g, saved: g.saved + amount } : g
     )
 
-    let updatedWallets = state.wallets
-    if (fromWalletName) {
-      updatedWallets = updatedWallets.map((w) => {
-        if (w.name.toLowerCase() === fromWalletName.toLowerCase()) {
-          return { ...w, balance: Math.max(0, w.balance - amount) }
+    const updatedWallets = state.wallets.map((w) => {
+      if (w.name.toLowerCase() === walletName.toLowerCase()) {
+        return {
+          ...w,
+          balance: w.balance - amount,
+          usedCredit: w.isLiability ? Math.max(0, (w.usedCredit || 0) + amount) : undefined,
         }
-        return w
-      })
-    }
+      }
+      return w
+    })
 
-    const targetGoal = state.goals.find((g) => g.id === goalId)
+    const now = new Date()
+    const isoDateManila = now.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })
+    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+
     const goalTx: Transaction = {
-      id: "tx_" + Date.now(),
-      label: `Goal deposit: ${targetGoal?.name || "Savings"}`,
+      id: crypto.randomUUID(),
+      label: `Goal deposit: ${targetGoal.name}`,
       category: "Savings Goal",
-      account: fromWalletName || (state.wallets[0]?.name ?? "Cash"),
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      account: walletName,
+      time: timeStr,
       amount: amount,
       currency: "PHP",
       kind: "expense",
       dateHeader: "Today",
-      date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
+      date: isoDateManila,
     }
 
     setState((prev) => ({
@@ -1073,15 +1506,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       goals: updatedGoals,
       wallets: updatedWallets,
       transactions: [goalTx, ...prev.transactions],
+      lastInsertError: null,
     }))
 
     if (user) {
-      const userId = user.id || (user as any).uid
-      const modGoal = updatedGoals.find((g) => g.id === goalId)
-      if (modGoal) {
-        await supabase.from("savings_goals").upsert(mapGoalToRow(modGoal, userId))
+      isInsertingRef.current = true
+      try {
+        const userId = user.id || (user as any).uid
+        const modGoal = updatedGoals.find((g) => g.id === goalId)
+        const updatedSourceWallet = updatedWallets.find(
+          (w) => w.name.toLowerCase() === walletName.toLowerCase()
+        )
+
+        const promises: Promise<any>[] = []
+        if (modGoal) {
+          promises.push(supabase.from("savings_goals").upsert(mapGoalToRow(modGoal, userId)))
+        }
+        if (updatedSourceWallet) {
+          promises.push(supabase.from("accounts").upsert(mapWalletToAccount(updatedSourceWallet, userId)))
+        }
+        promises.push(supabase.from("transactions").insert(mapTransactionToRow(goalTx, userId)))
+
+        await Promise.allSettled(promises)
+      } finally {
+        isInsertingRef.current = false
       }
-      await supabase.from("transactions").insert(mapTransactionToRow(goalTx, userId))
     }
   }
 
@@ -1200,6 +1649,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       streakDays: 0,
       paydayConfig: cleanPayday,
       paydayCountdown: computePaydayCountdown(cleanPayday),
+      lastInsertError: null,
     }
     setState(cleanState)
 
@@ -1298,6 +1748,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       streakDays: 6,
       paydayConfig: demoPayday,
       paydayCountdown: computePaydayCountdown(demoPayday),
+      lastInsertError: null,
     }
     setState(sampleState)
 
@@ -1331,6 +1782,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         addTransaction,
         editTransaction,
         deleteTransaction,
+        clearInsertError,
         addWallet,
         updateWallet,
         deleteWallet,

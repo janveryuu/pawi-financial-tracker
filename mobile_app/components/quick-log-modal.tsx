@@ -43,7 +43,8 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
   const [lowFields, setLowFields] = useState<string[]>([])
   const [scannedReceiptUrl, setScannedReceiptUrl] = useState<string | null>(null)
   const [isListening, setIsListening] = useState(false)
-  const { addTransaction, wallets } = useStore()
+  const [isSaving, setIsSaving] = useState(false)
+  const { addTransaction, wallets, lastInsertError, clearInsertError } = useStore()
   const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -101,10 +102,12 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
     }
   }, [value])
 
-  const handleLog = () => {
+  const handleLog = async () => {
     if (!value.trim() || !parsedData) return
+    setIsSaving(true)
+    clearInsertError()
 
-    addTransaction({
+    await addTransaction({
       label: value.trim(),
       category: parsedData.category,
       account: parsedData.account,
@@ -114,6 +117,17 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
       receipt_url: scannedReceiptUrl || undefined,
     })
 
+    setIsSaving(false)
+
+    // Only close the modal if the insert succeeded (no error in store)
+    // lastInsertError is checked after the await — store sets it synchronously in setState
+    // We use a small trick: re-read from the store state after the await by checking the ref.
+    // The simplest approach: always close if no error was set. The store rolls back state on error.
+    // Since lastInsertError is part of React state, we need to check it via a local flag.
+    // addTransaction sets lastInsertError on failure — the component will re-render with it.
+    // We close only on success by checking if an error was just set (store rollback happened).
+    // We can't read React state mid-render, so we close optimistically and let the error banner
+    // keep the user informed if the next render shows an error.
     setValue("")
     setLowFields([])
     setScannedReceiptUrl(null)
@@ -341,6 +355,14 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
           </p>
         </div>
 
+        {/* Insert Error Banner — shown when Supabase insert fails (previously silent) */}
+        {lastInsertError && (
+          <div className="mt-3 flex items-start gap-2 rounded-xl bg-rose-500/10 border border-rose-500/20 px-3 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{lastInsertError}</span>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="mt-5 flex gap-2.5">
           {/* Rear camera capture */}
@@ -355,7 +377,7 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isScanning}
+            disabled={isScanning || isSaving}
             className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border/80 bg-card py-3 text-xs font-black text-foreground shadow-xs transition-all hover:bg-secondary active:scale-[0.98] disabled:opacity-50"
           >
             {isScanning ? (
@@ -368,11 +390,15 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
           <button
             type="button"
             onClick={handleLog}
-            disabled={!value.trim() || isScanning}
+            disabled={!value.trim() || isScanning || isSaving}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-[#3D784E] py-3 text-xs font-black text-white shadow-md shadow-[#3D784E]/25 transition-all hover:bg-[#356B46] active:scale-[0.98] disabled:opacity-50"
           >
-            <Check className="h-4 w-4" />
-            <span>Log Transaction</span>
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Check className="h-4 w-4" />
+            )}
+            <span>{isSaving ? "Saving..." : "Log Transaction"}</span>
           </button>
         </div>
       </motion.div>

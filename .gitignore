@@ -1,7 +1,10 @@
 node_modules/
 .firebase/
 *.zip
+*.exe
+*.tsbuildinfo
 .env*
 temp-login-interface/
 server/node_modules/
 server/.env
+

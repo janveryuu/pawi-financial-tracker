@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
+import { useProfile } from "@/lib/use-profile"
 import { AnimatePresence, motion } from "framer-motion"
 import { HomeScreen } from "@/components/screens/home-screen"
 import { WalletsScreen } from "@/components/screens/wallets-screen"
@@ -16,9 +17,11 @@ import { TransferModal } from "@/components/transfer-modal"
 import { QuickLogModal } from "@/components/quick-log-modal"
 import { NotificationsPanel } from "@/components/notifications-panel"
 import { PawiTutorialModal } from "@/components/pawi-tutorial-modal"
+import { PawiOnboardingFlow } from "@/components/pawi-onboarding-flow"
 
 export default function Page() {
-  const { user, loading } = useAuth()
+  const { user, loading, isGuest } = useAuth()
+  const { profile, loadingProfile } = useProfile()
   const router = useRouter()
 
   const [tab, setTab] = useState<TabId>("home")
@@ -28,15 +31,35 @@ export default function Page() {
   const [scanOpen, setScanOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [tutorialOpen, setTutorialOpen] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
+  // Redirect to login if unauthenticated
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login")
     }
   }, [user, loading, router])
 
+  // Onboarding gate: show for new authenticated (non-guest) users who haven't completed onboarding, or if ?onboarding=true is in URL
   useEffect(() => {
-    if (!loading && user) {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get("onboarding") === "true" || params.get("onboarding") === "1" || window.location.hash === "#onboarding") {
+        setShowOnboarding(true)
+        return
+      }
+    }
+
+    if (!loading && !loadingProfile && user && !isGuest) {
+      if (profile && !profile.onboarding_completed) {
+        setShowOnboarding(true)
+      }
+    }
+  }, [loading, loadingProfile, user, isGuest, profile])
+
+  // Tutorial gate: show after onboarding is complete (but only once per user)
+  useEffect(() => {
+    if (!loading && user && !showOnboarding) {
       const userId = user.id || (user as any).uid || "guest"
       const tutorialKey = `pawi_has_seen_tutorial_${userId}`
       const hasSeenSpecific = localStorage.getItem(tutorialKey)
@@ -45,18 +68,32 @@ export default function Page() {
       if (!hasSeenSpecific && !hasSeenGlobal) {
         const timer = setTimeout(() => {
           setTutorialOpen(true)
-        }, 600)
+        }, 800)
         return () => clearTimeout(timer)
       }
     }
-  }, [user, loading])
+  }, [user, loading, showOnboarding])
 
-  if (loading || !user) {
+  // Onboarding complete handler — dismiss onboarding, let tutorial follow naturally
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false)
+    if (typeof window !== "undefined" && window.location.search.includes("onboarding")) {
+      router.replace("/")
+    }
+    // Tutorial will be triggered by the useEffect above after showOnboarding becomes false
+  }
+
+  if (loading || loadingProfile || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="h-10 w-10 animate-pulse rounded-full bg-[#3D784E]/25" />
       </div>
     )
+  }
+
+  // Render onboarding flow when triggered
+  if (showOnboarding) {
+    return <PawiOnboardingFlow onComplete={handleOnboardingComplete} />
   }
 
   return (
@@ -82,13 +119,16 @@ export default function Page() {
           {tab === "chat" && <ChatScreen onBack={() => setTab("home")} />}
           {tab === "settings" && (
             <div className="px-5 pt-4">
-              <SettingsModule onStartTutorial={() => setTutorialOpen(true)} />
+              <SettingsModule
+                onStartTutorial={() => setTutorialOpen(true)}
+                onStartOnboarding={() => setShowOnboarding(true)}
+              />
             </div>
           )}
         </motion.div>
       </AnimatePresence>
 
-      {/* Floating Bottom Nav with Speed Dial (Image 2 & 3) */}
+      {/* Floating Bottom Nav with Speed Dial */}
       <BottomNav
         active={tab}
         onChange={setTab}

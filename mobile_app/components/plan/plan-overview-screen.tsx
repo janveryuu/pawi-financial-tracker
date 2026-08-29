@@ -53,6 +53,11 @@ export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
 
   const healthZone = healthScore >= 80 ? "Green Zone" : healthScore >= 60 ? "Yellow Zone" : "Red Zone"
   const healthBadge = healthScore >= 80 ? "Optimal" : healthScore >= 60 ? "Fair" : "Needs Attention"
+  const totalReceivables = receivables
+    .filter((r) => r.status === "pending")
+    .reduce((s, r) => s + r.amount, 0)
+  const totalPlannedBills = plannedPayments.reduce((s, p) => s + p.amount, 0)
+
   const runwayMonths = totalBudgetsSpent > 0
     ? (totalAssets / totalBudgetsSpent).toFixed(1)
     : totalAssets > 0
