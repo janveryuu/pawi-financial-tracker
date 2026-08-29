@@ -309,7 +309,7 @@ export function TransactionEntryModal({ open, kind, initialAccount, onClose }: T
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1">
               {isIncome ? "INCOME CATEGORIES" : "EXPENSE CATEGORIES"}
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div data-tutorial-id="pawi-expense-category-grid" className="grid grid-cols-2 gap-2">
               {categories.map((cat) => {
                 const isSelected = selectedCategory === cat.label
                 return (

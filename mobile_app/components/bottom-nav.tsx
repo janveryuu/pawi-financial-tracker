@@ -26,6 +26,16 @@ const navItems: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: "history", label: "History", icon: Clock },
 ]
 
+const NAV_TUTORIAL_IDS: Record<TabId, string> = {
+  home: "pawi-nav-home",
+  dashboard: "pawi-nav-home",
+  wallets: "pawi-nav-wallet",
+  plan: "pawi-nav-plan",
+  history: "pawi-nav-history",
+  chat: "pawi-nav-chat",
+  settings: "",
+}
+
 interface BottomNavProps {
   active: TabId
   onChange: (id: TabId) => void
@@ -135,6 +145,7 @@ export function BottomNav({
             {/* 5. Expense */}
             <button
               type="button"
+              data-tutorial-id="pawi-fab-expense"
               onClick={() => handleAction(onOpenExpense)}
               className="flex w-full items-center gap-3.5 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-secondary/60 active:scale-95"
             >
@@ -160,6 +171,7 @@ export function BottomNav({
               <button
                 key={item.id}
                 type="button"
+                data-tutorial-id={NAV_TUTORIAL_IDS[item.id] || undefined}
                 onClick={() => onChange(item.id)}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
@@ -189,6 +201,7 @@ export function BottomNav({
         <div className="pointer-events-auto ml-3">
           <motion.button
             type="button"
+            data-tutorial-id="pawi-fab-button"
             onClick={() => setSpeedDialOpen(!speedDialOpen)}
             whileTap={{ scale: 0.9 }}
             className={cn(

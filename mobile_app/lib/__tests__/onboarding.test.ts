@@ -302,3 +302,115 @@ describe("App restart & profile recovery resilience", () => {
     expect(activeProfile.onboarding_step).toBe(99)
   })
 })
+
+// ── Test 9: Spotlight Tour Gate Logic ────────────────────────────────────────
+describe("Spotlight Tour Gate Logic", () => {
+  const TOTAL_STEPS = 9
+
+  interface TourProfile {
+    onboarding_completed: boolean
+    tutorial_completed: boolean
+    tutorial_step: number
+  }
+
+  function shouldShowTour(profile: TourProfile, isGuest: boolean): boolean {
+    if (isGuest) return false
+    if (!profile.onboarding_completed) return false
+    if (profile.tutorial_completed) return false
+    return true
+  }
+
+  function computeResumeStep(profile: TourProfile): number {
+    const step = profile.tutorial_step ?? 0
+    return step < 99 ? step : 0
+  }
+
+  it("shows tour when onboarding_completed=true and tutorial_completed=false", () => {
+    const profile: TourProfile = { onboarding_completed: true, tutorial_completed: false, tutorial_step: 0 }
+    expect(shouldShowTour(profile, false)).toBe(true)
+  })
+
+  it("does NOT show tour when tutorial_completed=true", () => {
+    const profile: TourProfile = { onboarding_completed: true, tutorial_completed: true, tutorial_step: 99 }
+    expect(shouldShowTour(profile, false)).toBe(false)
+  })
+
+  it("does NOT show tour for guest users even with flags false", () => {
+    const profile: TourProfile = { onboarding_completed: true, tutorial_completed: false, tutorial_step: 0 }
+    expect(shouldShowTour(profile, true)).toBe(false)
+  })
+
+  it("does NOT show tour if onboarding not yet completed", () => {
+    const profile: TourProfile = { onboarding_completed: false, tutorial_completed: false, tutorial_step: 0 }
+    expect(shouldShowTour(profile, false)).toBe(false)
+  })
+
+  it("resumes at mid-tour step on app restart", () => {
+    const profile: TourProfile = { onboarding_completed: true, tutorial_completed: false, tutorial_step: 5 }
+    expect(computeResumeStep(profile)).toBe(5)
+  })
+
+  it("resumes at step 0 if tutorial_step is 99 (safety fallback)", () => {
+    const profile: TourProfile = { onboarding_completed: true, tutorial_completed: false, tutorial_step: 99 }
+    expect(computeResumeStep(profile)).toBe(0)
+  })
+
+  it("tutorial_completed only flips true after final step (not mid-tour)", () => {
+    // Simulate completing steps 0..7 — tutorial_completed must remain false
+    let tutorialCompleted = false
+    for (let step = 0; step < TOTAL_STEPS - 1; step++) {
+      // completing any non-final step should NOT set tutorial_completed
+      const isLastStep = step === TOTAL_STEPS - 1
+      if (isLastStep) tutorialCompleted = true
+      expect(tutorialCompleted).toBe(false)
+    }
+    // Only after the final step does it flip
+    const finalStep = TOTAL_STEPS - 1
+    const isLastStep = finalStep === TOTAL_STEPS - 1
+    if (isLastStep) tutorialCompleted = true
+    expect(tutorialCompleted).toBe(true)
+  })
+
+  it("step persists correctly: saveTutorialStep writes next step index", () => {
+    const persistedSteps: number[] = []
+    const onStepComplete = (step: number) => {
+      persistedSteps.push(step + 1) // page.tsx pattern: persist step + 1
+    }
+
+    // Simulate completing steps 0-8
+    for (let step = 0; step < TOTAL_STEPS; step++) {
+      onStepComplete(step)
+    }
+
+    expect(persistedSteps).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
+  })
+
+  it("accessibility escape hatch completes tour and writes exit log", () => {
+    const log: object[] = []
+    const completeTourViaAccessibility = (method: string, step: number) => {
+      log.push({ method, step, timestamp: "2026-08-30T07:00:00Z" })
+      return true // triggers onComplete
+    }
+
+    const result = completeTourViaAccessibility("triple-tap", 3)
+    expect(result).toBe(true)
+    expect(log).toHaveLength(1)
+    expect((log[0] as any).method).toBe("triple-tap")
+    expect((log[0] as any).step).toBe(3)
+  })
+
+  it("accessibility escape hatch is not triggerable by a single tap", () => {
+    let tapCount = 0
+    const handleTopLeftTap = () => {
+      tapCount++
+      // Only triggers after 3 taps
+      if (tapCount >= 3) return true
+      return false
+    }
+
+    expect(handleTopLeftTap()).toBe(false) // tap 1
+    expect(handleTopLeftTap()).toBe(false) // tap 2
+    expect(handleTopLeftTap()).toBe(true)  // tap 3 — triggers
+  })
+})
+

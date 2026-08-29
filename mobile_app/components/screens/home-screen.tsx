@@ -223,7 +223,10 @@ export function HomeScreen({
       {/* Top Bar: Streak Pill (Left) + Action Buttons (Right) */}
       <div className="flex items-center justify-between py-1">
         {/* Streak Pill */}
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-500/10 px-3 py-1.5 text-xs font-black text-amber-900 dark:text-amber-300 shadow-2xs">
+        <div
+          data-tutorial-id="pawi-streak-pill"
+          className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-500/10 px-3 py-1.5 text-xs font-black text-amber-900 dark:text-amber-300 shadow-2xs"
+        >
           <Flame className={cn("h-4 w-4", streakDays > 0 ? "text-orange-500 fill-orange-500" : "text-amber-400")} />
           <span>{streakDays > 0 ? `x${streakDays} day streak!` : "Start streak! 🔥"}</span>
         </div>
@@ -269,6 +272,7 @@ export function HomeScreen({
 
       {/* Mascot Card: Slim Pawi Banner (Rotates every 5 mins or on tap) */}
       <div 
+        data-tutorial-id="pawi-mascot-banner"
         onClick={handleNextMessage}
         className="relative rounded-3xl bg-[#3D784E] py-2 px-3 text-white shadow-md mt-1 cursor-pointer transition-transform active:scale-[0.99] select-none"
         title="Tap for next tip from Pawi!"

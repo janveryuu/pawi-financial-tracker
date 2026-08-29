@@ -7,7 +7,7 @@
  *  - Reads from local cache (`pawi_profile_${userId}`) on mount for instant state recovery.
  *  - Safely syncs with Supabase `profiles` table without destructively overwriting existing data.
  *  - Prevents race conditions where cold starts or unauthenticated read glitches could wipe `onboarding_completed`.
- *  - Exposes `saveProfile`, `completeOnboarding`, and `completeTutorial`.
+ *  - Exposes `saveProfile`, `completeOnboarding`, `completeTutorial`, and `saveTutorialStep`.
  */
 
 import { useEffect, useState, useCallback, useRef } from "react"
@@ -39,6 +39,7 @@ export interface UserProfile {
   is_student: boolean
   onboarding_completed: boolean
   tutorial_completed: boolean
+  tutorial_step: number
   onboarding_step: number
   notifications_enabled: boolean
   payday_type: PaydayType
@@ -60,6 +61,7 @@ const DEFAULT_PROFILE: Omit<UserProfile, "id"> = {
   is_student: true,
   onboarding_completed: false,
   tutorial_completed: false,
+  tutorial_step: 0,
   onboarding_step: 0,
   notifications_enabled: false,
   payday_type: "once",
@@ -145,6 +147,7 @@ export function useProfile() {
             is_student: derivedProfileType !== "professional",
             onboarding_completed: Boolean(data.onboarding_completed),
             tutorial_completed: Boolean(data.tutorial_completed),
+            tutorial_step: data.tutorial_step ?? 0,
             onboarding_step: data.onboarding_step ?? 0,
             notifications_enabled: Boolean(data.notifications_enabled),
             payday_type: (data.payday_type as PaydayType) || "once",
@@ -248,8 +251,17 @@ export function useProfile() {
 
   // ── Mark tutorial done — sets tutorial_completed = true ─────────────────────
   const completeTutorial = useCallback(async () => {
-    await saveProfile({ tutorial_completed: true })
+    await saveProfile({ tutorial_completed: true, tutorial_step: 99 })
   }, [saveProfile])
+
+  // ── Save tutorial step progress for mid-tour resume ──────────────────────────
+  const saveTutorialStep = useCallback(
+    async (step: number) => {
+      if (!user || isGuest) return
+      await saveProfile({ tutorial_step: step })
+    },
+    [saveProfile, user, isGuest]
+  )
 
   return {
     profile,
@@ -258,5 +270,6 @@ export function useProfile() {
     saveOnboardingStep,
     completeOnboarding,
     completeTutorial,
+    saveTutorialStep,
   }
 }

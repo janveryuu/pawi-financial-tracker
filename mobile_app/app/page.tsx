@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useProfile } from "@/lib/use-profile"
@@ -16,12 +16,12 @@ import { TransactionEntryModal } from "@/components/transaction-entry-modal"
 import { TransferModal } from "@/components/transfer-modal"
 import { QuickLogModal } from "@/components/quick-log-modal"
 import { NotificationsPanel } from "@/components/notifications-panel"
-import { PawiTutorialModal } from "@/components/pawi-tutorial-modal"
+import { PawiSpotlightTour } from "@/components/pawi-spotlight-tour"
 import { PawiOnboardingFlow } from "@/components/pawi-onboarding-flow"
 
 export default function Page() {
   const { user, loading, isGuest } = useAuth()
-  const { profile, loadingProfile, completeTutorial } = useProfile()
+  const { profile, loadingProfile, completeTutorial, saveTutorialStep } = useProfile()
   const router = useRouter()
 
   const [tab, setTab] = useState<TabId>("home")
@@ -31,6 +31,7 @@ export default function Page() {
   const [scanOpen, setScanOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [tutorialOpen, setTutorialOpen] = useState(false)
+  const [tutorialInitialStep, setTutorialInitialStep] = useState(0)
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   // Redirect to login if unauthenticated
@@ -40,7 +41,7 @@ export default function Page() {
     }
   }, [user, loading, router])
 
-  // Onboarding gate: show for new authenticated (non-guest) users who haven't completed onboarding, or if ?onboarding=true is in URL
+  // Onboarding gate
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search)
@@ -59,11 +60,13 @@ export default function Page() {
     }
   }, [loading, loadingProfile, user, isGuest, profile])
 
-  // Tutorial gate: show after onboarding is complete, ONLY if tutorial_completed is false on profiles
+  // Tutorial gate: resume from last-persisted step
   useEffect(() => {
     if (!loading && !loadingProfile && user && !isGuest && !showOnboarding) {
       if (profile && profile.onboarding_completed && !profile.tutorial_completed) {
+        const resumeStep = (profile.tutorial_step ?? 0) < 99 ? (profile.tutorial_step ?? 0) : 0
         const timer = setTimeout(() => {
+          setTutorialInitialStep(resumeStep)
           setTutorialOpen(true)
         }, 600)
         return () => clearTimeout(timer)
@@ -71,7 +74,6 @@ export default function Page() {
     }
   }, [user, loading, loadingProfile, isGuest, showOnboarding, profile])
 
-  // Onboarding complete handler — dismiss onboarding, let tutorial follow naturally via profiles check
   const handleOnboardingComplete = () => {
     setShowOnboarding(false)
     if (typeof window !== "undefined" && window.location.search.includes("onboarding")) {
@@ -79,13 +81,34 @@ export default function Page() {
     }
   }
 
-  // Tutorial close handler — mark tutorial as completed in Supabase profiles
-  const handleTutorialClose = () => {
+  // Persist each step completion to Supabase
+  const handleTourStepComplete = useCallback(
+    (step: number) => {
+      if (user && !isGuest) {
+        saveTutorialStep(step + 1)
+      }
+    },
+    [user, isGuest, saveTutorialStep]
+  )
+
+  // Tour completion
+  const handleTutorialComplete = useCallback(() => {
     setTutorialOpen(false)
-    if (user && !isGuest && profile && !profile.tutorial_completed) {
+    if (user && !isGuest) {
       completeTutorial()
     }
-  }
+  }, [user, isGuest, completeTutorial])
+
+  // Tour requests expense modal open (for category grid step)
+  const handleTourOpenExpense = useCallback(() => {
+    setTxKind("expense")
+    setTxModalOpen(true)
+  }, [])
+
+  // Tour done with expense modal
+  const handleTourCloseExpense = useCallback(() => {
+    setTxModalOpen(false)
+  }, [])
 
   if (loading || loadingProfile || !user) {
     return (
@@ -95,7 +118,6 @@ export default function Page() {
     )
   }
 
-  // Render onboarding flow when triggered
   if (showOnboarding) {
     return <PawiOnboardingFlow onComplete={handleOnboardingComplete} />
   }
@@ -124,7 +146,10 @@ export default function Page() {
           {tab === "settings" && (
             <div className="px-5 pt-4">
               <SettingsModule
-                onStartTutorial={() => setTutorialOpen(true)}
+                onStartTutorial={() => {
+                  setTutorialInitialStep(0)
+                  setTutorialOpen(true)
+                }}
                 onStartOnboarding={() => setShowOnboarding(true)}
               />
             </div>
@@ -132,7 +157,6 @@ export default function Page() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Floating Bottom Nav with Speed Dial */}
       <BottomNav
         active={tab}
         onChange={setTab}
@@ -148,7 +172,6 @@ export default function Page() {
         onOpenScan={() => setScanOpen(true)}
       />
 
-      {/* Modals */}
       <TransactionEntryModal
         open={txModalOpen}
         kind={txKind}
@@ -166,9 +189,15 @@ export default function Page() {
         open={notifOpen}
         onClose={() => setNotifOpen(false)}
       />
-      <PawiTutorialModal
+
+      {/* Mandatory Spotlight Product Tour */}
+      <PawiSpotlightTour
         open={tutorialOpen}
-        onClose={handleTutorialClose}
+        initialStep={tutorialInitialStep}
+        onStepComplete={handleTourStepComplete}
+        onComplete={handleTutorialComplete}
+        onOpenExpenseModal={handleTourOpenExpense}
+        onCloseExpenseModal={handleTourCloseExpense}
       />
     </main>
   )
