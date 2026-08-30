@@ -140,6 +140,8 @@ export default function Page() {
     return <PawiOnboardingFlow onComplete={handleOnboardingComplete} />
   }
 
+  const [planInitialSubScreen, setPlanInitialSubScreen] = useState<"goals" | "debt" | "receivables" | "budgets" | null>(null)
+
   return (
     <main className="relative mx-auto min-h-screen max-w-md bg-background text-foreground overflow-x-hidden">
       <AnimatePresence mode="wait">
@@ -154,11 +156,27 @@ export default function Page() {
             <HomeScreen
               onOpenSettings={() => setTab("settings")}
               onOpenNotifications={() => setNotifOpen(true)}
+              onNavigateToPlan={() => {
+                setPlanInitialSubScreen(null)
+                setTab("plan")
+              }}
+              onNavigateToGoals={() => {
+                setPlanInitialSubScreen("goals")
+                setTab("plan")
+              }}
+              onNavigateToDebt={() => {
+                setPlanInitialSubScreen("debt")
+                setTab("plan")
+              }}
+              onNavigateToReceivables={() => {
+                setPlanInitialSubScreen("receivables")
+                setTab("plan")
+              }}
             />
           )}
 
           {tab === "wallets" && <WalletsScreen />}
-          {tab === "plan" && <PlanScreen />}
+          {tab === "plan" && <PlanScreen initialSubScreen={planInitialSubScreen} />}
           {tab === "history" && <HistoryScreen />}
           {tab === "chat" && <ChatScreen onBack={() => setTab("home")} />}
           {tab === "settings" && (

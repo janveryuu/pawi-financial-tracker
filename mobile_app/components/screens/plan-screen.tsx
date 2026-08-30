@@ -26,7 +26,7 @@ import { PlanTagsScreen } from "../plan/plan-tags-screen"
 import { PlanToolsScreen } from "../plan/plan-tools-screen"
 import { PlanOverviewScreen } from "../plan/plan-overview-screen"
 
-type PlanSubScreen =
+export type PlanSubScreen =
   | "budgets"
   | "goals"
   | "debt"
@@ -39,9 +39,20 @@ type PlanSubScreen =
   | "overview"
   | null
 
-export function PlanScreen() {
+interface PlanScreenProps {
+  initialSubScreen?: PlanSubScreen
+}
+
+export function PlanScreen({ initialSubScreen = null }: PlanScreenProps) {
   const { budgets, goals, debts, receivables, plannedPayments } = useStore()
-  const [subScreen, setSubScreen] = useState<PlanSubScreen>(null)
+  const [subScreen, setSubScreen] = useState<PlanSubScreen>(initialSubScreen)
+
+  // Sync if initialSubScreen changes from parent
+  useState(() => {
+    if (initialSubScreen !== subScreen) {
+      setSubScreen(initialSubScreen)
+    }
+  })
 
   // Sub-screen routers
   if (subScreen === "budgets") return <PlanBudgetsScreen onBack={() => setSubScreen(null)} />
