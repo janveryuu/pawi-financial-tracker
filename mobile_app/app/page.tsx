@@ -154,6 +154,7 @@ export default function Page() {
             <HomeScreen
               onOpenSettings={() => setTab("settings")}
               onOpenNotifications={() => setNotifOpen(true)}
+              onNavigateToPlan={() => setTab("plan")}
             />
           )}
 
