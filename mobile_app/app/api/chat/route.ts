@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { createAdminClient } from "@/lib/supabase"
+import { parseChatAction, ProposedAction, ChatAppContext } from "@/lib/chat-action-parser"
 
-function getSmartLocalReply(userMessage: string, context: any, historyLength: number): string {
+function getSmartLocalReply(
+  userMessage: string,
+  context: any,
+  historyLength: number,
+  action?: ProposedAction | null
+): string {
   const text = userMessage.trim().toLowerCase()
   const defaultCurrency = context?.defaultCurrency || "PHP"
   const symbol =
@@ -21,6 +27,53 @@ function getSmartLocalReply(userMessage: string, context: any, historyLength: nu
       minimumFractionDigits: defaultCurrency === "JPY" ? 0 : 2,
       maximumFractionDigits: defaultCurrency === "JPY" ? 0 : 2,
     })}`
+
+  // Action-driven replies
+  if (action) {
+    if (action.status === "pending_clarification") {
+      return action.clarificationPrompt || "Which account would you like to use for this? 🐢"
+    }
+    if (action.status === "ready_for_confirmation") {
+      if (action.type === "log_expense") {
+        return `Got it! I prepared the expense card for **${action.params.label || action.params.category}** (${fmt(
+          action.params.amount || 0
+        )} from **${action.params.account}**). Please confirm below! 🐢✨`
+      }
+      if (action.type === "log_income") {
+        return `Cha-ching! 🌊 Ready to record **${fmt(action.params.amount || 0)}** into **${
+          action.params.account
+        }**. Tap confirm to log it!`
+      }
+      if (action.type === "pay_bill") {
+        return `Shell yeah! Ready to mark **${action.params.billName}** paid (${fmt(
+          action.params.amount || 0
+        )} from **${action.params.account}**). Confirm below!`
+      }
+      if (action.type === "deposit_goal") {
+        return `Awesome progress! Ready to deposit **${fmt(action.params.amount || 0)}** into **${
+          action.params.goalName
+        }** from **${action.params.account}**. Please confirm to save!`
+      }
+      if (action.type === "transfer_funds") {
+        return `Ready to transfer **${fmt(action.params.amount || 0)}** from **${action.params.account}** to **${
+          action.params.targetAccount
+        }**. Confirm below!`
+      }
+      if (action.type === "create_planned_payment") {
+        return `I've set up your planned payment schedule for **${action.params.label}** (${fmt(
+          action.params.amount || 0
+        )}). Confirm to add it to your Plan tab!`
+      }
+      if (action.type === "create_goal") {
+        return `Exciting savings milestone! Ready to create your **${action.params.goalName}** goal with target **${fmt(
+          action.params.goalTarget || 0
+        )}**. Confirm below!`
+      }
+      if (action.type === "log_debt" || action.type === "log_receivable" || action.type === "settle_receivable") {
+        return `Got the details! Please confirm this entry to update your ledger. 🐢📝`
+      }
+    }
+  }
 
   // 1. Clear / remove conversation
   const hasClearVerb = /\b(remove|clear|delete|reset|erase|wipe)\b/.test(text)
@@ -124,7 +177,7 @@ function getSmartLocalReply(userMessage: string, context: any, historyLength: nu
 
 export async function POST(req: Request) {
   try {
-    const { messages, context: initialContext, message, userId } = await req.json()
+    const { messages, context: initialContext, message, userId, pendingAction } = await req.json()
     const chatHistory = messages || [{ role: "user", content: message }]
 
     if (!chatHistory || chatHistory.length === 0) {
@@ -136,26 +189,60 @@ export async function POST(req: Request) {
     const latestUserMessage = validChatHistory[validChatHistory.length - 1]?.content || ""
 
     // Hydrate context from Supabase if userId is provided and initialContext is empty
-    let context = initialContext
+    let context: ChatAppContext = initialContext || {}
     if (userId && (!context || !context.wallets || context.wallets.length === 0)) {
       try {
         const supabaseAdmin = createAdminClient()
-        const [{ data: accs }, { data: cats }, { data: goals }] = await Promise.all([
-          supabaseAdmin.from("accounts").select("name, balance, currency, type").eq("user_id", userId),
-          supabaseAdmin.from("categories").select("name, monthly_limit, spent").eq("user_id", userId),
-          supabaseAdmin.from("savings_goals").select("title, target_amount, current_amount").eq("user_id", userId),
-        ])
+        const [{ data: accs }, { data: cats }, { data: goals }, { data: bills }, { data: debts }, { data: recs }] =
+          await Promise.all([
+            supabaseAdmin.from("accounts").select("id, name, balance, currency, type, accent").eq("user_id", userId),
+            supabaseAdmin.from("categories").select("id, name, monthly_limit, spent").eq("user_id", userId),
+            supabaseAdmin.from("savings_goals").select("id, title, target_amount, current_amount, accent").eq("user_id", userId),
+            supabaseAdmin.from("recurring_bills").select("id, name, amount, next_due_date, billing_cycle").eq("user_id", userId),
+            supabaseAdmin.from("debts").select("id, name, amount, person").eq("user_id", userId),
+            supabaseAdmin.from("receivables").select("id, name, amount, person").eq("user_id", userId),
+          ])
 
         context = {
-          wallets: accs || [],
-          budgets: cats ? cats.map((c) => ({ category: c.name, limit: c.monthly_limit, spent: c.spent })) : [],
-          goals: goals ? goals.map((g) => ({ name: g.title, target: g.target_amount, saved: g.current_amount })) : [],
+          wallets: (accs || []).map((a: any) => ({
+            id: a.id,
+            name: a.name,
+            balance: Number(a.balance) || 0,
+            currency: a.currency || "PHP",
+            type: a.type,
+            accent: a.accent,
+          })),
+          budgets: (cats || []).map((c: any) => ({
+            id: c.id,
+            category: c.name,
+            limit: Number(c.monthly_limit) || 0,
+            spent: Number(c.spent) || 0,
+          })),
+          goals: (goals || []).map((g: any) => ({
+            id: g.id,
+            name: g.title,
+            target: Number(g.target_amount) || 0,
+            saved: Number(g.current_amount) || 0,
+            accent: g.accent,
+          })),
+          plannedPayments: (bills || []).map((b: any) => ({
+            id: b.id,
+            label: b.name,
+            amount: Number(b.amount) || 0,
+            dueDate: b.next_due_date,
+            frequency: b.billing_cycle,
+          })),
+          debts: debts || [],
+          receivables: recs || [],
           defaultCurrency: "PHP",
         }
       } catch (dbErr) {
         console.warn("Supabase context fetch warning:", dbErr)
       }
     }
+
+    // Parse action intent
+    const proposedAction = parseChatAction(latestUserMessage, context, pendingAction)
 
     const systemPrompt = `You are Pawi, an exciting, charismatic, and wise sea turtle personal finance companion! 🐢✨
 
@@ -164,11 +251,18 @@ CRITICAL RULES FOR PAWI'S PERSONALITY & BEHAVIOR:
 2. Be exciting, warm, fun, and conversational! Vary your greetings and reactions so every chat feels fresh and lively.
 3. Tailor your answer directly to what the user said. If they say 'hi', greet them enthusiastically and ask what financial goal they want to tackle today.
 4. Keep answers concise, clear, and engaging (2-4 sentences max).
+${
+  proposedAction
+    ? `An action has been detected: ${JSON.stringify(
+        proposedAction
+      )}. Acknowledge it encouragingly and let the user know they can confirm with the card or select an option!`
+    : ""
+}
 
 Live financial context:
 ${JSON.stringify(context || {}, null, 2)}`
 
-    // 1. Tier 1: Gemini 3.7 Flash via @google/generative-ai
+    // 1. Tier 1: Gemini via @google/generative-ai
     const geminiKey = process.env.GEMINI_API_KEY
     if (geminiKey) {
       try {
@@ -188,7 +282,7 @@ ${JSON.stringify(context || {}, null, 2)}`
         const result = await chat.sendMessage(latestUserMessage)
         const reply = result.response.text()
         if (reply) {
-          return NextResponse.json({ reply })
+          return NextResponse.json({ reply, proposedAction })
         }
       } catch (geminiErr) {
         console.warn("Gemini Chat API notice, falling to next tier:", geminiErr)
@@ -223,7 +317,7 @@ ${JSON.stringify(context || {}, null, 2)}`
           const groqData = await groqRes.json()
           const reply = groqData.choices?.[0]?.message?.content
           if (reply) {
-            return NextResponse.json({ reply })
+            return NextResponse.json({ reply, proposedAction })
           }
         }
       } catch (groqErr) {
@@ -232,12 +326,13 @@ ${JSON.stringify(context || {}, null, 2)}`
     }
 
     // 3. Tier 3: High-personality smart conversational local rule engine
-    const reply = getSmartLocalReply(latestUserMessage, context, validChatHistory.length)
-    return NextResponse.json({ reply })
+    const reply = getSmartLocalReply(latestUserMessage, context, validChatHistory.length, proposedAction)
+    return NextResponse.json({ reply, proposedAction })
   } catch (error) {
     console.error("Chat API Error:", error)
     return NextResponse.json({
       reply: "I'm swimming through some waves right now, but I'm right here with you! 🐢🌊 Ask me anything about your budgets or goals!",
+      proposedAction: null,
     })
   }
 }
