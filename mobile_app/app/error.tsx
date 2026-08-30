@@ -33,6 +33,11 @@ export default function Error({
         names.forEach((name) => caches.delete(name))
       })
     }
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((r) => r.unregister())
+      })
+    }
     window.location.href = "/"
   }
 

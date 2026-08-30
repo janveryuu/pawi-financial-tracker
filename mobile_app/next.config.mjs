@@ -6,6 +6,8 @@ const withPWA = withPWAInit({
   register: true,
   skipWaiting: true,
   reloadOnOnline: true,
+  cacheOnFrontEndNav: false,
+  aggressiveFrontEndNavCaching: false,
 })
 
 /** @type {import('next').NextConfig} */

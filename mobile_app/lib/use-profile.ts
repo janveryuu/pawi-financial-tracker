@@ -37,6 +37,9 @@ export interface UserProfile {
   monthly_budget_target: number
   profile_type: ProfileType
   is_student: boolean
+  is_suspended?: boolean
+  suspended_reason?: string | null
+  is_admin?: boolean
   onboarding_completed: boolean
   tutorial_completed: boolean
   tutorial_step: number
@@ -59,6 +62,9 @@ const DEFAULT_PROFILE: Omit<UserProfile, "id"> = {
   monthly_budget_target: 0,
   profile_type: "student",
   is_student: true,
+  is_suspended: false,
+  suspended_reason: null,
+  is_admin: false,
   onboarding_completed: false,
   tutorial_completed: false,
   tutorial_step: 0,
@@ -145,6 +151,9 @@ export function useProfile() {
             monthly_budget_target: Number(data.monthly_budget_target) || 0,
             profile_type: derivedProfileType,
             is_student: derivedProfileType !== "professional",
+            is_suspended: Boolean(data.is_suspended),
+            suspended_reason: data.suspended_reason || null,
+            is_admin: Boolean(data.is_admin),
             onboarding_completed: Boolean(data.onboarding_completed),
             tutorial_completed: Boolean(data.tutorial_completed),
             tutorial_step: data.tutorial_step ?? 0,
