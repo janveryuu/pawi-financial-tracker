@@ -257,11 +257,12 @@ export function WalletsScreen() {
           </button>
           <button
             type="button"
+            data-tutorial-id="pawi-add-wallet-button"
             onClick={() => setIsAddOpen(true)}
-            className="flex items-center gap-1 rounded-2xl border border-[#3D784E]/30 bg-[#3D784E]/10 px-3 py-2 text-xs font-black text-[#3D784E] hover:bg-[#3D784E]/20 transition-colors shadow-2xs"
+            className="flex items-center gap-1.5 rounded-2xl bg-[#3D784E] px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-[#3D784E]/25 hover:bg-[#356B46] active:scale-95 transition-all"
           >
-            <Plus className="h-3.5 w-3.5" />
-            <span>Add Account</span>
+            <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
+            <span>Add Wallet</span>
           </button>
         </div>
       </div>

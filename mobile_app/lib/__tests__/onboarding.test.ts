@@ -305,7 +305,7 @@ describe("App restart & profile recovery resilience", () => {
 
 // ── Test 9: Spotlight Tour Gate Logic ────────────────────────────────────────
 describe("Spotlight Tour Gate Logic", () => {
-  const TOTAL_STEPS = 9
+  const TOTAL_STEPS = 10
 
   interface TourProfile {
     onboarding_completed: boolean
@@ -356,7 +356,7 @@ describe("Spotlight Tour Gate Logic", () => {
   })
 
   it("tutorial_completed only flips true after final step (not mid-tour)", () => {
-    // Simulate completing steps 0..7 — tutorial_completed must remain false
+    // Simulate completing steps 0..8 — tutorial_completed must remain false
     let tutorialCompleted = false
     for (let step = 0; step < TOTAL_STEPS - 1; step++) {
       // completing any non-final step should NOT set tutorial_completed
@@ -377,12 +377,12 @@ describe("Spotlight Tour Gate Logic", () => {
       persistedSteps.push(step + 1) // page.tsx pattern: persist step + 1
     }
 
-    // Simulate completing steps 0-8
+    // Simulate completing steps 0-9
     for (let step = 0; step < TOTAL_STEPS; step++) {
       onStepComplete(step)
     }
 
-    expect(persistedSteps).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    expect(persistedSteps).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
   })
 
   it("accessibility escape hatch completes tour and writes exit log", () => {

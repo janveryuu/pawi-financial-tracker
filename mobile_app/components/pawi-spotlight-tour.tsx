@@ -90,6 +90,15 @@ export const TOUR_STEPS: SpotlightStep[] = [
   },
   {
     id: 6,
+    tutorialId: "pawi-add-wallet-button",
+    title: "Add Any Wallet 💳",
+    speech:
+      "Tap '+ Add Wallet' anytime to connect your GCash, Maya, BDO, BPI, Cash, or Credit Cards so you can track all your money in one place!",
+    tip: "You can create as many custom wallets or sub-wallets as you need!",
+    advanceMode: "got-it",
+  },
+  {
+    id: 7,
     tutorialId: "pawi-nav-plan",
     title: "Your Plan Tab 🎯",
     speech:
@@ -98,7 +107,7 @@ export const TOUR_STEPS: SpotlightStep[] = [
     actionHint: "Tap Plan tab to continue",
   },
   {
-    id: 7,
+    id: 8,
     tutorialId: "pawi-nav-history",
     title: "Transaction History 📜",
     speech:
@@ -107,7 +116,7 @@ export const TOUR_STEPS: SpotlightStep[] = [
     actionHint: "Tap History tab to continue",
   },
   {
-    id: 8,
+    id: 9,
     tutorialId: null,
     title: "You're All Set! 🌊",
     speech:
