@@ -171,14 +171,14 @@ export function PlanPaymentsScreen({ onBack }: PlanPaymentsScreenProps) {
                   />
                   {detectedLogo && (
                     <div className="absolute right-2 flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg bg-card border border-border/60 p-0.5 shadow-2xs">
-                      <Image
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
                         src={detectedLogo}
                         alt={label}
-                        width={22}
-                        height={22}
-                        className="object-contain"
+                        className="h-full w-full object-contain"
                       />
                     </div>
+                  )}
                 </div>
               </div>
 

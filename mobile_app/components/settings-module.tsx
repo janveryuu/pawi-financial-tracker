@@ -9,6 +9,7 @@ import {
   Activity,
   Printer,
   CheckCircle2,
+  ShieldCheck,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useStore } from "@/lib/store"
@@ -204,6 +205,32 @@ export function SettingsModule({ onStartTutorial, onStartOnboarding }: SettingsM
           <LogOut className="h-4 w-4" />
         </button>
       </div>
+
+      {/* Administrator Command Console Link (Single-Account Access) */}
+      {(user?.email?.toLowerCase().trim() === "janvermanlapaz@gmail.com" || profile?.is_admin) && (
+        <a
+          href="/admin"
+          className="flex items-center justify-between rounded-3xl border border-[#3D784E]/40 bg-gradient-to-r from-[#3D784E]/15 via-[#3D784E]/8 to-transparent p-4 shadow-sm hover:border-[#3D784E] active:scale-[0.99] transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3D784E] to-[#2E683E] text-white shadow-md shadow-[#3D784E]/20 group-hover:scale-105 transition-transform">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-black text-foreground">Admin Console</p>
+                <span className="rounded-md bg-[#3D784E]/20 px-1.5 py-0.5 text-[9px] font-black uppercase text-[#3D784E]">
+                  Master Access
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground font-medium">User management, live activity, & metrics</p>
+            </div>
+          </div>
+          <span className="text-xs font-black text-[#3D784E] group-hover:translate-x-0.5 transition-transform">
+            Open &rarr;
+          </span>
+        </a>
+      )}
 
       {/* Setup, Tutorial & Story Section */}
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">

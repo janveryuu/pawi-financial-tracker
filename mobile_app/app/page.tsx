@@ -115,6 +115,27 @@ export default function Page() {
     )
   }
 
+  if (profile?.is_suspended) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+        <div className="w-full max-w-sm rounded-[2.5rem] border border-rose-500/30 bg-card p-6 text-center space-y-4 shadow-xl">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-rose-500/10 text-rose-500 border border-rose-500/20">
+            <span className="text-2xl">🛑</span>
+          </div>
+          <div>
+            <h1 className="text-lg font-black text-foreground">Account Suspended</h1>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              {profile.suspended_reason || "Your account has been temporarily suspended by an administrator."}
+            </p>
+          </div>
+          <p className="text-[11px] text-muted-foreground bg-secondary/50 p-3 rounded-2xl">
+            If you believe this is an error, please contact support at support@pawi.app.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   if (showOnboarding) {
     return <PawiOnboardingFlow onComplete={handleOnboardingComplete} />
   }
