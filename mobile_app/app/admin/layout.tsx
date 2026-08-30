@@ -155,13 +155,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {/* Logo & Platform Badge */}
           <div className="flex items-center gap-3">
             <Link href="/admin" className="flex items-center gap-2.5 group">
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3D784E] to-[#2E683E] p-1.5 shadow-md shadow-[#3D784E]/20 transition-transform group-hover:scale-105">
+              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white dark:bg-card border border-border/80 p-1 shadow-sm transition-transform group-hover:scale-105 overflow-hidden">
                 <Image
-                  src="/pawi-logo.png"
-                  alt="Pawi Admin"
-                  width={32}
-                  height={32}
+                  src="/pawikan-logo.png"
+                  alt="Pawi Main Logo"
+                  width={34}
+                  height={34}
                   className="object-contain"
+                  priority
                 />
               </div>
               <div>
@@ -199,11 +200,33 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </nav>
 
           {/* Right Header Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             {/* Live Indicator */}
             <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Live DB
+            </div>
+
+            {/* Admin Profile Picture Badge */}
+            <div className="flex items-center gap-2 rounded-2xl border border-border/80 bg-secondary/50 px-2.5 py-1.5 shadow-xs">
+              <div className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white dark:bg-card border border-border/70 overflow-hidden shadow-xs">
+                <Image
+                  src="/pawikan-logo.png"
+                  alt="Admin Profile"
+                  width={22}
+                  height={22}
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <div className="hidden sm:flex flex-col text-left">
+                <span className="text-[11px] font-black text-foreground leading-tight">
+                  {user?.displayName || user?.user_metadata?.name || "Admin"}
+                </span>
+                <span className="text-[9px] font-semibold text-[#3D784E] leading-none">
+                  Super Admin
+                </span>
+              </div>
             </div>
 
             {/* Theme Toggle */}
