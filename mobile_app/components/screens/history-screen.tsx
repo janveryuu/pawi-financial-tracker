@@ -386,12 +386,12 @@ export function HistoryScreen() {
                     >
                       <div className="flex items-center gap-3">
                         {merchantLogo ? (
-                          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full drop-shadow-xs">
-                            <Image
+                          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-card border border-border/60 p-1.5 shadow-2xs">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
                               src={merchantLogo}
                               alt={tx.label}
-                              fill
-                              className="object-contain"
+                              className="h-full w-full object-contain"
                             />
                           </div>
                         ) : (

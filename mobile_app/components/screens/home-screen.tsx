@@ -545,7 +545,7 @@ export function HomeScreen({
         ) : (
           <div className="space-y-1">
             {plannedPayments.map((item) => {
-              const itemLogo = (item.icon && item.icon.startsWith("/")) ? item.icon : (getBrandLogo(item.label) || getBrandLogo(item.category))
+              const itemLogo = getBrandLogo(item.label) || getBrandLogo(item.category) || (item.icon && item.icon.startsWith("/") ? item.icon : undefined)
 
               return (
                 <div
@@ -555,11 +555,11 @@ export function HomeScreen({
                   <div className="flex items-center gap-3">
                     {itemLogo ? (
                       <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-card border border-border/60 p-1 shadow-2xs">
-                        <Image
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
                           src={itemLogo}
                           alt={item.label}
-                          fill
-                          className="object-contain"
+                          className="h-full w-full object-contain"
                         />
                       </div>
                     ) : (

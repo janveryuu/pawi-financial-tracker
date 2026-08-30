@@ -1190,7 +1190,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }
 
   const addBudget = async (budget: Omit<Budget, "id">) => {
-    const newBudget: Budget = { ...budget, id: crypto.randomUUID() }
+    const brandLogo = getBrandLogo(budget.category)
+    const newBudget: Budget = {
+      ...budget,
+      id: crypto.randomUUID(),
+      icon: brandLogo || budget.icon || "🍽️",
+    }
     setState((prev) => ({ ...prev, budgets: [...prev.budgets, newBudget], lastInsertError: null }))
 
     if (user) {
@@ -1213,16 +1218,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }
 
   const editBudget = async (budget: Budget) => {
+    const brandLogo = getBrandLogo(budget.category)
+    const updatedBudget: Budget = {
+      ...budget,
+      icon: brandLogo || budget.icon || "🍽️",
+    }
     setState((prev) => ({
       ...prev,
-      budgets: prev.budgets.map((b) => (b.id === budget.id ? budget : b)),
+      budgets: prev.budgets.map((b) => (b.id === budget.id ? updatedBudget : b)),
     }))
 
     if (user) {
       isInsertingRef.current = true
       try {
         const userId = user.id || (user as any).uid
-        await supabase.from("categories").upsert(mapBudgetToRow(budget, userId))
+        await supabase.from("categories").upsert(mapBudgetToRow(updatedBudget, userId))
       } finally {
         isInsertingRef.current = false
       }
