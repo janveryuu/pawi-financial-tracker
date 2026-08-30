@@ -33,6 +33,7 @@ export default function Page() {
   const [tutorialOpen, setTutorialOpen] = useState(false)
   const [tutorialInitialStep, setTutorialInitialStep] = useState(0)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [planInitialSubScreen, setPlanInitialSubScreen] = useState<"goals" | "debt" | "receivables" | "budgets" | null>(null)
 
   // Redirect to login if unauthenticated
   useEffect(() => {
@@ -139,8 +140,6 @@ export default function Page() {
   if (showOnboarding) {
     return <PawiOnboardingFlow onComplete={handleOnboardingComplete} />
   }
-
-  const [planInitialSubScreen, setPlanInitialSubScreen] = useState<"goals" | "debt" | "receivables" | "budgets" | null>(null)
 
   return (
     <main className="relative mx-auto min-h-screen max-w-md bg-background text-foreground overflow-x-hidden">

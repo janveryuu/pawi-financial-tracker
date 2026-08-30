@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   PieChart,
   Flag,
@@ -48,11 +48,9 @@ export function PlanScreen({ initialSubScreen = null }: PlanScreenProps) {
   const [subScreen, setSubScreen] = useState<PlanSubScreen>(initialSubScreen)
 
   // Sync if initialSubScreen changes from parent
-  useState(() => {
-    if (initialSubScreen !== subScreen) {
-      setSubScreen(initialSubScreen)
-    }
-  })
+  useEffect(() => {
+    setSubScreen(initialSubScreen)
+  }, [initialSubScreen])
 
   // Sub-screen routers
   if (subScreen === "budgets") return <PlanBudgetsScreen onBack={() => setSubScreen(null)} />
