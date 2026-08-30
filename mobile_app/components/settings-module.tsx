@@ -13,6 +13,7 @@ import {
 import { useTheme } from "next-themes"
 import { useStore } from "@/lib/store"
 import { useAuth } from "@/lib/auth-context"
+import { useProfile } from "@/lib/use-profile"
 import { User, LogOut } from "lucide-react"
 
 import { StoryOfPawiModal } from "./story-of-pawi-modal"
@@ -26,6 +27,7 @@ export interface SettingsModuleProps {
 
 export function SettingsModule({ onStartTutorial, onStartOnboarding }: SettingsModuleProps) {
   const { user, signOut } = useAuth()
+  const { profile } = useProfile()
   const { theme, setTheme } = useTheme()
   const { defaultCurrency, setDefaultCurrency, resetAccountData, loadSampleData, wallets, goals, budgets, paydayCountdown } = useStore()
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
@@ -37,13 +39,20 @@ export function SettingsModule({ onStartTutorial, onStartOnboarding }: SettingsM
   const [showPopupWarningModal, setShowPopupWarningModal] = useState(false)
   const [showPaydayModal, setShowPaydayModal] = useState(false)
 
-  const displayName =
+  const rawName =
+    (profile?.name && profile.name !== "Pawi User" && profile.name.trim()) ||
     user?.user_metadata?.name ||
     user?.user_metadata?.full_name ||
     user?.user_metadata?.display_name ||
     user?.displayName ||
+    (profile?.name && profile.name.trim()) ||
     user?.email?.split("@")[0] ||
     "Janver"
+  const cleanName = rawName.includes("@") ? rawName.split("@")[0] : rawName
+  const displayName = cleanName
+    .split(" ")
+    .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ")
   const userEmail = user?.email || "Offline User"
 
 

@@ -33,7 +33,7 @@ export function normalizeUserObject(rawUser: any, fallbackName?: string): any {
   if (!rawUser) return null
 
   const cleanEmail = rawUser.email || ""
-  const extractedName =
+  const candidateName =
     fallbackName ||
     rawUser.displayName ||
     rawUser.user_metadata?.name ||
@@ -42,6 +42,8 @@ export function normalizeUserObject(rawUser: any, fallbackName?: string): any {
     rawUser.identities?.[0]?.identity_data?.name ||
     rawUser.identities?.[0]?.identity_data?.full_name ||
     (cleanEmail ? cleanEmail.split("@")[0] : "Janver")
+
+  const extractedName = candidateName.includes("@") ? candidateName.split("@")[0] : candidateName
 
   return {
     ...rawUser,

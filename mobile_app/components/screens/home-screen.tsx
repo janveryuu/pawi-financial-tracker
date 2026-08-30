@@ -48,19 +48,22 @@ export function HomeScreen({
     return () => clearInterval(interval)
   }, [])
 
-  // Determine user name with top priority on real registered name (not email)
+  // Determine user name with top priority on real profile name from Supabase, then auth user metadata
   const rawName =
+    (profile?.name && profile.name !== "Pawi User" && profile.name.trim()) ||
     user?.user_metadata?.name ||
     user?.user_metadata?.full_name ||
     user?.user_metadata?.display_name ||
     user?.displayName ||
+    (profile?.name && profile.name.trim()) ||
     user?.identities?.[0]?.identity_data?.name ||
     user?.identities?.[0]?.identity_data?.full_name ||
     user?.email?.split("@")[0] ||
     "Janver"
 
-  // Format properly (e.g. "Gojo Satoru")
-  const displayName = rawName
+  // Strip any email domain if rawName was somehow passed as an email, and format properly
+  const cleanName = rawName.includes("@") ? rawName.split("@")[0] : rawName
+  const displayName = cleanName
     .split(" ")
     .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(" ")

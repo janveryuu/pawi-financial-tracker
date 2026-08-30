@@ -5,6 +5,7 @@ import Image from "next/image"
 import { ChevronLeft, HelpCircle, Mic, ArrowUp, User, Sparkles, Trash2 } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { useAuth } from "@/lib/auth-context"
+import { useProfile } from "@/lib/use-profile"
 
 interface ChatScreenProps {
   onBack?: () => void
@@ -12,6 +13,7 @@ interface ChatScreenProps {
 
 export function ChatScreen({ onBack }: ChatScreenProps) {
   const { user } = useAuth()
+  const { profile } = useProfile()
   const { wallets, goals, budgets, transactions, chatMessages, setChatMessages, defaultCurrency, addTransaction } = useStore()
   
   const [input, setInput] = useState("")
@@ -20,13 +22,20 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
   const [showHelp, setShowHelp] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const displayName =
+  const rawName =
+    (profile?.name && profile.name !== "Pawi User" && profile.name.trim()) ||
     user?.user_metadata?.name ||
     user?.user_metadata?.full_name ||
     user?.user_metadata?.display_name ||
     user?.displayName ||
+    (profile?.name && profile.name.trim()) ||
     user?.email?.split("@")[0] ||
     "there"
+  const cleanName = rawName.includes("@") ? rawName.split("@")[0] : rawName
+  const displayName = cleanName
+    .split(" ")
+    .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ")
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
