@@ -87,7 +87,7 @@ export function PlanPaymentsScreen({ onBack }: PlanPaymentsScreenProps) {
       {/* Payments List */}
       <div className="space-y-3">
         {plannedPayments.map((p) => {
-          const brandLogo = (p.icon && p.icon.startsWith("/")) ? p.icon : (getBrandLogo(p.label) || getBrandLogo(p.category))
+          const brandLogo = getBrandLogo(p.label) || getBrandLogo(p.category) || (p.icon && p.icon.startsWith("/") ? p.icon : undefined)
 
           return (
             <div
@@ -97,11 +97,11 @@ export function PlanPaymentsScreen({ onBack }: PlanPaymentsScreenProps) {
               <div className="flex items-center gap-3">
                 {brandLogo ? (
                   <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-card border border-border/60 p-1.5 shadow-2xs">
-                    <Image
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src={brandLogo}
                       alt={p.label}
-                      fill
-                      className="object-contain"
+                      className="h-full w-full object-contain"
                     />
                   </div>
                 ) : (

@@ -309,6 +309,7 @@ function mapTransactionToRow(t: Transaction, userId: string): any {
 }
 
 function mapGoalRowToGoal(g: any): Goal {
+  const brandLogo = getBrandLogo(g.title || g.label)
   return {
     id: g.id,
     name: g.title || g.label || "Goal",
@@ -316,12 +317,13 @@ function mapGoalRowToGoal(g: any): Goal {
     saved: Number(g.current_amount) || 0,
     due: g.target_date || g.due || null,
     color: "#3D784E",
-    icon: g.icon || "🎯",
+    icon: brandLogo || g.icon || "🎯",
     accent: "#3D784E",
   }
 }
 
 function mapGoalToRow(g: Goal, userId: string): any {
+  const brandLogo = getBrandLogo(g.name)
   return {
     id: g.id,
     user_id: userId,
@@ -329,24 +331,26 @@ function mapGoalToRow(g: Goal, userId: string): any {
     target_amount: g.target,
     current_amount: g.saved,
     target_date: g.due || (g as any).dueDate || null,
-    icon: g.icon || "🎯",
+    icon: brandLogo || g.icon || "🎯",
     color: 1,
     completed: g.saved >= g.target,
   }
 }
 
 function mapCatRowToBudget(c: any): Budget {
+  const brandLogo = getBrandLogo(c.name)
   return {
     id: c.id,
     category: c.name,
     limit: Number(c.monthly_limit) || 0,
     spent: Number(c.spent) || 0,
     accent: "#3D784E",
-    icon: c.icon || "🍽️",
+    icon: brandLogo || c.icon || "🍽️",
   }
 }
 
 function mapBudgetToRow(b: Budget, userId: string): any {
+  const brandLogo = getBrandLogo(b.category)
   return {
     id: b.id,
     user_id: userId,
@@ -354,7 +358,7 @@ function mapBudgetToRow(b: Budget, userId: string): any {
     type: "expense",
     monthly_limit: b.limit,
     spent: b.spent || 0,
-    icon: b.icon || "🍽️",
+    icon: brandLogo || b.icon || "🍽️",
     updated_at: new Date().toISOString(),
   }
 }
@@ -706,7 +710,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                   frequency: (b.billing_cycle as any) || "recurring",
                   category: "Bills",
                   account: b.account_name || "Cash",
-                  icon: "📅",
+                  icon: getBrandLogo(b.name) || "📅",
                 }))
               : [],
             streakDays: liveStreak,

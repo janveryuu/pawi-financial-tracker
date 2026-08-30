@@ -90,7 +90,7 @@ export function PlanGoalsScreen({ onBack }: PlanGoalsScreenProps) {
           const pct = g.target > 0 ? Math.min(100, Math.round((g.saved / g.target) * 100)) : 0
           const isCompleted = g.target > 0 && g.saved >= g.target
           const remaining = Math.max(0, g.target - g.saved)
-          const goalLogo = (g.icon && g.icon.startsWith("/")) ? g.icon : getBrandLogo(g.name)
+          const goalLogo = getBrandLogo(g.name) || (g.icon && g.icon.startsWith("/") ? g.icon : undefined)
 
           return (
             <div
@@ -101,11 +101,11 @@ export function PlanGoalsScreen({ onBack }: PlanGoalsScreenProps) {
                 <div className="flex items-center gap-2.5">
                   {goalLogo ? (
                     <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-card border border-border/60 p-1 shadow-2xs">
-                      <Image
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
                         src={goalLogo}
                         alt={g.name}
-                        fill
-                        className="object-contain"
+                        className="h-full w-full object-contain"
                       />
                     </div>
                   ) : (

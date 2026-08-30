@@ -98,7 +98,7 @@ export function PlanBudgetsScreen({ onBack }: PlanBudgetsScreenProps) {
           const pct = b.limit > 0 ? Math.min(100, Math.round((b.spent / b.limit) * 100)) : 0
           const isOver = b.spent > b.limit
           const remaining = Math.max(0, b.limit - b.spent)
-          const brandLogo = (b.icon && b.icon.startsWith("/")) ? b.icon : getBrandLogo(b.category)
+          const brandLogo = getBrandLogo(b.category) || (b.icon && b.icon.startsWith("/") ? b.icon : undefined)
 
           return (
             <div
@@ -109,11 +109,11 @@ export function PlanBudgetsScreen({ onBack }: PlanBudgetsScreenProps) {
                 <div className="flex items-center gap-2.5">
                   {brandLogo ? (
                     <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-card border border-border/60 p-1.5 shadow-2xs">
-                      <Image
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
                         src={brandLogo}
                         alt={b.category}
-                        fill
-                        className="object-contain"
+                        className="h-full w-full object-contain"
                       />
                     </div>
                   ) : (

@@ -105,12 +105,11 @@ export function AddBudgetModal({ open, onClose }: AddBudgetModalProps) {
               />
               {detectedLogo && (
                 <div className="absolute right-2.5 flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg bg-card border border-border/60 p-0.5 shadow-2xs">
-                  <Image
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src={detectedLogo}
                     alt={category}
-                    width={24}
-                    height={24}
-                    className="object-contain"
+                    className="h-full w-full object-contain"
                   />
                 </div>
               )}
