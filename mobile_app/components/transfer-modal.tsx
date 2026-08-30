@@ -9,10 +9,12 @@ import { cn } from "@/lib/utils"
 
 interface TransferModalProps {
   open: boolean
+  initialFrom?: string
+  initialTo?: string
   onClose: () => void
 }
 
-export function TransferModal({ open, onClose }: TransferModalProps) {
+export function TransferModal({ open, initialFrom, initialTo, onClose }: TransferModalProps) {
   const { wallets, transferFunds } = useStore()
 
   const [fromWallet, setFromWallet] = useState("")
@@ -24,7 +26,11 @@ export function TransferModal({ open, onClose }: TransferModalProps) {
 
   useEffect(() => {
     if (open) {
-      if (wallets.length >= 2) {
+      if (initialFrom) {
+        setFromWallet(initialFrom)
+        const otherWallet = wallets.find((w) => w.name !== initialFrom)
+        setToWallet(initialTo || otherWallet?.name || wallets[0]?.name || "")
+      } else if (wallets.length >= 2) {
         setFromWallet(wallets[0].name)
         setToWallet(wallets[1].name)
       } else if (wallets.length === 1) {
@@ -34,7 +40,7 @@ export function TransferModal({ open, onClose }: TransferModalProps) {
       setAmount("")
       setNote("")
     }
-  }, [open, wallets])
+  }, [open, wallets, initialFrom, initialTo])
 
   if (!open) return null
 

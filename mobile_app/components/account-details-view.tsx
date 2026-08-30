@@ -62,7 +62,7 @@ export function AccountDetailsView({
   )
 
   const goalsLinked = goals
-    .filter((g) => g.category?.toLowerCase() === wallet.name.toLowerCase() || g.name.toLowerCase().includes(wallet.name.toLowerCase()))
+    .filter((g) => (g as any).category?.toLowerCase() === wallet.name.toLowerCase() || g.name.toLowerCase().includes(wallet.name.toLowerCase()))
     .reduce((s, g) => s + (Number(g.saved) || 0), 0)
 
   const netBalance = wallet.balance

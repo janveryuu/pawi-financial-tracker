@@ -47,7 +47,6 @@ function mapGoalRowToGoal(g: any): Goal {
     target: Number(g.target_amount) || 0,
     saved: Number(g.current_amount) || 0,
     due: g.target_date || g.due || null,
-    color: "#3D784E",
     icon: g.icon || "🎯",
     accent: "#3D784E",
   }

@@ -7,4 +7,5 @@ node_modules/
 temp-login-interface/
 server/node_modules/
 server/.env
+scratch/
 

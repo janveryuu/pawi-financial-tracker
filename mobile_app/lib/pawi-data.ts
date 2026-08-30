@@ -1,6 +1,6 @@
 export type WalletType = "cash" | "ewallet" | "card" | "savings" | "credit" | "loan"
 
-export type WalletGroup = "ewallet" | "bank" | "credit" | "loan"
+export type WalletGroup = "cash" | "ewallet" | "bank" | "credit" | "loan"
 
 export type CurrencyCode = "PHP" | "USD" | "EUR" | "GBP" | "JPY"
 
@@ -139,12 +139,13 @@ export interface Transaction {
   time: string
   amount: number
   currency: CurrencyCode
-  kind: "income" | "expense"
+  kind: "income" | "expense" | "transfer"
   date?: string
   dateHeader?: string
   note?: string
   tag?: string
   icon?: string
+  receipt_url?: string
 }
 
 export interface Goal {
@@ -154,6 +155,7 @@ export interface Goal {
   saved: number
   target: number
   accent: string
+  color?: string
   icon?: string
 }
 

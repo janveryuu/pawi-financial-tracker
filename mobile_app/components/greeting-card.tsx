@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth-context"
 export function GreetingCard() {
   const { user } = useAuth()
   const [greeting, setGreeting] = useState("Hello, Night Owl")
-  const [Icon, setIcon] = useState(Moon)
+  const [Icon, setIcon] = useState<any>(Moon)
   
   useEffect(() => {
     const hour = new Date().getHours()

@@ -1,11 +1,11 @@
 "use client"
 
 import Image from "next/image"
-import { useStore } from "@/lib/store"
+import { useAuth } from "@/lib/auth-context"
 import { Shield } from "lucide-react"
 
 export function LoginScreen() {
-  const { login } = useStore()
+  const { signInWithGoogle, signInGuest } = useAuth()
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-5 py-10">
@@ -31,8 +31,8 @@ export function LoginScreen() {
 
         <div className="mt-8 space-y-4">
           <button
-            onClick={login}
-            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-foreground px-4 py-3.5 text-sm font-semibold text-background transition-transform active:scale-95"
+            onClick={() => signInWithGoogle()}
+            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-foreground px-4 py-3.5 text-sm font-semibold text-background transition-transform active:scale-95 cursor-pointer"
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -44,8 +44,8 @@ export function LoginScreen() {
           </button>
           
           <button
-            onClick={login}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border/60 bg-card px-4 py-3.5 text-sm font-semibold text-foreground transition-colors hover:bg-accent/40 active:scale-95"
+            onClick={() => signInGuest()}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border/60 bg-card px-4 py-3.5 text-sm font-semibold text-foreground transition-colors hover:bg-accent/40 active:scale-95 cursor-pointer"
           >
             Continue Offline
           </button>

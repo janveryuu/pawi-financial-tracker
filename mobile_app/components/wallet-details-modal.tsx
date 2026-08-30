@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect } from "react"
 import { useState, useEffect } from "react"
 import { X, ArrowDownRight, ArrowUpRight, Banknote, Smartphone, CreditCard, PiggyBank, Trash2, FileText, Plus, Minus, History, Wallet as WalletIcon } from "lucide-react"
 import Image from "next/image"

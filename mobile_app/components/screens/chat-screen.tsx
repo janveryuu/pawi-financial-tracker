@@ -127,8 +127,8 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
       goals: goals.map((g) => ({ id: g.id, name: g.name, saved: g.saved, target: g.target, accent: g.accent })),
       budgets: budgets.map((b) => ({ id: b.id, category: b.category, spent: b.spent, limit: b.limit })),
       plannedPayments: plannedPayments.map((p) => ({ id: p.id, label: p.label, amount: p.amount, dueDate: p.dueDate, frequency: p.frequency })),
-      debts: debts.map((d) => ({ id: d.id, name: d.name, amount: d.amount, person: d.person })),
-      receivables: receivables.map((r) => ({ id: r.id, name: r.name, amount: r.amount, person: r.person })),
+      debts: debts.map((d) => ({ id: d.id, name: (d as any).name || d.lender, amount: d.amount, person: (d as any).person || d.lender })),
+      receivables: receivables.map((r) => ({ id: r.id, name: (r as any).name || r.borrower, amount: r.amount, person: (r as any).person || r.borrower })),
       recentTransactions: transactions.slice(0, 8).map((t) => ({
         label: t.label,
         amount: t.amount,
@@ -250,6 +250,8 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
               name: action.params.goalName || "Savings Goal",
               target: amt * 5,
               saved: amt,
+              accent: "#3D784E",
+              due: null,
               icon: getBrandLogo(action.params.goalName) || "🎯",
             })
           }
@@ -282,16 +284,19 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
             name: action.params.goalName || "New Goal",
             target: action.params.goalTarget || 10000,
             saved: 0,
+            accent: "#3D784E",
+            due: null,
             icon: getBrandLogo(action.params.goalName) || "🎯",
           })
           break
 
         case "log_debt":
           await addDebt({
-            name: `Debt to ${action.params.counterparty || "Person"}`,
+            lender: action.params.counterparty || "Person",
             amount: amt,
-            person: action.params.counterparty || "Person",
-            date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+            monthlyPayment: 0,
+            dueDate: "Monthly",
+            accent: "#E53E3E",
           })
           break
 

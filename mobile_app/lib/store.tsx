@@ -13,6 +13,7 @@ import {
   Tag,
   CurrencyCode,
   getWalletBrandColor,
+  getBrandLogo,
   starterWallets,
   demoWallets,
   demoTransactions,
@@ -30,6 +31,7 @@ import { supabase } from "./supabase"
 export interface ChatMessage {
   role: "user" | "assistant"
   content: string
+  action?: any
 }
 
 export interface UpcomingItem {
@@ -994,7 +996,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const targetWallet = updatedWallets.find(
         (w) => w.name.toLowerCase() === tx.account.toLowerCase() || tx.account.toLowerCase().includes(w.name.toLowerCase())
       )
-      const promises: Promise<any>[] = [supabase.from("transactions").upsert(mapTransactionToRow(tx, userId))]
+      const promises: any[] = [supabase.from("transactions").upsert(mapTransactionToRow(tx, userId))]
       if (targetWallet) {
         promises.push(
           supabase
@@ -1030,7 +1032,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     if (user) {
       const userId = user.id || (user as any).uid
-      const promises: Promise<any>[] = [supabase.from("transactions").delete().eq("id", transactionId)]
+      const promises: any[] = [supabase.from("transactions").delete().eq("id", transactionId)]
       if (txToDelete) {
         const targetWallet = updatedWallets.find(
           (w) => w.name.toLowerCase() === txToDelete.account.toLowerCase() || txToDelete.account.toLowerCase().includes(w.name.toLowerCase())
@@ -1579,7 +1581,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           (w) => w.name.toLowerCase() === walletName.toLowerCase()
         )
 
-        const promises: Promise<any>[] = []
+        const promises: any[] = []
         if (modGoal) {
           promises.push(supabase.from("savings_goals").upsert(mapGoalToRow(modGoal, userId)))
         }

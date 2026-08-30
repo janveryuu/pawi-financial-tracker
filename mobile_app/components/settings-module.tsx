@@ -92,7 +92,7 @@ export function SettingsModule({ onStartTutorial, onStartOnboarding }: SettingsM
       return `
         <tr>
           <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; font-weight: 600;">${g.name}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; color: #4b5563;">${g.category}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; color: #4b5563;">${(g as any).category || "Savings"}</td>
           <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold;">${currSym}${(g.saved || 0).toLocaleString()}</td>
           <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${currSym}${(g.target || 0).toLocaleString()}</td>
           <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600; color: #059669;">${prog}%</td>
@@ -564,7 +564,7 @@ export function SettingsModule({ onStartTutorial, onStartOnboarding }: SettingsM
                       <div key={g.id} className="flex items-center justify-between rounded-xl bg-secondary/60 px-3.5 py-2.5">
                         <div>
                           <p className="text-sm font-bold text-foreground">{g.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{g.category}</p>
+                          <p className="text-[11px] text-muted-foreground">{(g as any).category || "Savings Goal"}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-bold text-foreground">{currSym}{(g.saved || 0).toLocaleString()} / {currSym}{(g.target || 0).toLocaleString()}</p>

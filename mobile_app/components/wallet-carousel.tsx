@@ -8,6 +8,8 @@ const icons: Record<WalletType, typeof Banknote> = {
   ewallet: Smartphone,
   card: CreditCard,
   savings: PiggyBank,
+  credit: CreditCard,
+  loan: PiggyBank,
 }
 
 interface WalletCarouselProps {
