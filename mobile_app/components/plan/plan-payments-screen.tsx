@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronLeft, Plus, Trash2, Calendar, Repeat, X } from "lucide-react"
-import { formatMoney, PlannedPayment } from "@/lib/pawi-data"
+import Image from "next/image"
+import { ChevronLeft, Plus, Trash2, Calendar, Repeat, X, Sparkles } from "lucide-react"
+import { formatMoney, PlannedPayment, getBrandLogo } from "@/lib/pawi-data"
 import { useStore } from "@/lib/store"
 
 interface PlanPaymentsScreenProps {
@@ -19,6 +20,8 @@ export function PlanPaymentsScreen({ onBack }: PlanPaymentsScreenProps) {
   const [category, setCategory] = useState("Bills")
   const [account, setAccount] = useState(wallets[0]?.name || "GCash")
 
+  const detectedLogo = getBrandLogo(label) || getBrandLogo(category)
+
   const recurringCount = plannedPayments.filter((p) => p.frequency === "recurring").length
   const oneTimeCount = plannedPayments.filter((p) => p.frequency === "one-time").length
   const totalMonthlyCommitment = plannedPayments.reduce((s, p) => s + p.amount, 0)
@@ -34,7 +37,7 @@ export function PlanPaymentsScreen({ onBack }: PlanPaymentsScreenProps) {
       frequency,
       category,
       account,
-      icon: "📅",
+      icon: detectedLogo || "📅",
     })
 
     setLabel("")
@@ -83,37 +86,52 @@ export function PlanPaymentsScreen({ onBack }: PlanPaymentsScreenProps) {
 
       {/* Payments List */}
       <div className="space-y-3">
-        {plannedPayments.map((p) => (
-          <div
-            key={p.id}
-            className="flex items-center justify-between rounded-3xl border border-border/70 bg-card p-4 shadow-xs"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary text-base">
-                {p.icon || "📅"}
-              </div>
-              <div>
-                <h3 className="text-sm font-extrabold text-foreground">{p.label}</h3>
-                <p className="text-[10px] text-muted-foreground font-medium">
-                  Due: {p.dueDate} • {p.account} • {p.frequency}
-                </p>
-              </div>
-            </div>
+        {plannedPayments.map((p) => {
+          const brandLogo = (p.icon && p.icon.startsWith("/")) ? p.icon : (getBrandLogo(p.label) || getBrandLogo(p.category))
 
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-rose-500 tabular-nums">
-                -{formatMoney(p.amount)}
-              </span>
-              <button
-                type="button"
-                onClick={() => deletePlannedPayment(p.id)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+          return (
+            <div
+              key={p.id}
+              className="flex items-center justify-between rounded-3xl border border-border/70 bg-card p-4 shadow-xs"
+            >
+              <div className="flex items-center gap-3">
+                {brandLogo ? (
+                  <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-card border border-border/60 p-1.5 shadow-2xs">
+                    <Image
+                      src={brandLogo}
+                      alt={p.label}
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary text-base">
+                    {p.icon || "📅"}
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-sm font-extrabold text-foreground">{p.label}</h3>
+                  <p className="text-[10px] text-muted-foreground font-medium">
+                    Due: {p.dueDate} • {p.account} • {p.frequency}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-rose-500 tabular-nums">
+                  -{formatMoney(p.amount)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => deletePlannedPayment(p.id)}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Add Modal */}
@@ -133,16 +151,35 @@ export function PlanPaymentsScreen({ onBack }: PlanPaymentsScreenProps) {
 
             <div className="space-y-3 mb-5">
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Payment Title
-                </label>
-                <input
-                  type="text"
-                  value={label}
-                  onChange={(e) => setLabel(e.target.value)}
-                  placeholder="e.g. Meralco, Rent, Netflix"
-                  className="mt-1 flex h-11 w-full rounded-xl border border-border/70 bg-secondary/40 px-3.5 text-xs font-bold outline-none focus:ring-2 focus:ring-[#3D784E]"
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Payment Title
+                  </label>
+                  {detectedLogo && (
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-[#3D784E]">
+                      <Sparkles className="h-2.5 w-2.5" /> Logo detected
+                    </span>
+                  )}
+                </div>
+                <div className="relative flex items-center mt-1">
+                  <input
+                    type="text"
+                    value={label}
+                    onChange={(e) => setLabel(e.target.value)}
+                    placeholder="e.g. Meralco, Rent, Netflix, Spotify"
+                    className="flex h-11 w-full rounded-xl border border-border/70 bg-secondary/40 px-3.5 pr-11 text-xs font-bold outline-none focus:ring-2 focus:ring-[#3D784E]"
+                  />
+                  {detectedLogo && (
+                    <div className="absolute right-2 flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg bg-card border border-border/60 p-0.5 shadow-2xs">
+                      <Image
+                        src={detectedLogo}
+                        alt={label}
+                        width={22}
+                        height={22}
+                        className="object-contain"
+                      />
+                    </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">

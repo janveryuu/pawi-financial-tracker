@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { ChevronLeft, Plus, Trash2, Edit2, Sparkles, PieChart, X } from "lucide-react"
-import { formatMoney, Budget } from "@/lib/pawi-data"
+import { formatMoney, Budget, getBrandLogo } from "@/lib/pawi-data"
 import { useStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import { AddBudgetModal } from "../add-budget-modal"
@@ -33,10 +34,13 @@ export function PlanBudgetsScreen({ onBack }: PlanBudgetsScreenProps) {
     const limitNum = parseFloat(editLimit)
     if (isNaN(limitNum) || limitNum <= 0) return
 
+    const brandLogo = getBrandLogo(editCategory)
+
     editBudget({
       ...editingBudget,
       category: editCategory,
       limit: limitNum,
+      icon: brandLogo || editingBudget.icon || "🍽️",
     })
     setEditingBudget(null)
   }
@@ -94,6 +98,7 @@ export function PlanBudgetsScreen({ onBack }: PlanBudgetsScreenProps) {
           const pct = b.limit > 0 ? Math.min(100, Math.round((b.spent / b.limit) * 100)) : 0
           const isOver = b.spent > b.limit
           const remaining = Math.max(0, b.limit - b.spent)
+          const brandLogo = (b.icon && b.icon.startsWith("/")) ? b.icon : getBrandLogo(b.category)
 
           return (
             <div
@@ -102,9 +107,20 @@ export function PlanBudgetsScreen({ onBack }: PlanBudgetsScreenProps) {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary text-base">
-                    {b.icon || "🍽️"}
-                  </div>
+                  {brandLogo ? (
+                    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-card border border-border/60 p-1.5 shadow-2xs">
+                      <Image
+                        src={brandLogo}
+                        alt={b.category}
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary text-base">
+                      {b.icon || "🍽️"}
+                    </div>
+                  )}
                   <div>
                     <h3 className="text-sm font-extrabold text-foreground">{b.category}</h3>
                     <p className="text-[10px] text-muted-foreground font-medium">

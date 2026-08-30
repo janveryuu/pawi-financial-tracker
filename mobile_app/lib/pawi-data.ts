@@ -18,28 +18,43 @@ export function convertCurrency(amount: number, from: CurrencyCode, to: Currency
   return amountInUSD * EXCHANGE_RATES[to]
 }
 
-export function getWalletBrandLogo(name: string): string | undefined {
-  const lower = name.toLowerCase()
-  if (lower === "cash" || (lower.includes("cash") && !lower.includes("gcash"))) return "/cash-logo.png"
-  if (lower.includes("gcash")) return "/logos/gcash.png"
-  if (lower.includes("maya") || lower.includes("paymaya")) return "/Paymaya-logo.png"
-  if (lower.includes("paypal")) return "/Paypal-logo.png"
-  if (lower.includes("rcbc")) return "/logos/rcbc.png"
-  if (lower.includes("bdo")) return "/logos/bdo.png"
-  if (lower.includes("bpi")) return "/logos/bpi.png"
-  if (lower.includes("union")) return "/logos/unionbank.png"
-  if (lower.includes("wise")) return "/logos/wise.png"
-  if (lower.includes("globe")) return "/logos/globe.png"
-  if (lower.includes("netflix")) return "/logos/netflix.png"
-  if (lower.includes("converge")) return "/logos/converge.png"
-  if (lower.includes("gotyme") || lower.includes("tyme")) return "/logos/gotyme.png"
-  if (lower.includes("grab")) return "/logos/grab.png"
-  if (lower.includes("panda") || lower.includes("foodpanda")) return "/logos/foodpanda.png"
-  if (lower.includes("mcdo") || lower.includes("mcdonald")) return "/logos/mcdo.png"
-  if (lower.includes("starbucks") || lower.includes("sbux")) return "/logos/starbucks.png"
-  if (lower.includes("metro")) return "/metrobank.svg"
-  if (lower.includes("sea")) return "/seabank.svg"
+export function getBrandLogo(input?: string): string | undefined {
+  if (!input) return undefined
+  const text = input.toLowerCase().trim()
+
+  // Entertainment / Streaming / Subscriptions / Tech
+  if (text.includes("netflix") || text.includes("nflx")) return "/logos/netflix.png"
+  if (text.includes("apple") || text.includes("icloud") || text.includes("app store") || text.includes("itunes") || text.includes("apple music") || text.includes("apple tv")) return "/apple-icon.png"
+
+  // Food & Coffee
+  if (text.includes("starbucks") || text.includes("sbux") || text.includes("frappuccino")) return "/logos/starbucks.png"
+  if (text.includes("foodpanda") || text.includes("food panda") || text.includes("pandamart") || (text.includes("panda") && !text.includes("pawikan"))) return "/logos/foodpanda.png"
+  if (text.includes("grab") || text.includes("grabfood") || text.includes("grabcar") || text.includes("grabpay") || text.includes("grab express") || text.includes("grabmart")) return "/logos/grab.png"
+  if (text.includes("mcdo") || text.includes("mcdonald") || text.includes("mcdelivery") || text.includes("big mac")) return "/logos/mcdo.png"
+
+  // Telco & Utilities
+  if (text.includes("converge") || text.includes("fiberx")) return "/logos/converge.png"
+  if (text.includes("globe") || text.includes("gfiber") || text.includes("globe at home") || text.includes("globe post")) return "/logos/globe.png"
+
+  // Banks & E-Wallets
+  if (text === "cash" || (text.includes("cash") && !text.includes("gcash"))) return "/cash-logo.png"
+  if (text.includes("gcash") || text.includes("g-cash")) return "/logos/gcash.png"
+  if (text.includes("maya") || text.includes("paymaya")) return "/Paymaya-logo.png"
+  if (text.includes("gotyme") || text.includes("go tyme") || text.includes("tyme")) return "/logos/gotyme.png"
+  if (text.includes("bdo") || text.includes("banco de oro") || text.includes("bdo unibank")) return "/logos/bdo.png"
+  if (text.includes("bpi") || text.includes("bank of the philippine")) return "/logos/bpi.png"
+  if (text.includes("rcbc") || text.includes("rizal commercial")) return "/logos/rcbc.png"
+  if (text.includes("unionbank") || text.includes("union bank") || text.includes("ub_") || (text.includes("union") && !text.includes("reunion"))) return "/logos/unionbank.png"
+  if (text.includes("wise") || text.includes("transferwise")) return "/logos/wise.png"
+  if (text.includes("paypal") || text.includes("pay pal")) return "/Paypal-logo.png"
+  if (text.includes("metrobank") || text.includes("metro bank") || text.includes("mbtc")) return "/metrobank.svg"
+  if (text.includes("seabank") || text.includes("sea bank")) return "/seabank.svg"
+
   return undefined
+}
+
+export function getWalletBrandLogo(name: string): string | undefined {
+  return getBrandLogo(name)
 }
 
 export function getWalletBrandColor(name?: string, type?: string, fallback?: string): string {
@@ -59,6 +74,13 @@ export function getWalletBrandColor(name?: string, type?: string, fallback?: str
   if (lower.includes("seabank") || lower.includes("sea")) return "#E64A19" // SeaBank Orange
   if (lower.includes("cimb")) return "#ED1C24" // CIMB Red
   if (lower.includes("komo")) return "#00B4D8" // Komo Blue
+  if (lower.includes("netflix")) return "#E50914" // Netflix Red
+  if (lower.includes("starbucks")) return "#00704A" // Starbucks Green
+  if (lower.includes("foodpanda")) return "#D70F64" // Foodpanda Pink
+  if (lower.includes("grab")) return "#00B14F" // Grab Green
+  if (lower.includes("mcdo") || lower.includes("mcdonald")) return "#FFC72C" // McDo Gold
+  if (lower.includes("globe")) return "#0055A5" // Globe Blue
+  if (lower.includes("converge")) return "#FF6600" // Converge Orange
 
   // 2. Loans / Debts / Mortgages (Distinct Slate/Charcoal Neutral)
   if (
@@ -87,26 +109,7 @@ export function getWalletBrandColor(name?: string, type?: string, fallback?: str
 }
 
 export function getTransactionMerchantLogo(label: string, category?: string, account?: string): string | undefined {
-  const text = `${label} ${category || ""} ${account || ""}`.toLowerCase()
-  
-  if (text.includes("mcdo") || text.includes("mcdonald") || text.includes("big mac")) return "/logos/mcdo.png"
-  if (text.includes("starbucks") || text.includes("sbux") || text.includes("frappuccino")) return "/logos/starbucks.png"
-  if (text.includes("foodpanda") || text.includes("food panda")) return "/logos/foodpanda.png"
-  if (text.includes("grab") || text.includes("grabfood") || text.includes("grabcar") || text.includes("grabpay")) return "/logos/grab.png"
-  if (text.includes("gotyme") || text.includes("go tyme")) return "/logos/gotyme.png"
-  if (text.includes("netflix")) return "/logos/netflix.png"
-  if (text.includes("globe")) return "/logos/globe.png"
-  if (text.includes("converge")) return "/logos/converge.png"
-  if (text.includes("gcash")) return "/logos/gcash.png"
-  if (text.includes("maya") || text.includes("paymaya")) return "/Paymaya-logo.png"
-  if (text.includes("bdo")) return "/logos/bdo.png"
-  if (text.includes("bpi")) return "/logos/bpi.png"
-  if (text.includes("rcbc")) return "/logos/rcbc.png"
-  if (text.includes("unionbank") || text.includes("union bank")) return "/logos/unionbank.png"
-  if (text.includes("wise")) return "/logos/wise.png"
-  if (text.includes("paypal")) return "/Paypal-logo.png"
-  
-  return undefined
+  return getBrandLogo(label) || getBrandLogo(category) || getBrandLogo(account)
 }
 
 export interface Wallet {

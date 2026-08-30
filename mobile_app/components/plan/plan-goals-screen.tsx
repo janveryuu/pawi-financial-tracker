@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { ChevronLeft, Plus, Trash2, Edit2, Flag, Wallet, X } from "lucide-react"
-import { formatMoney, Goal } from "@/lib/pawi-data"
+import { formatMoney, Goal, getBrandLogo } from "@/lib/pawi-data"
 import { useStore } from "@/lib/store"
 import { AddGoalModal } from "../add-goal-modal"
 
@@ -89,6 +90,7 @@ export function PlanGoalsScreen({ onBack }: PlanGoalsScreenProps) {
           const pct = g.target > 0 ? Math.min(100, Math.round((g.saved / g.target) * 100)) : 0
           const isCompleted = g.target > 0 && g.saved >= g.target
           const remaining = Math.max(0, g.target - g.saved)
+          const goalLogo = (g.icon && g.icon.startsWith("/")) ? g.icon : getBrandLogo(g.name)
 
           return (
             <div
@@ -97,9 +99,20 @@ export function PlanGoalsScreen({ onBack }: PlanGoalsScreenProps) {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary text-base">
-                    {g.icon || "🎯"}
-                  </div>
+                  {goalLogo ? (
+                    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-card border border-border/60 p-1 shadow-2xs">
+                      <Image
+                        src={goalLogo}
+                        alt={g.name}
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary text-base">
+                      {g.icon || "🎯"}
+                    </div>
+                  )}
                   <div>
                     <div className="flex items-center gap-1.5">
                       <h3 className="text-sm font-extrabold text-foreground">{g.name}</h3>

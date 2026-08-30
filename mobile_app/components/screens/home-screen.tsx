@@ -18,7 +18,7 @@ import {
 import { useAuth } from "@/lib/auth-context"
 import { useProfile } from "@/lib/use-profile"
 import { useStore } from "@/lib/store"
-import { formatMoney } from "@/lib/pawi-data"
+import { formatMoney, getBrandLogo } from "@/lib/pawi-data"
 import { cn } from "@/lib/utils"
 import { PaydaySetupModal } from "../payday-setup-modal"
 
@@ -544,25 +544,40 @@ export function HomeScreen({
           </div>
         ) : (
           <div className="space-y-1">
-            {plannedPayments.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between py-2 border-b border-border/40 last:border-none"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary text-base">
-                    {item.icon || "📅"}
+            {plannedPayments.map((item) => {
+              const itemLogo = (item.icon && item.icon.startsWith("/")) ? item.icon : (getBrandLogo(item.label) || getBrandLogo(item.category))
+
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between py-2 border-b border-border/40 last:border-none"
+                >
+                  <div className="flex items-center gap-3">
+                    {itemLogo ? (
+                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-card border border-border/60 p-1 shadow-2xs">
+                        <Image
+                          src={itemLogo}
+                          alt={item.label}
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary text-base">
+                        {item.icon || "📅"}
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs font-bold text-foreground">{item.label}</p>
+                      <p className="text-[10px] text-muted-foreground font-medium">{item.dueDate}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-foreground">{item.label}</p>
-                    <p className="text-[10px] text-muted-foreground font-medium">{item.dueDate}</p>
-                  </div>
+                  <span className="text-xs font-black text-foreground tabular-nums">
+                    {formatMoney(item.amount)}
+                  </span>
                 </div>
-                <span className="text-xs font-black text-foreground tabular-nums">
-                  {formatMoney(item.amount)}
-                </span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

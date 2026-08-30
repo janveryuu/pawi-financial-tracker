@@ -1,8 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Wallet, X } from "lucide-react"
+import Image from "next/image"
+import { Wallet, X, Sparkles } from "lucide-react"
 import { useStore } from "@/lib/store"
+import { getBrandLogo } from "@/lib/pawi-data"
 
 interface AddBudgetModalProps {
   open: boolean
@@ -22,6 +24,8 @@ export function AddBudgetModal({ open, onClose }: AddBudgetModalProps) {
   const [limit, setLimit] = useState("")
   const { addBudget } = useStore()
 
+  const detectedLogo = getBrandLogo(category)
+
   const handleAdd = () => {
     if (!category.trim() || !limit) return
 
@@ -30,6 +34,7 @@ export function AddBudgetModal({ open, onClose }: AddBudgetModalProps) {
       limit: Number(limit),
       spent: 0,
       accent: accents[Math.floor(Math.random() * accents.length)],
+      icon: detectedLogo || "🍽️",
     })
 
     setCategory("")
@@ -82,14 +87,34 @@ export function AddBudgetModal({ open, onClose }: AddBudgetModalProps) {
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Category Name</label>
-            <input
-              type="text"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="e.g. Subscriptions"
-              className="flex h-12 w-full rounded-xl border border-border/60 bg-card px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            />
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-foreground">Category Name</label>
+              {detectedLogo && (
+                <span className="flex items-center gap-1 text-[11px] font-bold text-[#3D784E]">
+                  <Sparkles className="h-3 w-3" /> Brand logo detected!
+                </span>
+              )}
+            </div>
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="e.g. Netflix, Starbucks, Foodpanda, Grab..."
+                className="flex h-12 w-full rounded-xl border border-border/60 bg-card px-4 pr-12 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              />
+              {detectedLogo && (
+                <div className="absolute right-2.5 flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg bg-card border border-border/60 p-0.5 shadow-2xs">
+                  <Image
+                    src={detectedLogo}
+                    alt={category}
+                    width={24}
+                    height={24}
+                    className="object-contain"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
