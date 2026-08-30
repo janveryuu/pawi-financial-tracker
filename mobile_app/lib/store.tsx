@@ -248,11 +248,11 @@ function mapAccountToWallet(row: any): Wallet {
 
 function mapWalletToAccount(w: Wallet, userId: string): any {
   return {
-    id: w.id.includes("_") ? w.id : `${w.id}_${userId}`,
+    id: w.id,
     user_id: userId,
     name: w.name,
     type: w.type || "cash",
-    balance: w.balance || 0,
+    balance: Number(w.balance) || 0,
     currency: w.currency || "PHP",
     color: 1,
     icon: w.type === "ewallet" ? "gcash" : w.type === "savings" ? "bdo" : "wallet",
@@ -877,7 +877,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     const adjustment = tx.kind === "income" ? tx.amount : -tx.amount
     const updatedWallets = state.wallets.map((w) => {
-      if (w.name.toLowerCase() === tx.account.toLowerCase() || tx.account.toLowerCase().includes(w.name.toLowerCase())) {
+      if (
+        w.name.toLowerCase() === tx.account.toLowerCase() ||
+        tx.account.toLowerCase().includes(w.name.toLowerCase()) ||
+        w.name.toLowerCase().includes(tx.account.toLowerCase())
+      ) {
         return {
           ...w,
           balance: w.balance + adjustment,
@@ -896,40 +900,54 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }))
 
     if (user) {
-      // FIX (Bug #3): Set isInsertingRef BEFORE the Supabase calls to prevent
-      // Realtime subscription from triggering a refetch that overwrites optimistic state.
       isInsertingRef.current = true
       try {
         const userId = user.id || (user as any).uid
         const row = mapTransactionToRow(newTx, userId)
 
-        // FIX (Bug #1 + error handling): Check insert result. On failure, roll back
-        // the optimistic state update so the UI accurately reflects the true persisted state.
         const { error: insertError } = await supabase.from("transactions").insert(row)
         if (insertError) {
           console.error("[Pawi] Transaction insert failed:", insertError.code, insertError.message, insertError.details)
-          // Roll back: remove the optimistic transaction and restore wallet balances
           setState((prev) => ({
             ...prev,
             transactions: prev.transactions.filter((t) => t.id !== newTx.id),
-            wallets: prev.wallets, // wallets already updated optimistically; reverse adjustment
+            wallets: state.wallets,
             lastInsertError: `Could not save transaction: ${insertError.message || "Unknown error"}. Please try again.`,
           }))
           return
         }
 
         const targetWallet = updatedWallets.find(
-          (w) => w.name.toLowerCase() === tx.account.toLowerCase() || tx.account.toLowerCase().includes(w.name.toLowerCase())
+          (w) =>
+            w.name.toLowerCase() === tx.account.toLowerCase() ||
+            tx.account.toLowerCase().includes(w.name.toLowerCase()) ||
+            w.name.toLowerCase().includes(tx.account.toLowerCase())
         )
         if (targetWallet) {
-          const { error: walletError } = await supabase.from("accounts").upsert(mapWalletToAccount(targetWallet, userId))
+          const { error: walletError } = await supabase
+            .from("accounts")
+            .update({
+              balance: targetWallet.balance,
+              used_credit: targetWallet.usedCredit || 0,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", targetWallet.id)
+            .eq("user_id", userId)
+
           if (walletError) {
-            // Non-critical: log but don't roll back (transaction was saved successfully)
-            console.warn("[Pawi] Account balance sync failed (non-critical):", walletError.message)
+            console.warn("[Pawi] Account ID update fallback to name:", walletError.message)
+            await supabase
+              .from("accounts")
+              .update({
+                balance: targetWallet.balance,
+                used_credit: targetWallet.usedCredit || 0,
+                updated_at: new Date().toISOString(),
+              })
+              .ilike("name", targetWallet.name)
+              .eq("user_id", userId)
           }
         }
       } finally {
-        // Always clear the guard so future Realtime events are not blocked
         isInsertingRef.current = false
       }
     }
@@ -969,7 +987,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     if (user) {
       const userId = user.id || (user as any).uid
-      await supabase.from("transactions").upsert(mapTransactionToRow(tx, userId))
+      const targetWallet = updatedWallets.find(
+        (w) => w.name.toLowerCase() === tx.account.toLowerCase() || tx.account.toLowerCase().includes(w.name.toLowerCase())
+      )
+      const promises: Promise<any>[] = [supabase.from("transactions").upsert(mapTransactionToRow(tx, userId))]
+      if (targetWallet) {
+        promises.push(
+          supabase
+            .from("accounts")
+            .update({ balance: targetWallet.balance, updated_at: new Date().toISOString() })
+            .eq("id", targetWallet.id)
+            .eq("user_id", userId)
+        )
+      }
+      await Promise.allSettled(promises)
     }
   }
 
@@ -994,7 +1025,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }))
 
     if (user) {
-      await supabase.from("transactions").delete().eq("id", transactionId)
+      const userId = user.id || (user as any).uid
+      const promises: Promise<any>[] = [supabase.from("transactions").delete().eq("id", transactionId)]
+      if (txToDelete) {
+        const targetWallet = updatedWallets.find(
+          (w) => w.name.toLowerCase() === txToDelete.account.toLowerCase() || txToDelete.account.toLowerCase().includes(w.name.toLowerCase())
+        )
+        if (targetWallet) {
+          promises.push(
+            supabase
+              .from("accounts")
+              .update({ balance: targetWallet.balance, updated_at: new Date().toISOString() })
+              .eq("id", targetWallet.id)
+              .eq("user_id", userId)
+          )
+        }
+      }
+      await Promise.allSettled(promises)
     }
   }
 

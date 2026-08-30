@@ -430,8 +430,7 @@ export function parseChatAction(
       const matchedWallet = walletNames.find((w) => lower.includes(w.toLowerCase()))
 
       const category = extractExpenseCategory(lower)
-      const descMatch = text.match(/(?:spent|paid|bought|buy)\s+(?:[₱$€£¥0-9,k\s]+)?(?:on|for)?\s*(.+)?/i)
-      const label = descMatch?.[1] ? descMatch[1].trim() : category
+      const label = cleanExpenseLabel(text, matchedWallet, category)
 
       const action: ProposedAction = {
         id: "action-" + Date.now(),
@@ -442,7 +441,7 @@ export function parseChatAction(
         params: {
           amount: amt,
           category,
-          label: label.charAt(0).toUpperCase() + label.slice(1),
+          label,
           account: matchedWallet,
         },
         requiresConfirmation: true,
@@ -572,4 +571,26 @@ function extractExpenseCategory(text: string): string {
   if (/\b(tuition|book|school|course|exam)\b/i.test(text)) return "Education"
   if (/\b(medicine|doctor|hospital|clinic|health)\b/i.test(text)) return "Health & Medical"
   return "General"
+}
+
+function cleanExpenseLabel(text: string, matchedWallet?: string, category?: string): string {
+  let cleaned = text
+    .replace(/\b(i\s+)?(spent|paid|bought|buy|purchased|charged)\b/gi, "")
+    .replace(/(?:[₱$€£¥]\s*|\bpesos?\s*|\bphp\s*)?(\b\d{1,3}(?:,\d{3})+\b|\b\d+(?:\.\d+)?\b)(?:\s*pesos?|\s*php)?/gi, "")
+    .replace(/\b(pesos|peso|php)\b/gi, "")
+    .replace(/\b(on|for)\b/gi, "")
+    .replace(/\b(using|via|through|in|from|with)\s+[a-zA-Z0-9\s]+/gi, "")
+    .replace(/\s+/g, " ")
+    .trim()
+
+  if (matchedWallet) {
+    const wRegex = new RegExp(`\\b(using|via|in|from|with)?\\s*${matchedWallet}\\b`, "gi")
+    cleaned = cleaned.replace(wRegex, "").trim()
+  }
+
+  cleaned = cleaned.replace(/^(on|for|a|an|the|using)\s+/i, "").trim()
+  if (!cleaned || cleaned.length < 2) {
+    return category || "General"
+  }
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
 }
