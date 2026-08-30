@@ -60,16 +60,13 @@ export default function Page() {
     }
   }, [loading, loadingProfile, user, isGuest, profile])
 
-  // Tutorial gate: resume from last-persisted step
+  // Tutorial gate: launch immediately on dashboard mount if tutorial is pending
   useEffect(() => {
     if (!loading && !loadingProfile && user && !isGuest && !showOnboarding) {
       if (profile && profile.onboarding_completed && !profile.tutorial_completed) {
         const resumeStep = (profile.tutorial_step ?? 0) < 99 ? (profile.tutorial_step ?? 0) : 0
-        const timer = setTimeout(() => {
-          setTutorialInitialStep(resumeStep)
-          setTutorialOpen(true)
-        }, 600)
-        return () => clearTimeout(timer)
+        setTutorialInitialStep(resumeStep)
+        setTutorialOpen(true)
       }
     }
   }, [user, loading, loadingProfile, isGuest, showOnboarding, profile])

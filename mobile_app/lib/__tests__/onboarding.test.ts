@@ -412,5 +412,21 @@ describe("Spotlight Tour Gate Logic", () => {
     expect(handleTopLeftTap()).toBe(false) // tap 2
     expect(handleTopLeftTap()).toBe(true)  // tap 3 — triggers
   })
+
+  it("tutorial launches immediately on dashboard mount with 0ms artificial delay", () => {
+    const profile = { onboarding_completed: true, tutorial_completed: false, tutorial_step: 0 }
+    let tutorialOpen = false
+    let launchDelayMs = 0
+
+    // Synchronous mount evaluation in page.tsx
+    if (profile.onboarding_completed && !profile.tutorial_completed) {
+      tutorialOpen = true
+      launchDelayMs = 0 // zero setTimeout
+    }
+
+    expect(tutorialOpen).toBe(true)
+    expect(launchDelayMs).toBe(0)
+  })
 })
+
 

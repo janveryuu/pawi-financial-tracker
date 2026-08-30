@@ -43,7 +43,7 @@ export function useSpotlightRect(tutorialId: string | null, padding = 10) {
     setRect(null)
     setNotFound(false)
 
-    // Immediately try to measure
+    // Immediately try to measure without waiting for the polling loop
     const tryMeasure = () => {
       const el = document.querySelector<HTMLElement>(`[data-tutorial-id="${tutorialId}"]`)
       if (el) {
@@ -57,17 +57,21 @@ export function useSpotlightRect(tutorialId: string | null, padding = 10) {
         observerRef.current.observe(el)
         observerRef.current.observe(document.documentElement)
         if (notFoundTimerRef.current) clearTimeout(notFoundTimerRef.current)
+        return true
       }
+      return false
     }
 
-    // Grace period: poll every 100ms for up to 2.5s for the element to appear
+    // Run immediate measurement pass
+    const foundImmediately = tryMeasure()
+    if (foundImmediately) return
+
+    // Grace period fallback: poll only if element was not immediately found
     let attempts = 0
     const MAX_ATTEMPTS = 25
     const pollInterval = setInterval(() => {
-      const el = document.querySelector<HTMLElement>(`[data-tutorial-id="${tutorialId}"]`)
-      if (el) {
+      if (tryMeasure()) {
         clearInterval(pollInterval)
-        tryMeasure()
       } else {
         attempts++
         if (attempts >= MAX_ATTEMPTS) {
@@ -75,7 +79,7 @@ export function useSpotlightRect(tutorialId: string | null, padding = 10) {
           setNotFound(true)
         }
       }
-    }, 100)
+    }, 50)
 
     // Scroll listener
     const onScroll = () => {
@@ -93,14 +97,23 @@ export function useSpotlightRect(tutorialId: string | null, padding = 10) {
     }
   }, [tutorialId, measure])
 
-  // Re-measure on window resize
+  // Re-measure on window resize with requestAnimationFrame throttling
   useEffect(() => {
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null
     const onResize = () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
       rafRef.current = requestAnimationFrame(measure)
+      if (resizeTimer) clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(() => {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current)
+        rafRef.current = requestAnimationFrame(measure)
+      }, 80)
     }
     window.addEventListener("resize", onResize)
-    return () => window.removeEventListener("resize", onResize)
+    return () => {
+      window.removeEventListener("resize", onResize)
+      if (resizeTimer) clearTimeout(resizeTimer)
+    }
   }, [measure])
 
   return { rect, notFound }
