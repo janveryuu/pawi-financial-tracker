@@ -274,39 +274,54 @@ ${
 Live financial context:
 ${JSON.stringify(context || {}, null, 2)}`
 
-    // 1. Tier 1: Groq LLaMA 3.3 / Grok (Ultra-Fast Response & High Accuracy)
+    // 1. Tier 1: Groq AI (Ultra-Fast Sub-Second Response & High Accuracy)
     const groqKey = process.env.GROQ_API_KEY
     if (groqKey) {
-      try {
-        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${groqKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
-            messages: [
-              { role: "system", content: systemPrompt },
-              ...validChatHistory.map((m: any) => ({
-                role: m.role,
-                content: m.content,
-              })),
-            ],
-            temperature: 0.7,
-            max_tokens: 450,
-          }),
-        })
+      const groqCandidateModels = [
+        "qwen/qwen3.8-27b",
+        "groq/compound-mini",
+        "groq/compound",
+        "llama-3.3-70b-versatile",
+        "llama-3.1-70b-versatile",
+      ]
 
-        if (groqRes.ok) {
-          const groqData = await groqRes.json()
-          const reply = groqData.choices?.[0]?.message?.content
-          if (reply) {
-            return NextResponse.json({ reply, proposedAction })
+      for (const modelName of groqCandidateModels) {
+        try {
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 3500)
+
+          const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${groqKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: modelName,
+              messages: [
+                { role: "system", content: systemPrompt },
+                ...validChatHistory.map((m: any) => ({
+                  role: m.role,
+                  content: m.content,
+                })),
+              ],
+              temperature: 0.7,
+              max_tokens: 300,
+            }),
+            signal: controller.signal,
+          })
+          clearTimeout(timeoutId)
+
+          if (groqRes.ok) {
+            const groqData = await groqRes.json()
+            const reply = groqData.choices?.[0]?.message?.content
+            if (reply) {
+              return NextResponse.json({ reply, proposedAction })
+            }
           }
+        } catch (groqErr) {
+          console.warn(`Groq (${modelName}) notice, trying next candidate:`, groqErr)
         }
-      } catch (groqErr) {
-        console.warn("Groq LLaMA API notice, falling to backup tier:", groqErr)
       }
     }
 
@@ -314,6 +329,9 @@ ${JSON.stringify(context || {}, null, 2)}`
     const grokKey = process.env.XAI_API_KEY || process.env.GROK_API_KEY
     if (grokKey) {
       try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 3500)
+
         const grokRes = await fetch("https://api.x.ai/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -330,9 +348,11 @@ ${JSON.stringify(context || {}, null, 2)}`
               })),
             ],
             temperature: 0.7,
-            max_tokens: 450,
+            max_tokens: 300,
           }),
+          signal: controller.signal,
         })
+        clearTimeout(timeoutId)
 
         if (grokRes.ok) {
           const grokData = await grokRes.json()
@@ -346,9 +366,9 @@ ${JSON.stringify(context || {}, null, 2)}`
       }
     }
 
-    // 2. Tier 2: Gemini 3.7 Flash & 2.5 Flash via @google/generative-ai (Backup)
+    // 2. Tier 2: Gemini 2.5/2.0 Flash via @google/generative-ai (Backup)
     const geminiKey = process.env.GEMINI_API_KEY
-    if (geminiKey) {
+    if (geminiKey && geminiKey.startsWith("AIzaSy")) {
       const candidateModels = ["gemini-3.7-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
       const genAI = new GoogleGenerativeAI(geminiKey)
 
