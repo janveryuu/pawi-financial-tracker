@@ -19,6 +19,7 @@ import { NotificationsPanel } from "@/components/notifications-panel"
 import { PawiSpotlightTour } from "@/components/pawi-spotlight-tour"
 import { PawiOnboardingFlow } from "@/components/pawi-onboarding-flow"
 import { PushPermissionPrompt } from "@/components/push-permission-prompt"
+import { LandingCatcherScreen } from "@/components/landing-catcher-screen"
 
 export default function Page() {
   const { user, loading, isGuest } = useAuth()
@@ -36,13 +37,6 @@ export default function Page() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [planInitialSubScreen, setPlanInitialSubScreen] = useState<"goals" | "debt" | "receivables" | "budgets" | null>(null)
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null)
-
-  // Redirect to login if unauthenticated
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login")
-    }
-  }, [user, loading, router])
 
   // Onboarding gate
   useEffect(() => {
@@ -110,12 +104,17 @@ export default function Page() {
     setTxModalOpen(false)
   }, [])
 
-  if (loading || loadingProfile || !user) {
+  if (loading || (user && loadingProfile)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center bg-[#0A120D]">
         <div className="h-10 w-10 animate-pulse rounded-full bg-[#3D784E]/25" />
       </div>
     )
+  }
+
+  // Pre-Login Catcher Screen for unauthenticated visitors
+  if (!user) {
+    return <LandingCatcherScreen />
   }
 
   if (profile?.is_suspended) {

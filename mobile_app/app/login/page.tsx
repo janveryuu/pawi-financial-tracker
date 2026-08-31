@@ -28,6 +28,10 @@ export default function LoginPage() {
       const params = new URLSearchParams(window.location.search)
       const errorDesc = params.get("error_description") || params.get("error")
 
+      if (params.get("signup") === "true" || params.get("signup") === "1") {
+        setIsSignUp(true)
+      }
+
       if (errorDesc) {
         if (errorDesc.includes("not enabled") || errorDesc.includes("unsupported_provider")) {
           setError("Google Sign-In is not enabled yet in your Supabase project. Enable Google in Supabase Dashboard > Authentication > Providers, or log in with Email / Guest below!")
