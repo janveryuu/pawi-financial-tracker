@@ -124,7 +124,7 @@ export function LandingCatcherScreen() {
           />
           <div className="relative h-[70px] w-[70px] sm:h-[76px] sm:w-[76px] overflow-hidden rounded-full">
             <Image
-              src="/pawi-v2-hi.png"
+              src="/pawi-new-home.png"
               alt="Pawi — your financial wellness companion"
               width={76}
               height={76}
@@ -137,7 +137,7 @@ export function LandingCatcherScreen() {
             className="absolute -bottom-2 rounded-full px-2.5 py-[3px] text-[9px] font-black tracking-wider uppercase shadow-sm"
             style={{ background: "#FAFAF7", border: "1px solid #C8DDD1", color: "#3D6B52" }}
           >
-            SLOW &amp; STEADY 🐢
+            SLOW &amp; STEADY
           </div>
         </motion.div>
 
