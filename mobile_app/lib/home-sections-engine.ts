@@ -1,4 +1,4 @@
-import { Wallet, Goal, Debt, Receivable, formatMoney } from "./pawi-data"
+import { Wallet, Goal, Debt, Receivable, Budget, Transaction, formatMoney } from "./pawi-data"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 export interface StatementDueCard {
@@ -204,4 +204,142 @@ export function computeReceivableSummary(
   }
 
   return { hasData: true, count: open.length, total, nextExpected, nextExpectedDaysLeft }
+}
+
+// ─── 5. Category Budget Spent Engine ──────────────────────────────────────────
+/**
+ * Determines whether a transaction matches a category budget.
+ * Supports:
+ * - Direct category matches ("Food & Dining", "Entertainment", "Groceries")
+ * - Category aliases ("Food" <-> "Food & Dining", "Coffee" <-> "Coffee & Snacks")
+ * - Merchant/Brand keywords ("Netflix", "Foodpanda", "Starbucks", "Grab", "McDo", etc.)
+ * - Substring matching between transaction label/note/tag and budget name
+ */
+export function isTransactionMatchingBudget(tx: Transaction, budgetCategory: string): boolean {
+  if (!budgetCategory || !tx) return false
+
+  const bRaw = budgetCategory.toLowerCase().trim()
+  const txCat = (tx.category || "").toLowerCase().trim()
+  const txLabel = (tx.label || "").toLowerCase().trim()
+  const txNote = (tx.note || "").toLowerCase().trim()
+  const txTag = (tx.tag || "").toLowerCase().trim()
+
+  // 1. Direct equality with category or label
+  if (txCat === bRaw || txLabel === bRaw) return true
+
+  // 2. Direct category aliases
+  const categoryAliases: Record<string, string[]> = {
+    "food": ["food & dining", "dining out", "food and dining", "meals", "restaurant", "food"],
+    "food & dining": ["food", "dining out", "food and dining", "meals", "restaurant"],
+    "coffee": ["coffee & snacks", "coffee and snacks", "snacks", "cafe"],
+    "coffee & snacks": ["coffee", "snacks", "cafe"],
+    "entertainment": ["entertainment", "fun", "streaming", "movies", "games"],
+    "transport": ["transport", "transportation", "commute", "gas", "fuel"],
+    "utilities": ["utilities & bills", "utilities and bills", "bills", "electricity", "water", "internet"],
+    "utilities & bills": ["utilities", "bills", "electricity", "water", "internet"],
+    "groceries": ["groceries", "supermarket", "grocery"],
+    "shopping": ["shopping", "retail", "clothes"],
+    "health": ["health & wellness", "health and wellness", "medical", "pharmacy"],
+    "health & wellness": ["health", "medical", "pharmacy"],
+    "housing": ["rent & housing", "rent and housing", "rent"],
+    "rent & housing": ["housing", "rent"],
+  }
+
+  for (const [key, aliases] of Object.entries(categoryAliases)) {
+    if (bRaw === key || aliases.includes(bRaw)) {
+      if (txCat === key || aliases.includes(txCat)) {
+        return true
+      }
+    }
+  }
+
+  // 3. Known brand / merchant keywords
+  const knownBrands = [
+    "netflix", "foodpanda", "starbucks", "grab", "mcdo", "mcdonald",
+    "spotify", "converge", "globe", "smart", "dito", "shopee", "lazada",
+    "jollibee", "youtube", "apple", "icloud", "disney", "prime", "amazon",
+    "steam", "playstation", "nintendo", "shell", "petron", "caltex",
+    "meralco", "maynilad", "manila water", "pldt", "angkas", "joyride"
+  ]
+
+  for (const brand of knownBrands) {
+    if (bRaw.includes(brand)) {
+      if (txLabel.includes(brand) || txNote.includes(brand) || txCat.includes(brand) || txTag.includes(brand)) {
+        return true
+      }
+    }
+  }
+
+  // 4. Token-based word matching between budget name and transaction texts
+  const stopWords = new Set([
+    "the", "and", "for", "with", "from", "subscription", "monthly",
+    "budget", "expenses", "expense", "plan", "bill", "bills", "cost",
+    "costs", "spend", "spent", "item", "items"
+  ])
+
+  const bTokens = bRaw
+    .replace(/[^\w\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && !stopWords.has(w))
+
+  const txCombined = `${txLabel} ${txNote} ${txCat} ${txTag}`
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+
+  for (const token of bTokens) {
+    if (txCombined.includes(token)) {
+      return true
+    }
+  }
+
+  // 5. If budget category is a substring of transaction label or note
+  if (bRaw.length >= 3 && (txLabel.includes(bRaw) || txNote.includes(bRaw))) {
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Computes the total spent for a specific budget in the current month from transactions.
+ */
+export function computeBudgetSpent(
+  budget: Budget,
+  transactions: Transaction[],
+  referenceDate: Date = new Date()
+): number {
+  const currentMonthPrefix = referenceDate
+    .toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })
+    .substring(0, 7) // "YYYY-MM"
+
+  return transactions
+    .filter((tx) => {
+      if (tx.kind !== "expense") return false
+
+      // Filter to current month's transactions (if date is present)
+      const txIso = tx.date ? (tx.date.includes("T") ? tx.date.split("T")[0] : tx.date) : ""
+      if (txIso && !txIso.startsWith(currentMonthPrefix)) {
+        const isRecent =
+          tx.dateHeader?.toLowerCase().includes("today") ||
+          tx.dateHeader?.toLowerCase().includes("yesterday")
+        if (!isRecent) return false
+      }
+
+      return isTransactionMatchingBudget(tx, budget.category)
+    })
+    .reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
+}
+
+/**
+ * Computes dynamic spent values for all budgets from transaction history.
+ */
+export function computeAllBudgetsSpent(
+  budgets: Budget[],
+  transactions: Transaction[],
+  referenceDate: Date = new Date()
+): Budget[] {
+  return budgets.map((b) => ({
+    ...b,
+    spent: computeBudgetSpent(b, transactions, referenceDate),
+  }))
 }

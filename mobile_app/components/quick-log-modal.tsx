@@ -44,7 +44,7 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
   const [scannedReceiptUrl, setScannedReceiptUrl] = useState<string | null>(null)
   const [isListening, setIsListening] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const { addTransaction, wallets, lastInsertError, clearInsertError } = useStore()
+  const { addTransaction, wallets, budgets = [], lastInsertError, clearInsertError } = useStore()
   const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -87,11 +87,76 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
       else if (lowerValue.includes("allowance")) category = "Allowance"
       else if (lowerValue.includes("bonus")) category = "Bonus"
     } else {
-      if (lowerValue.includes("lunch") || lowerValue.includes("food") || lowerValue.includes("dinner") || lowerValue.includes("breakfast") || lowerValue.includes("coffee") || lowerValue.includes("milk tea")) category = "Food & Dining"
-      else if (lowerValue.includes("groceries") || lowerValue.includes("supermarket") || lowerValue.includes("sm") || lowerValue.includes("puregold")) category = "Groceries"
-      else if (lowerValue.includes("ride") || lowerValue.includes("grab") || lowerValue.includes("taxi") || lowerValue.includes("transport") || lowerValue.includes("gas") || lowerValue.includes("angkas")) category = "Transport"
-      else if (lowerValue.includes("netflix") || lowerValue.includes("game") || lowerValue.includes("movie") || lowerValue.includes("spotify")) category = "Entertainment"
-      else if (lowerValue.includes("shopping") || lowerValue.includes("uniqlo") || lowerValue.includes("zara") || lowerValue.includes("shopee") || lowerValue.includes("lazada")) category = "Shopping"
+      // 1. Check if an active budget matches this text
+      const matchingBudget = budgets.find((b) => {
+        const bLower = b.category.toLowerCase()
+        return lowerValue.includes(bLower) || bLower.includes(lowerValue)
+      })
+
+      if (matchingBudget) {
+        category = matchingBudget.category
+      } else if (
+        lowerValue.includes("netflix") ||
+        lowerValue.includes("spotify") ||
+        lowerValue.includes("game") ||
+        lowerValue.includes("movie") ||
+        lowerValue.includes("steam")
+      ) {
+        category = "Entertainment"
+      } else if (
+        lowerValue.includes("starbucks") ||
+        lowerValue.includes("coffee") ||
+        lowerValue.includes("cafe") ||
+        lowerValue.includes("milk tea") ||
+        lowerValue.includes("boba")
+      ) {
+        category = "Coffee & Snacks"
+      } else if (
+        lowerValue.includes("foodpanda") ||
+        lowerValue.includes("grabfood") ||
+        lowerValue.includes("jollibee") ||
+        lowerValue.includes("mcdo") ||
+        lowerValue.includes("mcdonald") ||
+        lowerValue.includes("lunch") ||
+        lowerValue.includes("food") ||
+        lowerValue.includes("dinner") ||
+        lowerValue.includes("breakfast")
+      ) {
+        category = "Food & Dining"
+      } else if (
+        lowerValue.includes("groceries") ||
+        lowerValue.includes("supermarket") ||
+        lowerValue.includes("sm") ||
+        lowerValue.includes("puregold")
+      ) {
+        category = "Groceries"
+      } else if (
+        lowerValue.includes("ride") ||
+        lowerValue.includes("grab") ||
+        lowerValue.includes("taxi") ||
+        lowerValue.includes("transport") ||
+        lowerValue.includes("gas") ||
+        lowerValue.includes("angkas")
+      ) {
+        category = "Transport"
+      } else if (
+        lowerValue.includes("shopping") ||
+        lowerValue.includes("uniqlo") ||
+        lowerValue.includes("zara") ||
+        lowerValue.includes("shopee") ||
+        lowerValue.includes("lazada")
+      ) {
+        category = "Shopping"
+      } else if (
+        lowerValue.includes("meralco") ||
+        lowerValue.includes("maynilad") ||
+        lowerValue.includes("globe") ||
+        lowerValue.includes("converge") ||
+        lowerValue.includes("pldt") ||
+        lowerValue.includes("wifi")
+      ) {
+        category = "Utilities & Bills"
+      }
     }
 
     return {
@@ -100,7 +165,7 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
       account,
       category,
     }
-  }, [value])
+  }, [value, budgets])
 
   const handleLog = async () => {
     if (!value.trim() || !parsedData) return

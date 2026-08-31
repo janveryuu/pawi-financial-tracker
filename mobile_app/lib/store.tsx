@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState, useRef, ReactNode, useCallback } from "react"
+import React, { createContext, useContext, useEffect, useState, useRef, useMemo, ReactNode, useCallback } from "react"
 import {
   Wallet,
   Transaction,
@@ -27,6 +27,7 @@ import {
 } from "./pawi-data"
 import { useAuth } from "./auth-context"
 import { supabase } from "./supabase"
+import { computeAllBudgetsSpent } from "./home-sections-engine"
 
 export interface ChatMessage {
   role: "user" | "assistant"
@@ -1838,10 +1839,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const computedBudgets = useMemo(() => {
+    return computeAllBudgetsSpent(state.budgets, state.transactions)
+  }, [state.budgets, state.transactions])
+
   return (
     <StoreContext.Provider
       value={{
         ...state,
+        budgets: computedBudgets,
         addTransaction,
         editTransaction,
         deleteTransaction,

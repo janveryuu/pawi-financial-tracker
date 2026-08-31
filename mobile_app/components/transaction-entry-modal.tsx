@@ -39,7 +39,7 @@ const EXPENSE_CATEGORIES = [
 ]
 
 export function TransactionEntryModal({ open, kind, initialAccount, onClose }: TransactionEntryModalProps) {
-  const { wallets, transactions = [], addTransaction, defaultCurrency } = useStore()
+  const { wallets, transactions = [], budgets = [], addTransaction, defaultCurrency } = useStore()
 
   const [displayValue, setDisplayValue] = useState("0")
   const [expression, setExpression] = useState("")
@@ -52,6 +52,143 @@ export function TransactionEntryModal({ open, kind, initialAccount, onClose }: T
 
   const isIncome = kind === "income"
   const categories = isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+
+  const handleNoteChange = (text: string) => {
+    setNote(text)
+    if (!text.trim() || isIncome) return
+
+    const lower = text.toLowerCase()
+
+    // 1. Check if an existing budget matches this note
+    const matchingBudget = budgets.find((b) => {
+      const bLower = b.category.toLowerCase()
+      return lower.includes(bLower) || bLower.includes(lower)
+    })
+
+    if (matchingBudget) {
+      const matchingCat = categories.find(
+        (c) => c.label.toLowerCase() === matchingBudget.category.toLowerCase()
+      )
+      if (matchingCat) {
+        setSelectedCategory(matchingCat.label)
+        return
+      }
+    }
+
+    // 2. Smart keyword detection
+    if (
+      lower.includes("netflix") ||
+      lower.includes("spotify") ||
+      lower.includes("game") ||
+      lower.includes("movie") ||
+      lower.includes("steam") ||
+      lower.includes("youtube") ||
+      lower.includes("disney") ||
+      lower.includes("hbo")
+    ) {
+      setSelectedCategory("Entertainment")
+    } else if (
+      lower.includes("starbucks") ||
+      lower.includes("coffee") ||
+      lower.includes("cafe") ||
+      lower.includes("milk tea") ||
+      lower.includes("boba") ||
+      lower.includes("snack")
+    ) {
+      setSelectedCategory("Coffee & Snacks")
+    } else if (
+      lower.includes("foodpanda") ||
+      lower.includes("grabfood") ||
+      lower.includes("jollibee") ||
+      lower.includes("mcdo") ||
+      lower.includes("mcdonald") ||
+      lower.includes("lunch") ||
+      lower.includes("dinner") ||
+      lower.includes("breakfast") ||
+      lower.includes("food") ||
+      lower.includes("restaurant") ||
+      lower.includes("carinderia")
+    ) {
+      setSelectedCategory("Food & Dining")
+    } else if (
+      lower.includes("grocery") ||
+      lower.includes("groceries") ||
+      lower.includes("supermarket") ||
+      lower.includes("puregold") ||
+      lower.includes("sm market") ||
+      lower.includes("robinsons") ||
+      lower.includes("waltermart")
+    ) {
+      setSelectedCategory("Groceries")
+    } else if (
+      lower.includes("grab") ||
+      lower.includes("angkas") ||
+      lower.includes("joyride") ||
+      lower.includes("taxi") ||
+      lower.includes("gas") ||
+      lower.includes("petron") ||
+      lower.includes("shell") ||
+      lower.includes("caltex") ||
+      lower.includes("transport") ||
+      lower.includes("fare") ||
+      lower.includes("jeep") ||
+      lower.includes("mrt") ||
+      lower.includes("lrt")
+    ) {
+      setSelectedCategory("Transport")
+    } else if (
+      lower.includes("shopee") ||
+      lower.includes("lazada") ||
+      lower.includes("uniqlo") ||
+      lower.includes("zara") ||
+      lower.includes("shopping") ||
+      lower.includes("shein") ||
+      lower.includes("tiktok shop")
+    ) {
+      setSelectedCategory("Shopping")
+    } else if (
+      lower.includes("meralco") ||
+      lower.includes("maynilad") ||
+      lower.includes("manila water") ||
+      lower.includes("globe") ||
+      lower.includes("converge") ||
+      lower.includes("pldt") ||
+      lower.includes("smart") ||
+      lower.includes("dito") ||
+      lower.includes("wifi") ||
+      lower.includes("internet") ||
+      lower.includes("bill") ||
+      lower.includes("utility")
+    ) {
+      setSelectedCategory("Utilities & Bills")
+    } else if (
+      lower.includes("gym") ||
+      lower.includes("fitness") ||
+      lower.includes("doctor") ||
+      lower.includes("hospital") ||
+      lower.includes("medicine") ||
+      lower.includes("pharmacy") ||
+      lower.includes("mercury drug") ||
+      lower.includes("watsons")
+    ) {
+      setSelectedCategory("Health & Wellness")
+    } else if (
+      lower.includes("rent") ||
+      lower.includes("condo") ||
+      lower.includes("apartment") ||
+      lower.includes("housing")
+    ) {
+      setSelectedCategory("Rent & Housing")
+    } else if (
+      lower.includes("tuition") ||
+      lower.includes("school") ||
+      lower.includes("book") ||
+      lower.includes("course") ||
+      lower.includes("udemy")
+    ) {
+      setSelectedCategory("Education")
+    }
+  }
 
   const recentTemplates = useMemo(() => {
     const matching = transactions.filter((t) => t.kind === kind)
@@ -259,7 +396,7 @@ export function TransactionEntryModal({ open, kind, initialAccount, onClose }: T
             <input
               type="text"
               value={note}
-              onChange={(e) => setNote(e.target.value)}
+              onChange={(e) => handleNoteChange(e.target.value)}
               placeholder={isIncome ? "e.g. March salary, freelance project" : "e.g. Dinner with friends, grocery run"}
               className="w-full bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground/60 outline-none"
             />
