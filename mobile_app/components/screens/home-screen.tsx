@@ -49,6 +49,7 @@ interface HomeScreenProps {
   onNavigateToGoals?: () => void
   onNavigateToDebt?: () => void
   onNavigateToReceivables?: () => void
+  onNavigateToWallets?: (walletId?: string) => void
 }
 
 // Category icon map — same as HistoryScreen, kept consistent
@@ -75,6 +76,7 @@ export function HomeScreen({
   onNavigateToGoals,
   onNavigateToDebt,
   onNavigateToReceivables,
+  onNavigateToWallets,
 }: HomeScreenProps) {
   const { user } = useAuth()
   const { profile } = useProfile()
@@ -605,7 +607,7 @@ export function HomeScreen({
       {/* ─── 6. STATEMENT DUE (conditional — only when real credit balance exists) */}
       {statementCards.length > 0 && (
         <div
-          onClick={onNavigateToPlan}
+          onClick={() => onNavigateToWallets?.()}
           className="rounded-3xl border border-amber-300/40 bg-gradient-to-b from-[#FFFDF5] to-[#FFF8E6] dark:from-amber-950/20 dark:to-amber-900/10 p-4 shadow-xs space-y-3 cursor-pointer hover:border-amber-400/60 active:scale-[0.99] transition-all"
         >
           {/* Header row */}
@@ -634,7 +636,14 @@ export function HomeScreen({
             {statementCards.map((card) => {
               const logo = getBrandLogo(card.name)
               return (
-                <div key={card.id} className="flex items-center justify-between py-1 px-1 rounded-2xl">
+                <div
+                  key={card.id}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onNavigateToWallets?.(card.id)
+                  }}
+                  className="flex items-center justify-between py-1.5 px-1.5 rounded-2xl cursor-pointer hover:bg-amber-100/60 dark:hover:bg-amber-900/30 active:scale-[0.99] transition-colors"
+                >
                   <div className="flex items-center gap-2.5 min-w-0">
                     {logo ? (
                       <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white border border-amber-200/60 p-1 shadow-2xs">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Image from "next/image"
 import {
   Folder,
@@ -28,10 +28,15 @@ import { AccountDetailsView } from "../account-details-view"
 
 type AccountFilter = "all" | "assets" | "liabilities"
 
-export function WalletsScreen() {
+interface WalletsScreenProps {
+  initialSelectedWalletId?: string | null
+  initialFilter?: AccountFilter
+}
+
+export function WalletsScreen({ initialSelectedWalletId, initialFilter }: WalletsScreenProps = {}) {
   const { wallets, transactions = [] } = useStore()
 
-  const [activeFilter, setActiveFilter] = useState<AccountFilter>("all")
+  const [activeFilter, setActiveFilter] = useState<AccountFilter>(initialFilter || "all")
   const [showBalance, setShowBalance] = useState(true)
   const [walletTipIndex, setWalletTipIndex] = useState(0)
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null)
@@ -43,6 +48,20 @@ export function WalletsScreen() {
   const [txKind, setTxKind] = useState<"income" | "expense">("expense")
   const [txPresetWallet, setTxPresetWallet] = useState<string | undefined>(undefined)
   const [showFolderModal, setShowFolderModal] = useState(false)
+
+  useEffect(() => {
+    if (initialSelectedWalletId) {
+      const match = wallets.find((w) => w.id === initialSelectedWalletId)
+      if (match) {
+        setSelectedWallet(match)
+        if (match.isLiability) {
+          setActiveFilter("liabilities")
+        }
+      }
+    } else if (initialFilter) {
+      setActiveFilter(initialFilter)
+    }
+  }, [initialSelectedWalletId, initialFilter, wallets])
 
   // Calculate Asset vs Liability totals
   const assetWallets = wallets.filter((w) => !w.isLiability)

@@ -34,6 +34,7 @@ export default function Page() {
   const [tutorialInitialStep, setTutorialInitialStep] = useState(0)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [planInitialSubScreen, setPlanInitialSubScreen] = useState<"goals" | "debt" | "receivables" | "budgets" | null>(null)
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null)
 
   // Redirect to login if unauthenticated
   useEffect(() => {
@@ -171,10 +172,19 @@ export default function Page() {
                 setPlanInitialSubScreen("receivables")
                 setTab("plan")
               }}
+              onNavigateToWallets={(walletId?: string) => {
+                setSelectedWalletId(walletId || null)
+                setTab("wallets")
+              }}
             />
           )}
 
-          {tab === "wallets" && <WalletsScreen />}
+          {tab === "wallets" && (
+            <WalletsScreen
+              initialSelectedWalletId={selectedWalletId}
+              initialFilter={selectedWalletId ? "liabilities" : "all"}
+            />
+          )}
           {tab === "plan" && <PlanScreen initialSubScreen={planInitialSubScreen} />}
           {tab === "history" && <HistoryScreen />}
           {tab === "chat" && <ChatScreen onBack={() => setTab("home")} />}
