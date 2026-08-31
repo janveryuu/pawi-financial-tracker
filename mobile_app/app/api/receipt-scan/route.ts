@@ -55,55 +55,71 @@ export async function POST(req: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: SchemaType.OBJECT,
-          properties: {
-            merchant: { type: SchemaType.STRING, description: "Name of the store or merchant" },
-            amount: { type: SchemaType.NUMBER, description: "Total grand total amount paid" },
-            currency: { type: SchemaType.STRING, description: "Currency code e.g. PHP, USD" },
-            transaction_date: { type: SchemaType.STRING, description: "Date of transaction in YYYY-MM-DD" },
-            category: { type: SchemaType.STRING, description: "Category e.g. Food & Dining, Groceries, Shopping, Transport, Entertainment" },
-            payment_method_guess: { type: SchemaType.STRING, description: "Payment method detected e.g. Cash, GCash, Maya, Card" },
-            line_items: {
-              type: SchemaType.ARRAY,
-              items: { type: SchemaType.STRING },
-              description: "Items listed on the receipt",
-            },
-            confidence: { type: SchemaType.STRING, description: "Confidence level: 'high' or 'low'" },
-            low_fields: {
-              type: SchemaType.ARRAY,
-              items: { type: SchemaType.STRING },
-              description: "List of fields with low OCR confidence that user should double-check",
-            },
-          },
-          required: ["merchant", "amount", "currency", "category", "confidence"],
-        },
-      },
-    })
-
+    const candidateModels = ["gemini-3.7-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
     const prompt = `Analyze this receipt or payment slip image. Extract the merchant name, grand total amount, currency (default to PHP if peso symbol or Philippine store), date, best-fitting budget category, and payment method (Cash, GCash, Maya, Card). If any number is blurry, mark confidence as 'low' and list those field names in low_fields.`
 
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: mimeType,
-        },
-      },
-    ])
+    let parsedResult: any = null
 
-    const responseText = result.response.text()
-    const parsed = JSON.parse(responseText)
+    for (const modelName of candidateModels) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: SchemaType.OBJECT,
+              properties: {
+                merchant: { type: SchemaType.STRING, description: "Name of the store or merchant" },
+                amount: { type: SchemaType.NUMBER, description: "Total grand total amount paid" },
+                currency: { type: SchemaType.STRING, description: "Currency code e.g. PHP, USD" },
+                transaction_date: { type: SchemaType.STRING, description: "Date of transaction in YYYY-MM-DD" },
+                category: { type: SchemaType.STRING, description: "Category e.g. Food & Dining, Groceries, Shopping, Transport, Entertainment" },
+                payment_method_guess: { type: SchemaType.STRING, description: "Payment method detected e.g. Cash, GCash, Maya, Card" },
+                line_items: {
+                  type: SchemaType.ARRAY,
+                  items: { type: SchemaType.STRING },
+                  description: "Items listed on the receipt",
+                },
+                confidence: { type: SchemaType.STRING, description: "Confidence level: 'high' or 'low'" },
+                low_fields: {
+                  type: SchemaType.ARRAY,
+                  items: { type: SchemaType.STRING },
+                  description: "List of fields with low OCR confidence that user should double-check",
+                },
+              },
+              required: ["merchant", "amount", "currency", "category", "confidence"],
+            },
+          },
+        })
 
-    const rawSummary = `Spent ${parsed.amount?.toLocaleString() || 0} on ${parsed.category || "General"} at ${parsed.merchant || "Store"} (${parsed.payment_method_guess || "Cash"})`
+        const result = await model.generateContent([
+          prompt,
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: mimeType,
+            },
+          },
+        ])
+
+        const responseText = result.response.text()
+        if (responseText) {
+          parsedResult = JSON.parse(responseText)
+          break
+        }
+      } catch (scanErr) {
+        console.warn(`Receipt OCR notice with ${modelName}:`, scanErr)
+      }
+    }
+
+    if (!parsedResult) {
+      throw new Error("Unable to parse receipt with available models")
+    }
+
+    const rawSummary = `Spent ${parsedResult.amount?.toLocaleString() || 0} on ${parsedResult.category || "General"} at ${parsedResult.merchant || "Store"} (${parsedResult.payment_method_guess || "Cash"})`
 
     return NextResponse.json({
-      ...parsed,
+      ...parsedResult,
       receipt_url: receiptUrl,
       raw_summary: rawSummary,
     })

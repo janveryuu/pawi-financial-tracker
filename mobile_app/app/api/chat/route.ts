@@ -274,34 +274,7 @@ ${
 Live financial context:
 ${JSON.stringify(context || {}, null, 2)}`
 
-    // 1. Tier 1: Gemini via @google/generative-ai
-    const geminiKey = process.env.GEMINI_API_KEY
-    if (geminiKey) {
-      try {
-        const genAI = new GoogleGenerativeAI(geminiKey)
-        const model = genAI.getGenerativeModel({
-          model: "gemini-2.5-flash",
-          systemInstruction: systemPrompt,
-        })
-
-        const chat = model.startChat({
-          history: validChatHistory.slice(0, -1).map((m: any) => ({
-            role: m.role === "assistant" ? "model" : "user",
-            parts: [{ text: m.content }],
-          })),
-        })
-
-        const result = await chat.sendMessage(latestUserMessage)
-        const reply = result.response.text()
-        if (reply) {
-          return NextResponse.json({ reply, proposedAction })
-        }
-      } catch (geminiErr) {
-        console.warn("Gemini Chat API notice, falling to next tier:", geminiErr)
-      }
-    }
-
-    // 2. Tier 2: Groq Llama 3 (if GROQ_API_KEY is configured)
+    // 1. Tier 1: Groq LLaMA 3.3 / Grok (Ultra-Fast Response & High Accuracy)
     const groqKey = process.env.GROQ_API_KEY
     if (groqKey) {
       try {
@@ -321,7 +294,7 @@ ${JSON.stringify(context || {}, null, 2)}`
               })),
             ],
             temperature: 0.7,
-            max_tokens: 400,
+            max_tokens: 450,
           }),
         })
 
@@ -333,7 +306,75 @@ ${JSON.stringify(context || {}, null, 2)}`
           }
         }
       } catch (groqErr) {
-        console.warn("Groq API notice:", groqErr)
+        console.warn("Groq LLaMA API notice, falling to backup tier:", groqErr)
+      }
+    }
+
+    // Tier 1b: xAI Grok (if XAI_API_KEY or GROK_API_KEY is configured)
+    const grokKey = process.env.XAI_API_KEY || process.env.GROK_API_KEY
+    if (grokKey) {
+      try {
+        const grokRes = await fetch("https://api.x.ai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${grokKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "grok-2-latest",
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...validChatHistory.map((m: any) => ({
+                role: m.role,
+                content: m.content,
+              })),
+            ],
+            temperature: 0.7,
+            max_tokens: 450,
+          }),
+        })
+
+        if (grokRes.ok) {
+          const grokData = await grokRes.json()
+          const reply = grokData.choices?.[0]?.message?.content
+          if (reply) {
+            return NextResponse.json({ reply, proposedAction })
+          }
+        }
+      } catch (grokErr) {
+        console.warn("xAI Grok API notice, falling to backup tier:", grokErr)
+      }
+    }
+
+    // 2. Tier 2: Gemini 3.7 Flash & 2.5 Flash via @google/generative-ai (Backup)
+    const geminiKey = process.env.GEMINI_API_KEY
+    if (geminiKey) {
+      const candidateModels = ["gemini-3.7-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+      const genAI = new GoogleGenerativeAI(geminiKey)
+
+      for (const modelName of candidateModels) {
+        try {
+          const model = genAI.getGenerativeModel({
+            model: modelName,
+            systemInstruction: systemPrompt,
+          })
+
+          const chat = model.startChat({
+            history: validChatHistory.slice(0, -1).map((m: any) => ({
+              role: m.role === "assistant" ? "model" : "user",
+              parts: [{ text: m.content }],
+            })),
+          })
+
+          const result = await chat.sendMessage(latestUserMessage)
+          const reply = result.response.text()
+          if (reply) {
+            return NextResponse.json({ reply, proposedAction })
+          }
+        } catch (geminiErr) {
+          console.warn(`Gemini (${modelName}) notice:`, geminiErr)
+          // Try next model in candidateModels list
+        }
       }
     }
 
