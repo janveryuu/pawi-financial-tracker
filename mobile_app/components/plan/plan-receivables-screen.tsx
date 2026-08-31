@@ -1,21 +1,27 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronLeft, Plus, Trash2, CheckCircle2, X } from "lucide-react"
-import { formatMoney, Receivable } from "@/lib/pawi-data"
+import { ChevronLeft, Plus, Trash2, CheckCircle2, X, Wallet as WalletIcon, ArrowDownLeft } from "lucide-react"
+import { formatMoney, Receivable, getWalletBrandLogo } from "@/lib/pawi-data"
 import { useStore } from "@/lib/store"
+import { cn } from "@/lib/utils"
 
 interface PlanReceivablesScreenProps {
   onBack: () => void
 }
 
 export function PlanReceivablesScreen({ onBack }: PlanReceivablesScreenProps) {
-  const { receivables, addReceivable, deleteReceivable, editReceivable } = useStore()
+  const { receivables, addReceivable, deleteReceivable, editReceivable, wallets, addTransaction, defaultCurrency } = useStore()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [borrower, setBorrower] = useState("")
   const [amount, setAmount] = useState("")
   const [dueDate, setDueDate] = useState("")
   const [notes, setNotes] = useState("")
+
+  // Deposit collection modal state
+  const [collectingRec, setCollectingRec] = useState<Receivable | null>(null)
+  const [targetWalletName, setTargetWalletName] = useState(wallets[0]?.name || "GCash")
+  const [isSubmittingCollect, setIsSubmittingCollect] = useState(false)
 
   const totalOwed = receivables
     .filter((r) => r.status === "pending")
@@ -41,11 +47,45 @@ export function PlanReceivablesScreen({ onBack }: PlanReceivablesScreenProps) {
     setIsAddOpen(false)
   }
 
-  const handleMarkReceived = (r: Receivable) => {
-    editReceivable({
-      ...r,
-      status: r.status === "received" ? "pending" : "received",
-    })
+  const handleOpenCollect = (r: Receivable) => {
+    if (r.status === "received") {
+      // Toggle back to pending
+      editReceivable({
+        ...r,
+        status: "pending",
+      })
+    } else {
+      setCollectingRec(r)
+      setTargetWalletName(wallets[0]?.name || "GCash")
+    }
+  }
+
+  const handleConfirmCollect = async (depositToWallet: boolean) => {
+    if (!collectingRec) return
+    setIsSubmittingCollect(true)
+
+    try {
+      if (depositToWallet) {
+        await addTransaction({
+          label: `Collected from ${collectingRec.borrower}`,
+          amount: collectingRec.amount,
+          category: "Income",
+          kind: "income",
+          account: targetWalletName,
+          currency: defaultCurrency || "PHP",
+          dateHeader: "Today",
+        })
+      }
+
+      await editReceivable({
+        ...collectingRec,
+        status: "received",
+      })
+
+      setCollectingRec(null)
+    } finally {
+      setIsSubmittingCollect(false)
+    }
   }
 
   return (
@@ -94,7 +134,7 @@ export function PlanReceivablesScreen({ onBack }: PlanReceivablesScreenProps) {
                     <h3 className="text-sm font-extrabold text-foreground">{r.borrower}</h3>
                     {isReceived && (
                       <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-black text-emerald-600">
-                        Received
+                        Received ✓
                       </span>
                     )}
                   </div>
@@ -120,16 +160,107 @@ export function PlanReceivablesScreen({ onBack }: PlanReceivablesScreenProps) {
 
               <button
                 type="button"
-                onClick={() => handleMarkReceived(r)}
-                className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-secondary/50 py-2 text-xs font-bold text-foreground hover:bg-secondary transition-colors"
+                onClick={() => handleOpenCollect(r)}
+                className={cn(
+                  "flex w-full items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-black transition-all active:scale-[0.98]",
+                  isReceived
+                    ? "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                    : "bg-[#3D784E]/15 text-[#3D784E] hover:bg-[#3D784E]/25"
+                )}
               >
                 <CheckCircle2 className="h-3.5 w-3.5 text-[#3D784E]" />
-                {isReceived ? "Mark as Pending" : "Mark as Paid / Received"}
+                {isReceived ? "Mark as Pending" : "Mark as Received / Collect"}
               </button>
             </div>
           )
         })}
       </div>
+
+      {/* Collect / Deposit Modal */}
+      {collectingRec && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-[2.5rem] border border-border bg-card p-5 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E]">
+                  <ArrowDownLeft className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-foreground">Collect ₱{collectingRec.amount.toLocaleString()}</h3>
+                  <p className="text-[10px] text-muted-foreground font-semibold">From {collectingRec.borrower}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCollectingRec(null)}
+                className="rounded-full p-1 text-muted-foreground hover:bg-secondary"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground mb-4">
+              Where would you like to deposit the collected ₱{collectingRec.amount.toLocaleString()}?
+            </p>
+
+            <div className="space-y-3 mb-5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Deposit Into Wallet
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {wallets.filter((w) => !w.isLiability).map((w) => {
+                  const isSelected = targetWalletName.toLowerCase() === w.name.toLowerCase()
+                  const logo = getWalletBrandLogo(w.name)
+                  return (
+                    <button
+                      key={w.id}
+                      type="button"
+                      onClick={() => setTargetWalletName(w.name)}
+                      className={cn(
+                        "flex items-center gap-2 rounded-2xl border p-2 text-left transition-all",
+                        isSelected
+                          ? "border-[#3D784E] bg-[#3D784E]/10 text-foreground font-extrabold"
+                          : "border-border/70 bg-secondary/30 text-muted-foreground hover:bg-secondary/60"
+                      )}
+                    >
+                      {logo ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={logo} alt={w.name} className="h-5 w-5 rounded-full object-contain" />
+                      ) : (
+                        <WalletIcon className="h-4 w-4" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[11px] font-bold">{w.name}</p>
+                        <p className="text-[9px] text-muted-foreground tabular-nums">
+                          {formatMoney(w.balance, w.currency)}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                disabled={isSubmittingCollect}
+                onClick={() => handleConfirmCollect(true)}
+                className="w-full rounded-2xl bg-[#3D784E] py-3 text-xs font-extrabold text-white hover:bg-[#356B46] shadow-sm shadow-[#3D784E]/30"
+              >
+                {isSubmittingCollect ? "Depositing..." : `Deposit ₱${collectingRec.amount.toLocaleString()} into ${targetWalletName}`}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleConfirmCollect(false)}
+                className="w-full rounded-2xl border border-border bg-secondary py-2.5 text-xs font-bold text-muted-foreground hover:text-foreground"
+              >
+                Mark Received (Without Wallet Deposit)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Receivable Modal */}
       {isAddOpen && (

@@ -3,8 +3,10 @@
 import { useState, useEffect, useMemo } from "react"
 import { Tag, Check, ChevronDown, Sparkles } from "lucide-react"
 import Image from "next/image"
+import { motion, AnimatePresence } from "framer-motion"
 import { useStore } from "@/lib/store"
 import { getWalletBrandLogo, formatMoney } from "@/lib/pawi-data"
+import { IOS_SPRING, IOS_VARIANTS } from "@/lib/motion"
 import { cn } from "@/lib/utils"
 
 interface TransactionEntryModalProps {
@@ -342,25 +344,41 @@ export function TransactionEntryModal({ open, kind, initialAccount, onClose }: T
   const brandLogo = activeWallet ? getWalletBrandLogo(activeWallet.name) : "/cash-logo.png"
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-xs">
-      <div className="relative flex max-h-[92vh] w-full max-w-md flex-col rounded-t-[2.25rem] bg-card text-foreground shadow-2xl animate-in slide-in-from-bottom duration-200 overflow-hidden">
-        {/* Top Header */}
-        <div className="flex items-center justify-between border-b border-border/40 px-5 pt-4 pb-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-xs"
+          onClick={onClose}
+        >
+          <motion.div
+            variants={IOS_VARIANTS.bottomSheet}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="relative flex max-h-[92vh] w-full max-w-md flex-col rounded-t-[2.25rem] bg-card text-foreground shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
           >
-            Cancel
-          </button>
-          <h2 className="text-base font-extrabold tracking-tight text-foreground">
-            {isIncome ? "New Income" : "New Expense"}
-          </h2>
-          <div className="w-12" />
-        </div>
+            {/* Top Header */}
+            <div className="flex items-center justify-between border-b border-border/40 px-5 pt-4 pb-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+              <h2 className="text-base font-extrabold tracking-tight text-foreground">
+                {isIncome ? "New Income" : "New Expense"}
+              </h2>
+              <div className="w-12" />
+            </div>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-5 pt-4 pb-6 space-y-4 scrollbar-hide">
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto px-5 pt-4 pb-6 space-y-4 scrollbar-hide">
           {/* Main Amount Display */}
           <div className="flex flex-col items-center justify-center py-2 text-center">
             {expression && (
@@ -673,7 +691,9 @@ export function TransactionEntryModal({ open, kind, initialAccount, onClose }: T
             </button>
           </div>
         </div>
-      </div>
-    </div>
-  )
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
+)
 }

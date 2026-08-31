@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronLeft, Plus, Trash2, CreditCard, X } from "lucide-react"
+import { ChevronLeft, Plus, Trash2, CreditCard, X, CheckCircle2 } from "lucide-react"
 import { formatMoney, Installment } from "@/lib/pawi-data"
 import { useStore } from "@/lib/store"
 
@@ -10,13 +10,14 @@ interface PlanInstallmentsScreenProps {
 }
 
 export function PlanInstallmentsScreen({ onBack }: PlanInstallmentsScreenProps) {
-  const { installments, addInstallment, deleteInstallment } = useStore()
+  const { installments, addInstallment, deleteInstallment, editInstallment, addTransaction, defaultCurrency } = useStore()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [name, setName] = useState("")
   const [totalAmount, setTotalAmount] = useState("")
   const [monthsTotal, setMonthsTotal] = useState("12")
   const [monthsPaid, setMonthsPaid] = useState("0")
   const [card, setCard] = useState("BDO Mastercard")
+  const [payingId, setPayingId] = useState<string | null>(null)
 
   const totalRemaining = installments.reduce((s, i) => s + i.remaining, 0)
   const totalMonthly = installments.reduce((s, i) => s + i.monthlyAmount, 0)
@@ -46,6 +47,39 @@ export function PlanInstallmentsScreen({ onBack }: PlanInstallmentsScreenProps) 
     setName("")
     setTotalAmount("")
     setIsAddOpen(false)
+  }
+
+  const handlePayMonth = async (inst: Installment) => {
+    if (inst.monthsPaid >= inst.monthsTotal) return
+    setPayingId(inst.id)
+
+    try {
+      // 1. Log transaction
+      await addTransaction({
+        label: `Installment: ${inst.name}`,
+        amount: inst.monthlyAmount,
+        category: "Installments",
+        kind: "expense",
+        account: inst.card || "BDO Mastercard",
+        currency: defaultCurrency || "PHP",
+        dateHeader: "Today",
+      })
+
+      // 2. Increment monthsPaid & recalculate
+      const newMonthsPaid = inst.monthsPaid + 1
+      const newPaid = inst.paid + inst.monthlyAmount
+      const newRemaining = Math.max(0, inst.totalAmount - newPaid)
+
+      await editInstallment({
+        ...inst,
+        monthsPaid: newMonthsPaid,
+        paid: newPaid,
+        remaining: newRemaining,
+        endDate: newMonthsPaid >= inst.monthsTotal ? "Completed 🎉" : `In ${inst.monthsTotal - newMonthsPaid} mos`,
+      })
+    } finally {
+      setPayingId(null)
+    }
   }
 
   return (
@@ -95,6 +129,7 @@ export function PlanInstallmentsScreen({ onBack }: PlanInstallmentsScreenProps) 
       <div className="space-y-3">
         {installments.map((inst) => {
           const pct = inst.monthsTotal > 0 ? Math.round((inst.monthsPaid / inst.monthsTotal) * 100) : 0
+          const isComplete = inst.monthsPaid >= inst.monthsTotal
           return (
             <div
               key={inst.id}
@@ -102,7 +137,14 @@ export function PlanInstallmentsScreen({ onBack }: PlanInstallmentsScreenProps) 
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-extrabold text-foreground">{inst.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-extrabold text-foreground">{inst.name}</h3>
+                    {isComplete && (
+                      <span className="rounded-full bg-[#3D784E]/15 px-2 py-0.5 text-[9px] font-black text-[#3D784E]">
+                        Paid Off 🎉
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[10px] text-muted-foreground font-medium">
                     {inst.card} • {inst.monthsPaid}/{inst.monthsTotal} mos ({inst.endDate})
                   </p>
@@ -134,6 +176,21 @@ export function PlanInstallmentsScreen({ onBack }: PlanInstallmentsScreenProps) 
                   />
                 </div>
               </div>
+
+              {/* Pay Month Action */}
+              {!isComplete && (
+                <button
+                  type="button"
+                  disabled={payingId === inst.id}
+                  onClick={() => handlePayMonth(inst)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-[#3D784E]/10 py-2.5 text-xs font-black text-[#3D784E] hover:bg-[#3D784E]/20 active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  {payingId === inst.id
+                    ? "Logging Payment..."
+                    : `Pay Month ${inst.monthsPaid + 1} (${formatMoney(inst.monthlyAmount)})`}
+                </button>
+              )}
             </div>
           )
         })}

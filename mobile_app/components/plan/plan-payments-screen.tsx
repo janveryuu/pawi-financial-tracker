@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { ChevronLeft, Plus, Trash2, Calendar, Repeat, X, Sparkles } from "lucide-react"
+import { ChevronLeft, Plus, Trash2, Calendar, Repeat, X, Sparkles, CheckCircle2 } from "lucide-react"
 import { formatMoney, PlannedPayment, getBrandLogo } from "@/lib/pawi-data"
 import { useStore } from "@/lib/store"
 
@@ -11,7 +11,7 @@ interface PlanPaymentsScreenProps {
 }
 
 export function PlanPaymentsScreen({ onBack }: PlanPaymentsScreenProps) {
-  const { plannedPayments, addPlannedPayment, deletePlannedPayment, wallets } = useStore()
+  const { plannedPayments, addPlannedPayment, deletePlannedPayment, wallets, addTransaction, defaultCurrency } = useStore()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [label, setLabel] = useState("")
   const [amount, setAmount] = useState("")
@@ -19,6 +19,7 @@ export function PlanPaymentsScreen({ onBack }: PlanPaymentsScreenProps) {
   const [frequency, setFrequency] = useState<"recurring" | "one-time">("recurring")
   const [category, setCategory] = useState("Bills")
   const [account, setAccount] = useState(wallets[0]?.name || "GCash")
+  const [payingBillId, setPayingBillId] = useState<string | null>(null)
 
   const detectedLogo = getBrandLogo(label) || getBrandLogo(category)
 
@@ -44,6 +45,28 @@ export function PlanPaymentsScreen({ onBack }: PlanPaymentsScreenProps) {
     setAmount("")
     setDueDate("")
     setIsAddOpen(false)
+  }
+
+  const handlePayBill = async (p: PlannedPayment) => {
+    setPayingBillId(p.id)
+    try {
+      await addTransaction({
+        label: p.label,
+        amount: p.amount,
+        category: p.category || "Bills",
+        kind: "expense",
+        account: p.account || "GCash",
+        currency: defaultCurrency || "PHP",
+        dateHeader: "Today",
+      })
+
+      // If one-time payment, remove it after paying
+      if (p.frequency === "one-time") {
+        await deletePlannedPayment(p.id)
+      }
+    } finally {
+      setPayingBillId(null)
+    }
   }
 
   return (
@@ -92,43 +115,56 @@ export function PlanPaymentsScreen({ onBack }: PlanPaymentsScreenProps) {
           return (
             <div
               key={p.id}
-              className="flex items-center justify-between rounded-3xl border border-border/70 bg-card p-4 shadow-xs"
+              className="rounded-3xl border border-border/70 bg-card p-4 shadow-xs space-y-2.5"
             >
-              <div className="flex items-center gap-3">
-                {brandLogo ? (
-                  <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-card border border-border/60 p-1.5 shadow-2xs">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={brandLogo}
-                      alt={p.label}
-                      className="h-full w-full object-contain"
-                    />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {brandLogo ? (
+                    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-card border border-border/60 p-1.5 shadow-2xs">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={brandLogo}
+                        alt={p.label}
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary text-base">
+                      {p.icon || "📅"}
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-sm font-extrabold text-foreground">{p.label}</h3>
+                    <p className="text-[10px] text-muted-foreground font-medium">
+                      Due: {p.dueDate} • {p.account} • {p.frequency}
+                    </p>
                   </div>
-                ) : (
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary text-base">
-                    {p.icon || "📅"}
-                  </div>
-                )}
-                <div>
-                  <h3 className="text-sm font-extrabold text-foreground">{p.label}</h3>
-                  <p className="text-[10px] text-muted-foreground font-medium">
-                    Due: {p.dueDate} • {p.account} • {p.frequency}
-                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black text-rose-500 tabular-nums">
+                    -{formatMoney(p.amount)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => deletePlannedPayment(p.id)}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-black text-rose-500 tabular-nums">
-                  -{formatMoney(p.amount)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => deletePlannedPayment(p.id)}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
+              {/* Pay Bill Action Button */}
+              <button
+                type="button"
+                disabled={payingBillId === p.id}
+                onClick={() => handlePayBill(p)}
+                className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-[#3D784E]/10 py-2.5 text-xs font-black text-[#3D784E] hover:bg-[#3D784E]/20 active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {payingBillId === p.id ? "Logging Payment..." : `Pay Bill from ${p.account || "Wallet"}`}
+              </button>
             </div>
           )
         })}

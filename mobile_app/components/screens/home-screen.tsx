@@ -28,11 +28,13 @@ import {
   ShoppingCart,
   Wallet as WalletIcon,
   MoreHorizontal,
+  Trash2,
+  Edit2,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useProfile } from "@/lib/use-profile"
 import { useStore } from "@/lib/store"
-import { formatMoney, getBrandLogo, getTransactionMerchantLogo } from "@/lib/pawi-data"
+import { formatMoney, getBrandLogo, getTransactionMerchantLogo, Transaction } from "@/lib/pawi-data"
 import { cn } from "@/lib/utils"
 import { PaydaySetupModal } from "../payday-setup-modal"
 import {
@@ -89,12 +91,44 @@ export function HomeScreen({
     receivables = [],
     plannedPayments = [],
     wallets = [],
+    deleteTransaction,
+    editTransaction,
   } = useStore()
 
   const [timeFilter, setTimeFilter] = useState<"day" | "week" | "month">("day")
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [showPaydayModal, setShowPaydayModal] = useState(false)
   const [currentDate, setCurrentDate] = useState<Date>(new Date())
+
+  // Transaction action & edit modals
+  const [activeMenuTx, setActiveMenuTx] = useState<Transaction | null>(null)
+  const [deleteConfirmTx, setDeleteConfirmTx] = useState<Transaction | null>(null)
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null)
+  const [editLabel, setEditLabel] = useState("")
+  const [editAmount, setEditAmount] = useState("")
+  const [editNote, setEditNote] = useState("")
+
+  const handleOpenEdit = (tx: Transaction) => {
+    setEditingTx(tx)
+    setEditLabel(tx.label)
+    setEditAmount(tx.amount.toString())
+    setEditNote(tx.note || "")
+    setActiveMenuTx(null)
+  }
+
+  const handleSaveEdit = () => {
+    if (!editingTx || !editLabel) return
+    const amt = parseFloat(editAmount)
+    if (isNaN(amt) || amt <= 0) return
+
+    editTransaction({
+      ...editingTx,
+      label: editLabel,
+      amount: amt,
+      note: editNote,
+    })
+    setEditingTx(null)
+  }
 
   // Live clock refresh every 30s
   useEffect(() => {
@@ -947,7 +981,10 @@ export function HomeScreen({
                       </div>
 
                       {/* Transaction Card */}
-                      <div className="flex-1 rounded-3xl border border-border/80 bg-card p-3.5 shadow-xs hover:bg-secondary/20 transition-colors">
+                      <div
+                        onClick={() => setActiveMenuTx(tx)}
+                        className="flex-1 rounded-3xl border border-border/80 bg-card p-3.5 shadow-xs hover:bg-secondary/20 active:scale-[0.98] transition-all cursor-pointer"
+                      >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2.5 min-w-0">
                             {merchantLogo ? (
@@ -1003,7 +1040,11 @@ export function HomeScreen({
                               </span>
                               <button
                                 type="button"
-                                className="text-muted-foreground/60 hover:text-foreground transition-colors p-0.5"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setActiveMenuTx(tx)
+                                }}
+                                className="text-muted-foreground/60 hover:text-foreground transition-colors p-0.5 active:scale-90"
                                 aria-label="More options"
                               >
                                 <MoreHorizontal className="h-3.5 w-3.5" />
@@ -1023,6 +1064,188 @@ export function HomeScreen({
 
       {/* ─── MODALS ─────────────────────────────────────────────────────────── */}
       <PaydaySetupModal open={showPaydayModal} onClose={() => setShowPaydayModal(false)} />
+
+      {/* Transaction Action Bottom Sheet */}
+      {activeMenuTx && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 backdrop-blur-xs"
+          onClick={() => setActiveMenuTx(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-[2.5rem] border border-border bg-card p-5 shadow-2xl animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-2xl",
+                    activeMenuTx.kind === "income" ? "bg-[#3D784E]/15 text-[#3D784E]" : "bg-rose-500/15 text-rose-500"
+                  )}
+                >
+                  {activeMenuTx.kind === "income" ? (
+                    <ArrowDownLeft className="h-4 w-4" />
+                  ) : (
+                    <ArrowUpRight className="h-4 w-4" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-foreground">{activeMenuTx.label}</h3>
+                  <p className="text-[10px] text-muted-foreground font-semibold">
+                    {activeMenuTx.account} • {formatMoney(activeMenuTx.amount, activeMenuTx.currency)}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveMenuTx(null)}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:bg-accent"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => handleOpenEdit(activeMenuTx)}
+                className="flex w-full items-center gap-3 rounded-2xl border border-border/80 bg-secondary/30 p-3.5 text-xs font-bold text-foreground hover:bg-secondary active:scale-[0.98] transition-all"
+              >
+                <Edit2 className="h-4 w-4 text-[#3D784E]" />
+                <span>Edit Transaction</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteConfirmTx(activeMenuTx)
+                  setActiveMenuTx(null)
+                }}
+                className="flex w-full items-center gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-3.5 text-xs font-bold text-rose-500 hover:bg-rose-500/20 active:scale-[0.98] transition-all"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Delete Transaction</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {editingTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-[2.5rem] border border-border bg-card p-5 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-extrabold text-foreground">Edit Transaction</h3>
+              <button
+                type="button"
+                onClick={() => setEditingTx(null)}
+                className="rounded-full p-1 text-muted-foreground hover:bg-secondary"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Description / Label
+                </label>
+                <input
+                  type="text"
+                  value={editLabel}
+                  onChange={(e) => setEditLabel(e.target.value)}
+                  className="mt-1 flex h-11 w-full rounded-2xl border border-border bg-secondary/40 px-3.5 text-xs font-bold outline-none focus:ring-2 focus:ring-[#3D784E]"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Amount (₱)
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  value={editAmount}
+                  onChange={(e) => setEditAmount(e.target.value)}
+                  className="mt-1 flex h-11 w-full rounded-2xl border border-border bg-secondary/40 px-3.5 text-base font-black outline-none focus:ring-2 focus:ring-[#3D784E]"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Note (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                  placeholder="Add a note..."
+                  className="mt-1 flex h-11 w-full rounded-2xl border border-border bg-secondary/40 px-3.5 text-xs font-bold outline-none focus:ring-2 focus:ring-[#3D784E]"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setEditingTx(null)}
+                className="flex-1 rounded-2xl border border-border bg-secondary py-3 text-xs font-bold text-foreground hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                className="flex-1 rounded-2xl bg-[#3D784E] py-3 text-xs font-extrabold text-white hover:bg-[#356B46] shadow-sm shadow-[#3D784E]/30"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-[2.5rem] border border-border bg-card p-5 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-rose-500 mb-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/10">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-foreground">Delete Transaction</h3>
+                <p className="text-[10px] text-muted-foreground font-semibold">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground mb-4">
+              Are you sure you want to remove <span className="font-bold text-foreground">"{deleteConfirmTx.label}"</span> (
+              {formatMoney(deleteConfirmTx.amount, deleteConfirmTx.currency)}) from your history?
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmTx(null)}
+                className="flex-1 rounded-2xl border border-border bg-secondary py-3 text-xs font-bold text-foreground hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteTransaction(deleteConfirmTx.id)
+                  setDeleteConfirmTx(null)
+                }}
+                className="flex-1 rounded-2xl bg-rose-500 py-3 text-xs font-extrabold text-white hover:bg-rose-600 shadow-sm shadow-rose-500/30"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCommunityModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
