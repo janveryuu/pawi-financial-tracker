@@ -1,20 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo } from "react"
 import {
   ChevronLeft,
-  TrendingUp,
-  Sparkles,
   Target,
-  Wallet,
   ShieldCheck,
   Calendar,
-  DollarSign,
-  ArrowUpRight,
   ArrowDownLeft,
   PieChart,
   Activity,
-  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react"
 import Image from "next/image"
 import { formatMoney } from "@/lib/pawi-data"
@@ -26,43 +21,130 @@ interface PlanOverviewScreenProps {
 }
 
 export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
-  const { wallets, goals, budgets, debts, receivables, plannedPayments } = useStore()
+  const { wallets, goals, budgets, debts, receivables, plannedPayments, transactions } = useStore()
 
-  const [timeRange, setTimeRange] = useState<"month" | "year" | "all">("month")
+  // 1. Assets (All non-liability wallets converted to PHP if USD)
+  const assetWallets = useMemo(() => wallets.filter((w) => !w.isLiability), [wallets])
+  const totalAssets = useMemo(
+    () => assetWallets.reduce((s, w) => s + (w.currency === "USD" ? w.balance * 57 : w.balance), 0),
+    [assetWallets]
+  )
 
-  const totalAssets = wallets
-    .filter((w) => !w.isLiability)
-    .reduce((s, w) => s + (w.currency === "USD" ? w.balance * 57 : w.balance), 0)
+  // 2. Liabilities (Liability wallets like Credit Cards, Loans + Standalone Debts)
+  const liabilityWallets = useMemo(() => wallets.filter((w) => w.isLiability), [wallets])
+  const walletLiabilities = useMemo(
+    () =>
+      liabilityWallets.reduce(
+        (s, w) => s + (w.currency === "USD" ? (w.usedCredit || w.balance) * 57 : (w.usedCredit || w.balance)),
+        0
+      ),
+    [liabilityWallets]
+  )
+  const debtsTotal = useMemo(() => debts.reduce((s, d) => s + d.amount, 0), [debts])
+  const totalLiabilities = walletLiabilities + debtsTotal
 
-  const totalDebts = debts.reduce((s, d) => s + d.amount, 0)
-  const netWorth = totalAssets - totalDebts
-  const totalGoalsSaved = goals.reduce((s, g) => s + g.saved, 0)
-  const totalGoalsTarget = goals.reduce((s, g) => s + g.target, 0)
-  const goalsProgress = totalGoalsTarget > 0 ? Math.round((totalGoalsSaved / totalGoalsTarget) * 100) : 0
+  // 3. True Net Worth & Zone
+  const netWorth = totalAssets - totalLiabilities
+  const isRedZone = netWorth < 0 || (totalAssets <= 0 && totalLiabilities > 0)
 
-  const totalBudgetsLimit = budgets.reduce((s, b) => s + b.limit, 0)
-  const totalBudgetsSpent = budgets.reduce((s, b) => s + b.spent, 0)
-  const budgetUsagePercent = totalBudgetsLimit > 0 ? Math.round((totalBudgetsSpent / totalBudgetsLimit) * 100) : 0
+  // 4. Active Goals
+  const totalGoalsSaved = useMemo(() => goals.reduce((s, g) => s + (g.saved || 0), 0), [goals])
+  const totalGoalsTarget = useMemo(() => goals.reduce((s, g) => s + (g.target || 0), 0), [goals])
+  const goalsProgress =
+    totalGoalsTarget > 0 ? Math.min(100, Math.round((totalGoalsSaved / totalGoalsTarget) * 100)) : 0
 
-  const overBudgetCount = budgets.filter((b) => b.spent > b.limit).length
-  const healthScore = totalDebts > totalAssets
-    ? Math.max(50, 75 - Math.round((totalDebts / (totalAssets || 1)) * 10))
-    : overBudgetCount > 0
-    ? Math.max(60, 95 - overBudgetCount * 10)
-    : 95
+  // 5. Budgets
+  const totalBudgetsLimit = useMemo(() => budgets.reduce((s, b) => s + (b.limit || 0), 0), [budgets])
+  const totalBudgetsSpent = useMemo(() => budgets.reduce((s, b) => s + (b.spent || 0), 0), [budgets])
+  const budgetUsagePercent =
+    totalBudgetsLimit > 0 ? Math.min(100, Math.round((totalBudgetsSpent / totalBudgetsLimit) * 100)) : 0
+  const overBudgetCount = useMemo(() => budgets.filter((b) => b.spent > b.limit).length, [budgets])
+
+  // 6. Receivables & Planned Bills
+  const pendingReceivables = useMemo(() => receivables.filter((r) => r.status === "pending"), [receivables])
+  const totalReceivables = useMemo(
+    () => pendingReceivables.reduce((s, r) => s + r.amount, 0),
+    [pendingReceivables]
+  )
+  const totalPlannedBills = useMemo(() => plannedPayments.reduce((s, p) => s + p.amount, 0), [plannedPayments])
+
+  // 7. 30-Day Expense & Monthly Burn Rate for accurate Runway
+  const recent30DaysSpend = useMemo(() => {
+    const now = new Date()
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    return (transactions || [])
+      .filter((t) => {
+        if (t.kind !== "expense") return false
+        if (!t.date) return false
+        const txDate = new Date(t.date)
+        return !isNaN(txDate.getTime()) && txDate >= thirtyDaysAgo
+      })
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0)
+  }, [transactions])
+
+  const monthlyBurnRate = useMemo(() => {
+    if (totalBudgetsLimit > 0) return Math.max(totalBudgetsLimit, totalBudgetsSpent)
+    if (recent30DaysSpend > 0) return recent30DaysSpend
+    if (totalPlannedBills > 0) return totalPlannedBills
+    return totalBudgetsSpent
+  }, [totalBudgetsLimit, totalBudgetsSpent, recent30DaysSpend, totalPlannedBills])
+
+  const runwayMonths = useMemo(() => {
+    if (totalAssets <= 0) return "0.0"
+    if (monthlyBurnRate <= 0) return "12.0+"
+    const months = totalAssets / monthlyBurnRate
+    if (months > 24) return "24.0+"
+    return months.toFixed(1)
+  }, [totalAssets, monthlyBurnRate])
+
+  // 8. Health Score (0 - 100)
+  const healthScore = useMemo(() => {
+    if (totalAssets === 0 && totalLiabilities === 0) return 70
+
+    // Factor 1: Net Worth & Debt Ratio (Max 50 pts)
+    let debtScore = 50
+    if (totalLiabilities > 0) {
+      const totalPool = totalAssets + totalLiabilities
+      const debtRatio = totalLiabilities / (totalPool || 1)
+      if (debtRatio > 0.8) debtScore = 5
+      else if (debtRatio > 0.5) debtScore = 15
+      else if (debtRatio > 0.3) debtScore = 25
+      else if (debtRatio > 0.1) debtScore = 38
+      else debtScore = 45
+    }
+
+    // Factor 2: Emergency Runway (Max 30 pts)
+    let runwayScore = 10
+    const runwayNum = parseFloat(runwayMonths)
+    if (runwayMonths === "24.0+" || runwayNum >= 6) runwayScore = 30
+    else if (runwayNum >= 3) runwayScore = 24
+    else if (runwayNum >= 1) runwayScore = 16
+    else if (runwayNum > 0) runwayScore = 8
+    else runwayScore = 0
+
+    // Factor 3: Budget Control (Max 20 pts)
+    let budgetScore = 20
+    if (totalBudgetsLimit > 0) {
+      if (overBudgetCount > 0) {
+        budgetScore = Math.max(0, 20 - overBudgetCount * 8)
+      } else if (budgetUsagePercent > 90) {
+        budgetScore = 12
+      } else {
+        budgetScore = 20
+      }
+    }
+
+    return Math.max(10, Math.min(100, Math.round(debtScore + runwayScore + budgetScore)))
+  }, [totalAssets, totalLiabilities, runwayMonths, totalBudgetsLimit, overBudgetCount, budgetUsagePercent])
 
   const healthZone = healthScore >= 80 ? "Green Zone" : healthScore >= 60 ? "Yellow Zone" : "Red Zone"
   const healthBadge = healthScore >= 80 ? "Optimal" : healthScore >= 60 ? "Fair" : "Needs Attention"
-  const totalReceivables = receivables
-    .filter((r) => r.status === "pending")
-    .reduce((s, r) => s + r.amount, 0)
-  const totalPlannedBills = plannedPayments.reduce((s, p) => s + p.amount, 0)
 
-  const runwayMonths = totalBudgetsSpent > 0
-    ? (totalAssets / totalBudgetsSpent).toFixed(1)
-    : totalAssets > 0
-    ? "3.0+"
-    : "0.0"
+  // 9. Asset & Liability Ratio percentages
+  const totalPool = totalAssets + totalLiabilities
+  const assetRatioPercent =
+    totalPool > 0 ? Math.round((totalAssets / totalPool) * 100) : totalAssets > 0 ? 100 : 0
+  const debtRatioPercent = totalPool > 0 ? 100 - assetRatioPercent : 0
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-2 pb-28 min-h-screen bg-background text-foreground">
@@ -83,16 +165,23 @@ export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
       </div>
 
       {/* Hero Mascot Banner: Net Worth Capsule */}
-      <div className="relative rounded-3xl bg-[#3D784E] py-3 px-3.5 text-white shadow-md select-none overflow-visible">
+      <div
+        className={cn(
+          "relative rounded-3xl py-3 px-3.5 text-white shadow-md select-none overflow-visible transition-all duration-300",
+          isRedZone
+            ? "bg-gradient-to-r from-[#991B1B] via-[#B91C1C] to-[#881337] border border-rose-500/30 shadow-rose-950/25"
+            : "bg-[#3D784E] border border-[#4E9362]/30 shadow-[#3D784E]/20"
+        )}
+      >
         <div className="flex items-center gap-3">
           {/* Pop-out Mascot Graphic */}
           <div className="relative -mt-7 -mb-5 -ml-1 h-24 w-24 shrink-0 z-10 pointer-events-none">
             <Image
-              src="/pawi-holding-wallet.png"
-              alt="Pawi"
+              src={isRedZone ? "/pawi-empty-wallet-new.png" : "/pawi-happy-wallet-new.png"}
+              alt="Pawi Mascot"
               fill
               priority
-              className="object-contain drop-shadow-lg scale-125 origin-bottom"
+              className="object-contain drop-shadow-lg scale-125 origin-bottom transition-all duration-300"
             />
           </div>
 
@@ -103,14 +192,26 @@ export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
 
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                  ESTIMATED NET WORTH
+                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  ESTIMATED NET WORTH {isRedZone ? "⚠️" : ""}
                 </span>
-                <p className="mt-0.5 text-2xl font-black tracking-tight text-foreground tabular-nums leading-none">
+                <p
+                  className={cn(
+                    "mt-0.5 text-2xl font-black tracking-tight tabular-nums leading-none",
+                    isRedZone && netWorth < 0 ? "text-[#B91C1C]" : "text-foreground"
+                  )}
+                >
                   {formatMoney(netWorth)}
                 </p>
               </div>
-              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#3D784E]/15 text-[#3D784E]">
+              <div
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-xl",
+                  isRedZone
+                    ? "bg-rose-500/15 text-rose-600"
+                    : "bg-[#3D784E]/15 text-[#3D784E]"
+                )}
+              >
                 <Activity className="h-4 w-4" />
               </div>
             </div>
@@ -122,7 +223,7 @@ export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
               </span>
               <span className="flex items-center gap-1 text-rose-600">
                 <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                Debts: {formatMoney(totalDebts)}
+                Liabilities: {formatMoney(totalLiabilities)}
               </span>
             </div>
           </div>
@@ -130,20 +231,44 @@ export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
       </div>
 
       {/* Pawi Health Score Card */}
-      <div className="flex items-center justify-between rounded-3xl border border-border/80 bg-card p-4 shadow-xs">
+      <div
+        className={cn(
+          "flex items-center justify-between rounded-3xl border bg-card p-4 shadow-xs transition-all",
+          isRedZone ? "border-rose-300/60 dark:border-rose-900/50" : "border-border/80"
+        )}
+      >
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#3D784E]/15 text-[#3D784E]">
-            <ShieldCheck className="h-6 w-6" />
+          <div
+            className={cn(
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
+              isRedZone
+                ? "bg-rose-500/15 text-rose-600"
+                : "bg-[#3D784E]/15 text-[#3D784E]"
+            )}
+          >
+            {isRedZone ? <AlertTriangle className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-black text-foreground">{healthZone} · {healthScore}/100</span>
-              <span className="rounded-full bg-[#3D784E]/20 px-2 py-0.2 text-[9px] font-black text-[#3D784E]">
+              <span className="text-xs font-black text-foreground">
+                {healthZone} · {healthScore}/100
+              </span>
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[9px] font-black",
+                  healthScore >= 80
+                    ? "bg-[#3D784E]/20 text-[#3D784E]"
+                    : healthScore >= 60
+                    ? "bg-amber-500/20 text-amber-600"
+                    : "bg-rose-500/20 text-rose-600"
+                )}
+              >
                 {healthBadge}
               </span>
             </div>
             <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
-              {runwayMonths} months emergency runway & {totalDebts > 0 ? "active liabilities" : "zero liabilities"}
+              {runwayMonths} months emergency runway &{" "}
+              {totalLiabilities > 0 ? `${formatMoney(totalLiabilities)} liabilities` : "zero liabilities"}
             </p>
           </div>
         </div>
@@ -164,7 +289,7 @@ export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
               {formatMoney(totalGoalsSaved)}
             </p>
             <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
-              {goals.length} targets ({goalsProgress}% of goal)
+              {goals.length} target{goals.length !== 1 ? "s" : ""} ({goalsProgress}% of goal)
             </p>
           </div>
           {/* Progress bar */}
@@ -183,7 +308,12 @@ export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
               <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
                 BUDGET USAGE
               </span>
-              <PieChart className="h-3.5 w-3.5 text-amber-500" />
+              <PieChart
+                className={cn(
+                  "h-3.5 w-3.5",
+                  overBudgetCount > 0 || budgetUsagePercent > 90 ? "text-rose-500" : "text-amber-500"
+                )}
+              />
             </div>
             <p className="text-lg font-black text-foreground tabular-nums mt-1">
               {formatMoney(totalBudgetsSpent)}
@@ -197,7 +327,7 @@ export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
             <div
               className={cn(
                 "h-full rounded-full transition-all",
-                budgetUsagePercent > 90 ? "bg-rose-500" : "bg-amber-500"
+                budgetUsagePercent > 90 || overBudgetCount > 0 ? "bg-rose-500" : "bg-amber-500"
               )}
               style={{ width: `${Math.min(100, budgetUsagePercent)}%` }}
             />
@@ -214,10 +344,10 @@ export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
               <ArrowDownLeft className="h-3.5 w-3.5 text-[#3D784E]" />
             </div>
             <p className="text-lg font-black text-[#3D784E] tabular-nums mt-1">
-              {receivables.length > 0 ? formatMoney(totalReceivables) : "₱0.00"}
+              {pendingReceivables.length > 0 ? formatMoney(totalReceivables) : "₱0.00"}
             </p>
             <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
-              {receivables.length} incoming item{receivables.length !== 1 ? "s" : ""} owed to you
+              {pendingReceivables.length} incoming item{pendingReceivables.length !== 1 ? "s" : ""} owed to you
             </p>
           </div>
           <span className="mt-2 text-[9px] font-bold text-[#3D784E] inline-flex items-center gap-0.5">
@@ -251,8 +381,15 @@ export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
       <div className="rounded-3xl border border-border/80 bg-card p-4 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-black text-foreground">Asset & Liability Ratio</span>
-          <span className="text-[10px] font-bold text-muted-foreground">
-            {Math.round((totalAssets / (totalAssets + totalDebts || 1)) * 100)}% Equity
+          <span
+            className={cn(
+              "text-[10px] font-bold",
+              netWorth < 0 ? "text-rose-600 dark:text-rose-400 font-black" : "text-muted-foreground"
+            )}
+          >
+            {netWorth >= 0
+              ? `${assetRatioPercent}% Equity`
+              : `${debtRatioPercent}% Debt Burden (Deficit)`}
           </span>
         </div>
 
@@ -260,13 +397,13 @@ export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
         <div className="flex h-3 w-full overflow-hidden rounded-full bg-secondary gap-0.5">
           <div
             className="h-full bg-[#3D784E] rounded-l-full transition-all"
-            style={{ width: `${Math.round((totalAssets / (totalAssets + totalDebts || 1)) * 100)}%` }}
+            style={{ width: `${assetRatioPercent}%` }}
             title="Assets"
           />
           <div
             className="h-full bg-rose-500 rounded-r-full transition-all"
-            style={{ width: `${Math.round((totalDebts / (totalAssets + totalDebts || 1)) * 100)}%` }}
-            title="Debts"
+            style={{ width: `${debtRatioPercent}%` }}
+            title="Liabilities"
           />
         </div>
 
@@ -282,7 +419,14 @@ export function PlanOverviewScreen({ onBack }: PlanOverviewScreenProps) {
             <div className="h-2.5 w-2.5 rounded-full bg-rose-500" />
             <div>
               <p className="text-[10px] text-muted-foreground font-bold">Total Liabilities</p>
-              <p className="text-xs font-black text-foreground tabular-nums">{formatMoney(totalDebts)}</p>
+              <p
+                className={cn(
+                  "text-xs font-black tabular-nums",
+                  totalLiabilities > 0 ? "text-rose-600" : "text-foreground"
+                )}
+              >
+                {formatMoney(totalLiabilities)}
+              </p>
             </div>
           </div>
         </div>
