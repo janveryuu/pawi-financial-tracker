@@ -239,6 +239,14 @@ export function HomeScreen({
   const currentPawiMessage = pawiDialogueList[dialogueIndex % pawiDialogueList.length] || pawiDialogueList[0]
   const handleNextMessage = () => setDialogueIndex((prev) => (prev + 1) % pawiDialogueList.length)
 
+  const isRedZone = useMemo(() => {
+    const isRedMessage =
+      currentPawiMessage?.toLowerCase().includes("red zone") ||
+      currentPawiMessage?.toLowerCase().includes("mataas ang gastos") ||
+      currentPawiMessage?.toLowerCase().includes("hinay-hinay muna")
+    return isOverspending || isRedMessage
+  }, [isOverspending, currentPawiMessage])
+
   // ── Upcoming: sorted, income vs. expense subgroups ────────────────────────
   const upcomingIncome = useMemo(
     () => plannedPayments.filter((p: any) => p.kind === "income" || p.frequency === "income"),
@@ -262,20 +270,24 @@ export function HomeScreen({
     return Math.ceil((parsed.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24))
   }
 
-  // ── New sections data (derived from engine — pure computations) ───────────
-  const statementCards = useMemo(() => computeStatementDueCards(wallets, currentDate), [wallets, currentDate])
-  const topGoals = useMemo(() => computeTopGoals(goals), [goals])
-  const debtSummary = useMemo(() => computeDebtSummary(debts, currentDate), [debts, currentDate])
-  const receivableSummary = useMemo(() => computeReceivableSummary(receivables, currentDate), [receivables, currentDate])
+  // ── Statement Due cards (filtered, sorted by urgency) ─────────────────────
+  const statementCards = useMemo(() => computeStatementDueCards(wallets), [wallets])
 
-  // ── Date-grouped recent transactions (Today + Yesterday) ─────────────────
+  // ── Top Goals (sorted by percent complete descending) ─────────────────────
+  const topGoals = useMemo(() => computeTopGoals(goals), [goals])
+
+  // ── Debt & Receivables Summaries ──────────────────────────────────────────
+  const debtSummary = useMemo(() => computeDebtSummary(debts), [debts])
+  const receivableSummary = useMemo(() => computeReceivableSummary(receivables), [receivables])
+
+  // ── Transactions grouped: Today, Yesterday, then date ─────────────────────
   const groupedTransactions = useMemo(() => {
+    const groups: Record<string, { header: string; items: typeof transactions }> = {}
     const now = new Date()
     const todayDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })
-    const yestDate = new Date(now.getTime() - 86400000)
-    const yestDateStr = yestDate.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })
-
-    const groups: Record<string, { header: string; items: typeof transactions }> = {}
+    const yest = new Date(now)
+    yest.setDate(now.getDate() - 1)
+    const yestDateStr = yest.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })
 
     transactions.forEach((tx) => {
       const txIso = tx.date ? (tx.date.includes("T") ? tx.date.split("T")[0] : tx.date) : ""
@@ -286,7 +298,6 @@ export function HomeScreen({
       if (isToday) header = "Today"
       else if (isYesterday) header = "Yesterday"
       else {
-        // Format date for older transactions
         const parsed = txIso ? new Date(txIso + "T00:00:00") : null
         header = parsed && !isNaN(parsed.getTime())
           ? parsed.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
@@ -297,7 +308,6 @@ export function HomeScreen({
       groups[header].items.push(tx)
     })
 
-    // Return in order: Today, Yesterday, then rest
     const priority = ["Today", "Yesterday"]
     const sorted = Object.values(groups).sort((a, b) => {
       const ai = priority.indexOf(a.header)
@@ -353,12 +363,23 @@ export function HomeScreen({
       <div
         data-tutorial-id="pawi-mascot-banner"
         onClick={handleNextMessage}
-        className="relative rounded-3xl bg-[#3D784E] py-2 px-3 text-white shadow-md mt-1 cursor-pointer transition-transform active:scale-[0.99] select-none"
+        className={cn(
+          "relative rounded-3xl py-2 px-3 text-white shadow-md mt-1 cursor-pointer transition-all duration-300 active:scale-[0.99] select-none",
+          isRedZone
+            ? "bg-gradient-to-r from-[#991B1B] via-[#B91C1C] to-[#881337] border border-rose-500/30 shadow-rose-950/25"
+            : "bg-[#3D784E] border border-[#4E9362]/30 shadow-[#3D784E]/20"
+        )}
         title="Tap for next tip from Pawi!"
       >
         <div className="flex items-center gap-2.5">
           <div className="relative -mt-6 -mb-4 -ml-1 h-20 w-20 shrink-0 z-10 pointer-events-none">
-            <Image src="/pawi-v2-hi.png" alt="Pawi Mascot" fill priority className="object-contain drop-shadow-lg scale-135 origin-bottom" />
+            <Image
+              src={isRedZone ? "/pawi-new-sad.png" : "/pawi-new-home.png"}
+              alt="Pawi Mascot"
+              fill
+              priority
+              className="object-contain drop-shadow-lg scale-135 origin-bottom transition-all duration-300"
+            />
           </div>
           <div className="relative z-0 flex-1 rounded-2xl bg-white px-3 py-2 text-foreground shadow-xs">
             <div className="absolute -left-1.5 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 bg-white" />
