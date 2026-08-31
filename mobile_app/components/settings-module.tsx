@@ -1,13 +1,13 @@
 import { useState } from "react"
 import {
   AlertTriangle,
-  WifiOff,
   Sun,
   Moon,
   BookOpen,
   Sparkles,
   Activity,
   Printer,
+  ChevronRight,
   CheckCircle2,
   ShieldCheck,
 } from "lucide-react"
@@ -277,21 +277,6 @@ export function SettingsModule({ onStartTutorial, onStartOnboarding }: SettingsM
         </button>
       </div>
 
-      {/* Offline Banner */}
-      <div className="flex items-center gap-3 rounded-3xl border border-border/60 bg-card p-4 shadow-sm">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-          <WifiOff className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-foreground">
-            Offline-First Enabled
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            All changes save locally to IndexedDB immediately and sync automatically.
-          </p>
-        </div>
-      </div>
-
       {/* Theme & Currency Preferences */}
       <div className="rounded-3xl border border-border/60 bg-card p-4 shadow-sm">
         <div className="flex items-center justify-between">
@@ -355,44 +340,23 @@ export function SettingsModule({ onStartTutorial, onStartOnboarding }: SettingsM
         </div>
       </div>
 
-      {/* Useful Financial Tools */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => setShowAuditModal(true)}
-          className="flex items-center gap-2.5 rounded-2xl border border-primary/30 bg-primary/10 p-3.5 text-left transition-colors hover:bg-primary/20"
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary">
-            <Activity className="h-[18px] w-[18px]" />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-sm font-bold text-foreground">
-              Health Checkup
-            </span>
-            <span className="block text-[11px] text-muted-foreground">
-              Audit score & tips
-            </span>
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setShowReportModal(true)}
-          className="flex items-center gap-2.5 rounded-2xl border border-border/70 bg-card p-3.5 text-left transition-colors hover:bg-secondary"
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
-            <Printer className="h-[18px] w-[18px]" />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-sm font-bold text-foreground">
-              Print Report
-            </span>
-            <span className="block text-[11px] text-muted-foreground">
-              Save PDF summary
-            </span>
-          </span>
-        </button>
-      </div>
+      {/* Useful Financial Tools: Print Report */}
+      <button
+        type="button"
+        onClick={() => setShowReportModal(true)}
+        className="flex items-center justify-between rounded-3xl border border-border/60 bg-card p-4 text-left shadow-xs transition-colors hover:bg-secondary"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+            <Printer className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">Print Report</p>
+            <p className="text-[11px] text-muted-foreground">Save PDF financial summary</p>
+          </div>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </button>
 
       {/* Danger Zone */}
       <div className="rounded-3xl border border-destructive/30 bg-destructive/8 p-4 mt-2">
