@@ -166,31 +166,51 @@ export function WalletsScreen({ initialSelectedWalletId, initialFilter }: Wallet
   const total7DaySpend = dailyBalanceData.reduce((sum, d) => sum + d.displayAmount, 0)
   const avgDailySpend = Math.round(total7DaySpend / 7)
 
-  // 2. Dynamic smart insights based on account state & active filter
+  // Red zone detection based on live wallet balances & liabilities
+  const isWalletRedZone = useMemo(() => {
+    if (activeFilter === "liabilities") {
+      return totalLiabilitiesPhp > 0
+    }
+    if (activeFilter === "assets") {
+      return totalAssetsPhp <= 0
+    }
+    // "all" - red zone if net worth is negative or assets <= 0 with liabilities
+    return netWorthPhp < 0 || (totalAssetsPhp <= 0 && totalLiabilitiesPhp > 0)
+  }, [activeFilter, netWorthPhp, totalAssetsPhp, totalLiabilitiesPhp])
+
+  // 2. Dynamic smart insights based on real-time account state & active filter
   const currentInsights = useMemo(() => {
     const insights: string[] = []
 
     if (activeFilter === "liabilities") {
       if (totalLiabilitiesPhp > 0) {
         insights.push(
-          `May ₱${totalLiabilitiesPhp.toLocaleString()} kang kabuuang liabilities. Bayaran bago ang cut-off para iwas interest!`,
+          `May ${formatMoney(totalLiabilitiesPhp)} kang kabuuang liabilities. Bayaran bago ang cut-off date para maiwasan ang interest charges!`,
           "Panatilihing mababa sa 30% ang credit utilization mo para manatiling stellar ang credit rating.",
-          "Mag-set ng auto-debit para sa minimum payment para hindi ma-late sa due date."
+          "Mag-set ng auto-debit para sa minimum payment para hindi ma-late sa due date.",
+          "Tipid tip: Gamitin ang Debt Avalanche method (unahin ang may pinakamataas na interest) para mabilis lumaya sa utang."
         )
       } else {
         insights.push(
-          "Walang active liabilities! Malinis ang record mo at 100% debt-free ka ngayon.",
+          "Walang active liabilities! Malinis ang record mo at 100% debt-free ka ngayon. 🎉",
           "Gamitin ang credit card bilang tool para sa rewards at cashbacks, basta bayaran agad in full.",
           "Laging i-review ang SOA (Statement of Account) para ma-spot agad ang unauthorized charges."
         )
       }
+    } else if (netWorthPhp < 0) {
+      insights.push(
+        `Nasa red zone tayo! Mas mataas ang kabuuang liabilities kaysa assets (${formatMoney(netWorthPhp)}). Unahin ang debt payoff strategy!`,
+        "Medyo mabigat ang utang at credit balance. Iwasan muna ang luho at mag-focus sa pagbawas ng liabilities.",
+        "Emergency mode: Gumawa ng strict daily budget at itigil muna ang paggamit ng credit cards hanggang makabawi.",
+        "Tipid tip: Magtabi ng emergency buffer at bayaran ang high-interest debts bago mag-invest."
+      )
     } else {
       const topWallet = [...assetWallets].sort((a, b) => b.balance - a.balance)[0]
       if (topWallet && topWallet.balance > 0) {
         insights.push(
           `Pinakamalaki ang pondo mo sa ${topWallet.name} (${formatMoney(topWallet.balance)}). Ligtas at lumalago!`,
           netWorthPhp > 50000
-            ? `Nasa ₱${netWorthPhp.toLocaleString()} na ang net worth mo! Napakagandang pundasyon para sa future.`
+            ? `Nasa ${formatMoney(netWorthPhp)} na ang net worth mo! Napakagandang pundasyon para sa future.`
             : "Nasa green zone ka ngayon! Proud ako sa'yo, kontrolado mo ang finances mo.",
           "Ugaliing magtabi agad ng savings pagdating ng sahod bago magsimulang gumastos.",
           "Maliit man ang simula, kapag tuloy-tuloy, malaki ang mararating ng iyong ipon!",
@@ -287,16 +307,23 @@ export function WalletsScreen({ initialSelectedWalletId, initialFilter }: Wallet
       </div>
 
       {/* Hero Mascot Banner: Tight Capsule with Big Pop-Out Mascot */}
-      <div className="relative rounded-[2.25rem] bg-[#3D784E] p-1.5 pl-2 text-white shadow-md select-none mt-2">
+      <div
+        className={cn(
+          "relative rounded-[2.25rem] p-1.5 pl-2 text-white shadow-md select-none mt-2 transition-all duration-300",
+          isWalletRedZone
+            ? "bg-gradient-to-r from-[#991B1B] via-[#B91C1C] to-[#881337] border border-rose-500/30 shadow-rose-950/25"
+            : "bg-[#3D784E] border border-[#4E9362]/30 shadow-[#3D784E]/20"
+        )}
+      >
         <div className="flex items-center gap-2">
-          {/* Pop-out Mascot Graphic: Centered vertically in the green rectangle */}
+          {/* Pop-out Mascot Graphic: Centered vertically in the rectangle */}
           <div className="relative -my-7 -ml-2 h-28 w-28 shrink-0 z-10 pointer-events-none">
             <Image
-              src="/pawi-holding-wallet.png"
-              alt="Pawi"
+              src={isWalletRedZone ? "/pawi-empty-wallet-new.png" : "/pawi-happy-wallet-new.png"}
+              alt="Pawi Mascot"
               fill
               priority
-              className="object-contain drop-shadow-xl scale-150 origin-center"
+              className="object-contain drop-shadow-xl scale-140 origin-center transition-all duration-300"
             />
           </div>
 
@@ -307,10 +334,17 @@ export function WalletsScreen({ initialSelectedWalletId, initialFilter }: Wallet
 
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                  {bannerConfig.title}
+                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  {bannerConfig.title} {isWalletRedZone ? "⚠️" : ""}
                 </span>
-                <p className="text-xl font-black tracking-tight text-foreground tabular-nums leading-tight">
+                <p
+                  className={cn(
+                    "text-xl font-black tracking-tight tabular-nums leading-tight",
+                    isWalletRedZone && bannerConfig.amount < 0
+                      ? "text-[#B91C1C]"
+                      : "text-foreground"
+                  )}
+                >
                   {showBalance ? formatMoney(bannerConfig.amount) : "••••••••"}
                 </p>
                 <p className="text-[9px] text-muted-foreground font-semibold">
@@ -334,7 +368,11 @@ export function WalletsScreen({ initialSelectedWalletId, initialFilter }: Wallet
                 onClick={() => setActiveFilter("all")}
                 className={cn(
                   "flex-1 rounded-full py-0.5 text-[10px] font-black transition-all",
-                  activeFilter === "all" ? "bg-[#3D784E] text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
+                  activeFilter === "all"
+                    ? isWalletRedZone
+                      ? "bg-gradient-to-r from-[#B91C1C] to-[#991B1B] text-white shadow-xs"
+                      : "bg-[#3D784E] text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 All
@@ -344,7 +382,11 @@ export function WalletsScreen({ initialSelectedWalletId, initialFilter }: Wallet
                 onClick={() => setActiveFilter("assets")}
                 className={cn(
                   "flex-1 rounded-full py-0.5 text-[10px] font-black transition-all",
-                  activeFilter === "assets" ? "bg-[#3D784E] text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
+                  activeFilter === "assets"
+                    ? isWalletRedZone
+                      ? "bg-gradient-to-r from-[#B91C1C] to-[#991B1B] text-white shadow-xs"
+                      : "bg-[#3D784E] text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 Assets
@@ -354,7 +396,11 @@ export function WalletsScreen({ initialSelectedWalletId, initialFilter }: Wallet
                 onClick={() => setActiveFilter("liabilities")}
                 className={cn(
                   "flex-1 rounded-full py-0.5 text-[10px] font-black transition-all",
-                  activeFilter === "liabilities" ? "bg-[#3D784E] text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
+                  activeFilter === "liabilities"
+                    ? isWalletRedZone
+                      ? "bg-gradient-to-r from-[#B91C1C] to-[#991B1B] text-white shadow-xs"
+                      : "bg-[#3D784E] text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 Liabilities
@@ -369,15 +415,32 @@ export function WalletsScreen({ initialSelectedWalletId, initialFilter }: Wallet
         {/* Insight Card: Interactive Pawi Wisdom */}
         <div
           onClick={handleNextWalletTip}
-          className="group relative flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-3.5 shadow-xs cursor-pointer hover:border-[#3D784E]/50 active:scale-[0.98] transition-all select-none min-h-[145px]"
+          className={cn(
+            "group relative flex flex-col justify-between rounded-3xl border bg-card p-3.5 shadow-xs cursor-pointer active:scale-[0.98] transition-all select-none min-h-[145px]",
+            isWalletRedZone
+              ? "border-rose-300/60 dark:border-rose-900/50 hover:border-rose-500/60"
+              : "border-border/80 hover:border-[#3D784E]/50"
+          )}
           title="Tap to cycle next tip from Pawi!"
         >
           <div>
             <div className="flex items-center justify-between text-[10px] font-black">
-              <span className="uppercase tracking-wider text-[#3D784E] flex items-center gap-1">
-                <span>💡</span> INSIGHT
+              <span
+                className={cn(
+                  "uppercase tracking-wider flex items-center gap-1",
+                  isWalletRedZone ? "text-rose-600 dark:text-rose-400" : "text-[#3D784E]"
+                )}
+              >
+                <span>{isWalletRedZone ? "⚠️" : "💡"}</span> INSIGHT
               </span>
-              <span className="text-[9px] text-muted-foreground/80 font-bold group-hover:text-[#3D784E] transition-colors flex items-center gap-0.5">
+              <span
+                className={cn(
+                  "text-[9px] font-bold transition-colors flex items-center gap-0.5",
+                  isWalletRedZone
+                    ? "text-rose-500 group-hover:text-rose-600"
+                    : "text-muted-foreground/80 group-hover:text-[#3D784E]"
+                )}
+              >
                 Next →
               </span>
             </div>
@@ -387,8 +450,15 @@ export function WalletsScreen({ initialSelectedWalletId, initialFilter }: Wallet
           </div>
 
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-[9px] font-black text-[#2E683E] dark:text-[#4ADE80]">
-              Pawi Wisdom 🐢
+            <span
+              className={cn(
+                "text-[9px] font-black",
+                isWalletRedZone
+                  ? "text-rose-600 dark:text-rose-400"
+                  : "text-[#2E683E] dark:text-[#4ADE80]"
+              )}
+            >
+              {isWalletRedZone ? "Pawi Warning 🚨" : "Pawi Wisdom 🐢"}
             </span>
             {/* Dots indicator */}
             <div className="flex items-center gap-1">
@@ -397,7 +467,11 @@ export function WalletsScreen({ initialSelectedWalletId, initialFilter }: Wallet
                   key={i}
                   className={cn(
                     "h-1 rounded-full transition-all duration-300",
-                    i === safeTipIndex ? "w-2.5 bg-[#3D784E]" : "w-1 bg-muted-foreground/30"
+                    i === safeTipIndex
+                      ? isWalletRedZone
+                        ? "w-2.5 bg-rose-600"
+                        : "w-2.5 bg-[#3D784E]"
+                      : "w-1 bg-muted-foreground/30"
                   )}
                 />
               ))}
