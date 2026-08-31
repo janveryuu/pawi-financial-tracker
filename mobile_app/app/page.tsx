@@ -18,6 +18,7 @@ import { QuickLogModal } from "@/components/quick-log-modal"
 import { NotificationsPanel } from "@/components/notifications-panel"
 import { PawiSpotlightTour } from "@/components/pawi-spotlight-tour"
 import { PawiOnboardingFlow } from "@/components/pawi-onboarding-flow"
+import { PushPermissionPrompt } from "@/components/push-permission-prompt"
 
 export default function Page() {
   const { user, loading, isGuest } = useAuth()
@@ -244,6 +245,9 @@ export default function Page() {
         onOpenExpenseModal={handleTourOpenExpense}
         onCloseExpenseModal={handleTourCloseExpense}
       />
+
+      {/* Contextual Push Permission Prompt */}
+      <PushPermissionPrompt reason="onboarding_complete" />
     </main>
   )
 }

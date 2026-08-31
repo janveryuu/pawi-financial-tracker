@@ -10,16 +10,18 @@ import {
   ChevronRight,
   CheckCircle2,
   ShieldCheck,
+  Bell,
+  Calendar,
+  User,
+  LogOut,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useStore } from "@/lib/store"
 import { useAuth } from "@/lib/auth-context"
 import { useProfile } from "@/lib/use-profile"
-import { User, LogOut } from "lucide-react"
-
 import { StoryOfPawiModal } from "./story-of-pawi-modal"
 import { PaydaySetupModal } from "./payday-setup-modal"
-import { Calendar } from "lucide-react"
+import { NotificationSettingsModal } from "./notification-settings-modal"
 
 export interface SettingsModuleProps {
   onStartTutorial?: () => void
@@ -39,6 +41,7 @@ export function SettingsModule({ onStartTutorial, onStartOnboarding }: SettingsM
   const [showWipeSuccessModal, setShowWipeSuccessModal] = useState(false)
   const [showPopupWarningModal, setShowPopupWarningModal] = useState(false)
   const [showPaydayModal, setShowPaydayModal] = useState(false)
+  const [showNotificationModal, setShowNotificationModal] = useState(false)
 
   const rawName =
     (profile?.name && profile.name !== "Pawi User" && profile.name.trim()) ||
@@ -336,6 +339,28 @@ export function SettingsModule({ onStartTutorial, onStartOnboarding }: SettingsM
             className="rounded-xl border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-foreground hover:bg-secondary/80"
           >
             {paydayCountdown?.configured ? "Edit" : "Set up"}
+          </button>
+        </div>
+
+        {/* Push Notifications & Reminders Option */}
+        <div className="mt-4 pt-4 border-t border-border/40 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#3D784E]/15 text-[#3D784E]">
+              <Bell className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Notifications & Alerts</p>
+              <p className="text-[11px] text-muted-foreground">
+                Bills, budgets, payday & goals push reminders
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowNotificationModal(true)}
+            className="rounded-xl border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-foreground hover:bg-secondary/80"
+          >
+            Configure
           </button>
         </div>
       </div>
@@ -643,6 +668,7 @@ export function SettingsModule({ onStartTutorial, onStartOnboarding }: SettingsM
 
       <StoryOfPawiModal open={showStoryModal} onClose={() => setShowStoryModal(false)} />
       <PaydaySetupModal open={showPaydayModal} onClose={() => setShowPaydayModal(false)} />
+      <NotificationSettingsModal open={showNotificationModal} onClose={() => setShowNotificationModal(false)} />
     </section>
   )
 }

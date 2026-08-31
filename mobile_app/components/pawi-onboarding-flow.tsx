@@ -50,6 +50,7 @@ import {
 import { useProfile, PrimaryGoal, ProfileType } from "@/lib/use-profile"
 import { useStore } from "@/lib/store"
 import { useAuth } from "@/lib/auth-context"
+import { requestPushPermission } from "@/lib/push-notifications"
 import { cn } from "@/lib/utils"
 
 interface PawiOnboardingFlowProps {
@@ -298,16 +299,14 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
             return
           }
           await saveProfile({ notifications_enabled: notificationsEnabled })
-          if (notificationsEnabled && typeof window !== "undefined" && "Notification" in window) {
-            try {
-              await Notification.requestPermission()
-            } catch {}
-          }
           await goForward()
         } else if (step === 6) {
           // Step 6: Currency confirmation & finish
           await saveProfile({ currency, country: currency === "PHP" ? "PH" : "" })
           await completeOnboarding()
+          if (notificationsEnabled && user?.id) {
+            requestPushPermission(user.id).catch(() => {})
+          }
           onComplete()
         }
       } else {
@@ -390,16 +389,14 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
             return
           }
           await saveProfile({ notifications_enabled: notificationsEnabled })
-          if (notificationsEnabled && typeof window !== "undefined" && "Notification" in window) {
-            try {
-              await Notification.requestPermission()
-            } catch {}
-          }
           await goForward()
         } else if (step === 7) {
           // Step 7: Currency confirmation & finish
           await saveProfile({ currency, country: currency === "PHP" ? "PH" : "" })
           await completeOnboarding()
+          if (notificationsEnabled && user?.id) {
+            requestPushPermission(user.id).catch(() => {})
+          }
           onComplete()
         }
       }
