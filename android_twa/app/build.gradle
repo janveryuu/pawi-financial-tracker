@@ -1,0 +1,65 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.pawi.financialtracker'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.pawi.financialtracker"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+
+        manifestPlaceholders = [
+            hostName: "pawi-finance.vercel.app",
+            defaultUrl: "https://pawi-finance.vercel.app/",
+            launcherName: "Pawi",
+            assetStatements: '[{ "relation": ["delegate_permission/common.handle_all_urls"], "target": { "namespace": "android_app", "package_name": "com.pawi.financialtracker", "sha256_cert_fingerprints": ["6E:4C:0F:AC:9C:BB:93:49:76:A1:63:11:29:9F:01:6D:44:35:D2:E1:31:40:5C:83:1E:92:79:A1:6C:B5:6A:8E"] } }] application/json',
+            enableNotifications: "true",
+            webManifestUrl: "https://pawi-finance.vercel.app/manifest.json",
+            fallbackType: "customtabs",
+            splashScreenFadeOutDuration: "300",
+            themeColor: "#24503C",
+            navigationColor: "#FAFAF7",
+            navigationColorDark: "#121A15",
+            navigationDividerColor: "#E4E4DC",
+            navigationDividerColorDark: "#1E2A22",
+            backgroundColor: "#FAFAF7"
+        ]
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('../../android_keystore/pawi-release-key.jks')
+            storePassword 'PawiFinancial2026!'
+            keyAlias 'pawi_release'
+            keyPassword 'PawiFinancial2026!'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+    implementation 'androidx.core:core:1.12.0'
+}

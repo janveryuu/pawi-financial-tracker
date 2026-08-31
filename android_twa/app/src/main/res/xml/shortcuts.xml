@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="shortcut_new_expense"
+        android:enabled="true"
+        android:icon="@drawable/splash_icon"
+        android:shortcutShortLabel="@string/shortcut_expense_title"
+        android:shortcutLongLabel="@string/shortcut_expense_title">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.pawi.financialtracker"
+            android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:data="https://pawi-finance.vercel.app/?action=new-expense" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="shortcut_scan_receipt"
+        android:enabled="true"
+        android:icon="@drawable/splash_icon"
+        android:shortcutShortLabel="@string/shortcut_scan_title"
+        android:shortcutLongLabel="@string/shortcut_scan_title">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.pawi.financialtracker"
+            android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:data="https://pawi-finance.vercel.app/?action=scan-receipt" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="shortcut_plan_goals"
+        android:enabled="true"
+        android:icon="@drawable/splash_icon"
+        android:shortcutShortLabel="@string/shortcut_plan_title"
+        android:shortcutLongLabel="@string/shortcut_plan_title">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.pawi.financialtracker"
+            android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:data="https://pawi-finance.vercel.app/?tab=plan" />
+    </shortcut>
+</shortcuts>

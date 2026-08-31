@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="pawi_theme">#24503C</color>
+    <color name="pawi_background">#FAFAF7</color>
+    <color name="pawi_accent">#3D784E</color>
+    <color name="pawi_charcoal">#1A1A1A</color>
+</resources>

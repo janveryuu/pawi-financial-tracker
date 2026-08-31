@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Pawi" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/pawi_theme</item>
+        <item name="colorPrimaryDark">@color/pawi_theme</item>
+        <item name="colorAccent">@color/pawi_accent</item>
+        <item name="android:windowBackground">@color/pawi_background</item>
+        <item name="android:statusBarColor">@color/pawi_theme</item>
+        <item name="android:navigationBarColor">@color/pawi_background</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

@@ -1,21 +1,68 @@
 {
-  "name": "Pawi Tracker",
+  "name": "Pawi — Personal Finance Tracker",
   "short_name": "Pawi",
-  "description": "Pawi helps you track every peso. Save smarter, slow and steady.",
+  "description": "Save smarter, slow and steady. Offline-first, AI-assisted personal finance tracker built for GCash, Maya, and Philippine banks.",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#22c55e",
-  "theme_color": "#22c55e",
+  "orientation": "portrait",
+  "background_color": "#FAFAF7",
+  "theme_color": "#24503C",
+  "categories": ["finance", "productivity", "utilities"],
   "icons": [
     {
-      "src": "/apple-icon.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/apple-icon.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Expense",
+      "short_name": "Expense",
+      "description": "Record a new expense transaction",
+      "url": "/?action=new-expense",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Scan Receipt",
+      "short_name": "Scan",
+      "description": "Scan a receipt with AI",
+      "url": "/?action=scan-receipt",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Plan & Goals",
+      "short_name": "Plan",
+      "description": "View bills, budgets, and savings goals",
+      "url": "/?tab=plan",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "play",
+      "id": "com.pawi.financialtracker"
     }
   ]
 }

@@ -20,6 +20,7 @@ import { PawiSpotlightTour } from "@/components/pawi-spotlight-tour"
 import { PawiOnboardingFlow } from "@/components/pawi-onboarding-flow"
 import { PushPermissionPrompt } from "@/components/push-permission-prompt"
 import { LandingCatcherScreen } from "@/components/landing-catcher-screen"
+import { useAndroidBackButton } from "@/lib/use-android-back-button"
 
 export default function Page() {
   const { user, loading, isGuest } = useAuth()
@@ -37,6 +38,47 @@ export default function Page() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [planInitialSubScreen, setPlanInitialSubScreen] = useState<"goals" | "debt" | "receivables" | "budgets" | null>(null)
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null)
+
+  // Handle Android launcher shortcuts & notification deep links
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const params = new URLSearchParams(window.location.search)
+    const action = params.get("action")
+    const targetTab = params.get("tab") as TabId | null
+    const subTab = params.get("subTab") as "goals" | "debt" | "receivables" | "budgets" | null
+
+    if (action === "new-expense" || action === "new-tx") {
+      setTxKind("expense")
+      setTxModalOpen(true)
+    } else if (action === "scan-receipt" || action === "scan") {
+      setScanOpen(true)
+    } else if (action === "transfer") {
+      setTransferOpen(true)
+    }
+
+    if (targetTab && ["home", "wallets", "plan", "history", "chat", "settings"].includes(targetTab)) {
+      setTab(targetTab)
+      if (subTab) {
+        setPlanInitialSubScreen(subTab)
+      }
+    }
+  }, [])
+
+  // Android Hardware Back Button & Gesture Navigation Handler
+  const isAnyModalOpen = txModalOpen || transferOpen || scanOpen || notifOpen
+  const handleCloseTopModal = useCallback(() => {
+    if (txModalOpen) setTxModalOpen(false)
+    else if (transferOpen) setTransferOpen(false)
+    else if (scanOpen) setScanOpen(false)
+    else if (notifOpen) setNotifOpen(false)
+  }, [txModalOpen, transferOpen, scanOpen, notifOpen])
+
+  useAndroidBackButton({
+    isModalOpen: isAnyModalOpen,
+    onCloseModal: handleCloseTopModal,
+    currentTab: tab,
+    onNavigateHome: () => setTab("home"),
+  })
 
   // Onboarding gate
   useEffect(() => {

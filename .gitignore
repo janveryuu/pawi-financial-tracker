@@ -8,4 +8,10 @@ temp-login-interface/
 server/node_modules/
 server/.env
 scratch/
+*.jks
+*.keystore
+android_keystore/
+.gradle/
+build/
+
 

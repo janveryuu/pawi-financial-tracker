@@ -1,0 +1,60 @@
+{
+  "packageId": "com.pawi.financialtracker",
+  "host": "pawi-finance.vercel.app",
+  "name": "Pawi — Personal Finance Tracker",
+  "launcherName": "Pawi",
+  "themeColor": "#24503C",
+  "navigationColor": "#FAFAF7",
+  "navigationColorDark": "#121A15",
+  "navigationDividerColor": "#E4E4DC",
+  "navigationDividerColorDark": "#1E2A22",
+  "backgroundColor": "#FAFAF7",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://pawi-finance.vercel.app/icon-512.png",
+  "maskableIconUrl": "https://pawi-finance.vercel.app/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "../../android_keystore/pawi-release-key.jks",
+    "alias": "pawi_release"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Add Expense",
+      "short_name": "Expense",
+      "url": "https://pawi-finance.vercel.app/?action=new-expense",
+      "icon": "shortcut_expense"
+    },
+    {
+      "name": "Scan Receipt",
+      "short_name": "Scan",
+      "url": "https://pawi-finance.vercel.app/?action=scan-receipt",
+      "icon": "shortcut_scan"
+    },
+    {
+      "name": "Plan & Goals",
+      "short_name": "Plan",
+      "url": "https://pawi-finance.vercel.app/?tab=plan",
+      "icon": "shortcut_plan"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://pawi-finance.vercel.app/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": false
+    },
+    "playBilling": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false
+}

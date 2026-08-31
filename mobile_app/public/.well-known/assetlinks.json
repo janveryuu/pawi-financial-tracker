@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.pawi.financialtracker",
+      "sha256_cert_fingerprints": [
+        "6E:4C:0F:AC:9C:BB:93:49:76:A1:63:11:29:9F:01:6D:44:35:D2:E1:31:40:5C:83:1E:92:79:A1:6C:B5:6A:8E"
+      ]
+    }
+  }
+]
