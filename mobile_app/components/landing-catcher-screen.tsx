@@ -151,12 +151,12 @@ export function LandingCatcherScreen() {
           <span style={{ color: "#24503C" }}>Slow and steady.</span>
         </h1>
 
-        {/* Subheadline — warm gray, max 12 words */}
+        {/* Subheadline — warm gray */}
         <p
           className="mt-3 text-[13px] sm:text-sm font-medium leading-relaxed max-w-[320px]"
           style={{ color: "#6B7B72" }}
         >
-          Offline-first, AI-assisted finance tracking built for GCash, Maya, and Philippine banks.
+          Offline-first, AI-assisted finance tracking designed for effortless daily budgeting.
         </p>
 
         {/* ── Proof Card ────────────────────────────────────── */}
