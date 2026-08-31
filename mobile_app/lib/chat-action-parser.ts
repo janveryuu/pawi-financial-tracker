@@ -12,6 +12,7 @@ export type ChatIntentType =
   | "log_expense"
   | "log_income"
   | "pay_bill"
+  | "pay_installment"
   | "deposit_goal"
   | "log_debt"
   | "settle_debt"
@@ -38,6 +39,11 @@ export interface ProposedActionParams {
   billName?: string
   billDueDate?: string
   billFrequency?: "recurring" | "one-time"
+  installmentId?: string
+  installmentName?: string
+  debtId?: string
+  debtName?: string
+  receivableId?: string
   counterparty?: string
   debtDirection?: "i_owe" | "they_owe"
   note?: string
@@ -72,6 +78,7 @@ export interface ChatAppContext {
   plannedPayments?: Array<{ id?: string; label: string; amount: number; dueDate?: string; frequency?: string }>
   debts?: Array<{ id?: string; name: string; amount: number; person?: string }>
   receivables?: Array<{ id?: string; name: string; amount: number; person?: string }>
+  installments?: Array<{ id?: string; name: string; totalAmount: number; paid: number; remaining: number; monthlyAmount: number; card?: string; monthsTotal: number; monthsPaid: number }>
 }
 
 /**
@@ -82,21 +89,57 @@ export function fuzzyMatchCandidate(query: string, candidates: string[]): string
   if (!query || candidates.length === 0) return undefined
   const q = query.toLowerCase().trim()
 
-  // Exact match
+  // 1. Exact match
   const exact = candidates.find((c) => c.toLowerCase().trim() === q)
   if (exact) return exact
 
-  // Contains match
-  const contains = candidates.find((c) => c.toLowerCase().includes(q) || q.includes(c.toLowerCase()))
-  if (contains) return contains
+  // 2. Candidate is contained completely in query (pick longest matching candidate)
+  const fullContains = candidates
+    .filter((c) => q.includes(c.toLowerCase().trim()))
+    .sort((a, b) => b.length - a.length)[0]
+  if (fullContains) return fullContains
 
-  // Word overlap
-  const qWords = q.split(/\s+/).filter((w) => w.length > 2)
+  // 3. Query is contained in candidate (pick shortest candidate)
+  const queryInCandidate = candidates
+    .filter((c) => c.toLowerCase().includes(q))
+    .sort((a, b) => a.length - b.length)[0]
+  if (queryInCandidate) return queryInCandidate
+
+  // 4. Token scoring with significant words
+  const stopWords = new Set(["the", "and", "for", "with", "from", "loan", "bill", "fund", "goal", "payment", "card", "account", "fees", "savings"])
+  const qWords = q
+    .replace(/[^\w\s-]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && !stopWords.has(w))
+
+  let bestCandidate: string | undefined
+  let highestScore = 0
+
   for (const c of candidates) {
-    const cLower = c.toLowerCase()
-    if (qWords.some((w) => cLower.includes(w))) {
-      return c
+    const cClean = c.toLowerCase().replace(/[^\w\s-]/g, " ")
+    const cWords = cClean.split(/\s+/).filter((w) => w.length >= 3)
+    let score = 0
+
+    for (const qWord of qWords) {
+      if (cClean.includes(qWord)) {
+        score += qWord.length >= 5 ? 3 : 2
+      }
     }
+
+    for (const cWord of cWords) {
+      if (!stopWords.has(cWord) && q.includes(cWord)) {
+        score += cWord.length >= 5 ? 3 : 2
+      }
+    }
+
+    if (score > highestScore) {
+      highestScore = score
+      bestCandidate = c
+    }
+  }
+
+  if (highestScore > 0 && bestCandidate) {
+    return bestCandidate
   }
 
   return undefined
@@ -255,7 +298,59 @@ export function parseChatAction(
     return action
   }
 
-  // 4. Pay a Recurring Bill: e.g. "I paid the Netflix for 500 pesos"
+  // 4. Pay an Installment: e.g. "Paid installment on laptop 1500" or "Paid 1500 for laptop installment"
+  if (
+    (/\b(installment|hulugan|hulog)\b/i.test(lower) && /\b(paid|pay|settle|settled|log|logged)\b/i.test(lower)) ||
+    ((context.installments || []).some((inst) => lower.includes(inst.name.toLowerCase()) && /\b(paid|pay|installment|hulog)\b/i.test(lower)))
+  ) {
+    const amt = extractAmount(lower)
+    const instNames = (context.installments || []).map((i) => i.name)
+    const matchedInstName = fuzzyMatchCandidate(lower, instNames)
+    const matchedInst = context.installments?.find((i) => i.name === matchedInstName)
+
+    let fallbackInstName = "Installment"
+    const onMatch = text.match(/installment\s+(?:on|for)\s+([a-zA-Z0-9\s]+?)(?:\s+\d|\s+using|\s+via|\s+from|\s+in|\s*$)/i)
+    const forMatch = text.match(/(?:for|on)\s+([a-zA-Z0-9\s]+?)\s+installment/i)
+    const beforeMatch = text.match(/([a-zA-Z0-9]+)\s+installment/i)
+
+    if (onMatch) fallbackInstName = onMatch[1].trim()
+    else if (forMatch) fallbackInstName = forMatch[1].trim()
+    else if (beforeMatch) fallbackInstName = beforeMatch[1].trim()
+
+    const finalInstName = matchedInstName || fallbackInstName
+    const finalAmount = amt || matchedInst?.monthlyAmount || 0
+
+    const walletNames = (context.wallets || []).map((w) => w.name)
+    const matchedWallet = walletNames.find((w) => lower.includes(w.toLowerCase()))
+
+    const action: ProposedAction = {
+      id: "action-" + Date.now(),
+      type: "pay_installment",
+      status: "ready_for_confirmation",
+      title: "Pay Installment",
+      summary: `Pay ₱${finalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} for ${finalInstName} installment from ${matchedWallet || "Wallet"}`,
+      params: {
+        amount: finalAmount,
+        installmentId: matchedInst?.id,
+        installmentName: finalInstName.charAt(0).toUpperCase() + finalInstName.slice(1),
+        account: matchedWallet,
+        category: "Installments",
+        label: `Installment ${finalInstName}`,
+      },
+      requiresConfirmation: true,
+    }
+
+    if (!matchedWallet) {
+      action.status = "pending_clarification"
+      action.missingField = "account"
+      action.clarificationPrompt = `Awesome! Logging ₱${finalAmount.toLocaleString()} for your ${finalInstName} installment – great job staying on top of those payments! 🐢✨\n\nWhich account did you use for this payment?`
+      action.clarificationOptions = buildWalletOptions(context.wallets)
+    }
+
+    return action
+  }
+
+  // 5. Pay a Recurring Bill: e.g. "I paid the Netflix for 500 pesos"
   if (
     (/\b(paid|pay|settled)\b/i.test(lower) && /\b(bill|netflix|spotify|meralco|maynilad|converge|globe|pldt|rent|wifi|internet|insurance)\b/i.test(lower)) ||
     ((context.plannedPayments || []).some((p) => lower.includes(p.label.toLowerCase()) && /\b(paid|pay)\b/i.test(lower)))
@@ -298,9 +393,9 @@ export function parseChatAction(
     return action
   }
 
-  // 5. Deposit to a Goal: e.g. "I deposited 500 pesos to my emergency fund" or "add 500 to my emergency fund"
+  // 6. Deposit to a Goal: e.g. "I deposited 500 pesos to my emergency fund" or "add 500 to my emergency fund"
   if (
-    (/\b(deposit|deposited|add|saved|put)\b/i.test(lower) && /\b(goal|emergency fund|savings|vacation|laptop|house|car|tuition)\b/i.test(lower)) ||
+    (/\b(deposit|deposited|add|saved|put)\b/i.test(lower) && /\b(goal|emergency fund|savings|vacation|house|car|tuition)\b/i.test(lower)) ||
     ((context.goals || []).some((g) => lower.includes(g.name.toLowerCase()) && /\b(deposit|add|saved|put)\b/i.test(lower)))
   ) {
     const amt = extractAmount(lower)
@@ -341,7 +436,55 @@ export function parseChatAction(
     return action
   }
 
-  // 6. Log/Update Debt & Receivable: e.g. "I borrowed 500 from John", "Mike paid me back 300"
+  // 7. Pay/Settle Debt: e.g. "Paid 5000 to Pag-IBIG loan" or "Paid motorcycle loan 3000"
+  if (
+    (/\b(paid|pay|settled)\b/i.test(lower) && /\b(debt|loan|pag-ibig|motorcycle|car loan|housing loan|utang)\b/i.test(lower) && !/\b(paid me back|owes me)\b/i.test(lower)) ||
+    ((context.debts || []).some((d) => lower.includes(d.name.toLowerCase()) && /\b(paid|pay)\b/i.test(lower)))
+  ) {
+    const amt = extractAmount(lower)
+    const debtNames = (context.debts || []).map((d) => d.name)
+    const matchedDebtName = fuzzyMatchCandidate(lower, debtNames)
+    const matchedDebt = context.debts?.find((d) => d.name === matchedDebtName)
+
+    let fallbackDebtName = "Loan"
+    const toMatch = text.match(/(?:to|for)\s+([a-zA-Z0-9\s\-]+?)(?:\s+loan|\s+\d|\s+using|\s+via|\s+from|\s+in|\s*$)/i)
+    if (toMatch) fallbackDebtName = toMatch[1].trim()
+
+    const finalDebtName = matchedDebtName || (fallbackDebtName.toLowerCase().includes("loan") ? fallbackDebtName : `${fallbackDebtName} Loan`)
+    const finalAmount = amt || matchedDebt?.amount || 0
+
+    const walletNames = (context.wallets || []).map((w) => w.name)
+    const matchedWallet = walletNames.find((w) => lower.includes(w.toLowerCase()))
+
+    const action: ProposedAction = {
+      id: "action-" + Date.now(),
+      type: "settle_debt",
+      status: "ready_for_confirmation",
+      title: "Pay Debt",
+      summary: `Pay ₱${finalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} towards ${finalDebtName} from ${matchedWallet || "Wallet"}`,
+      params: {
+        amount: finalAmount,
+        debtId: matchedDebt?.id,
+        debtName: finalDebtName,
+        counterparty: matchedDebt?.person || finalDebtName,
+        account: matchedWallet,
+        category: "Debt Payment",
+        label: `Paid ${finalDebtName}`,
+      },
+      requiresConfirmation: true,
+    }
+
+    if (!matchedWallet) {
+      action.status = "pending_clarification"
+      action.missingField = "account"
+      action.clarificationPrompt = `Great step towards debt freedom! 🐢🛡️ Logging ₱${finalAmount.toLocaleString()} towards ${finalDebtName}. Which account did you pay from?`
+      action.clarificationOptions = buildWalletOptions(context.wallets)
+    }
+
+    return action
+  }
+
+  // 8. Log/Update Debt & Receivable: e.g. "I borrowed 500 from John", "Mike paid me back 300"
   if (/\b(borrowed|lent|debt|loan|paid me back|owes me|owe|owed)\b/i.test(lower)) {
     const amt = extractAmount(lower) || 0
     const isTheyOweMe = /\b(lent|paid me back|owes me)\b/i.test(lower)
@@ -354,6 +497,12 @@ export function parseChatAction(
     else if (fromMatch) person = fromMatch[1]
 
     if (lower.includes("paid me back") || lower.includes("settled")) {
+      const recNames = (context.receivables || []).map((r) => r.name)
+      const matchedRec = context.receivables?.find((r) => r.person?.toLowerCase() === person.toLowerCase() || r.name.toLowerCase().includes(person.toLowerCase()))
+
+      const walletNames = (context.wallets || []).map((w) => w.name)
+      const matchedWallet = walletNames.find((w) => lower.includes(w.toLowerCase()))
+
       return {
         id: "action-" + Date.now(),
         type: "settle_receivable",
@@ -362,7 +511,9 @@ export function parseChatAction(
         summary: `Mark ₱${amt.toLocaleString()} received from ${person}`,
         params: {
           amount: amt,
+          receivableId: matchedRec?.id,
           counterparty: person,
+          account: matchedWallet,
           category: "Debt Settlement",
         },
         requiresConfirmation: true,
@@ -484,8 +635,14 @@ function resolvePendingClarification(
       updatedSummary = `Log Expense of ₱${amt.toLocaleString(undefined, { minimumFractionDigits: 2 })} from ${selected} (${updatedParams.label || updatedParams.category})`
     } else if (pending.type === "log_income") {
       updatedSummary = `Log Income of ₱${amt.toLocaleString(undefined, { minimumFractionDigits: 2 })} into ${selected} (${updatedParams.label || "Income"})`
+    } else if (pending.type === "pay_installment") {
+      updatedSummary = `Pay ₱${amt.toLocaleString(undefined, { minimumFractionDigits: 2 })} for ${updatedParams.installmentName || "Installment"} from ${selected}`
     } else if (pending.type === "pay_bill") {
       updatedSummary = `Pay ${updatedParams.billName} ₱${amt.toLocaleString(undefined, { minimumFractionDigits: 2 })} from ${selected}`
+    } else if (pending.type === "settle_debt") {
+      updatedSummary = `Pay ₱${amt.toLocaleString(undefined, { minimumFractionDigits: 2 })} towards ${updatedParams.debtName || "Debt"} from ${selected}`
+    } else if (pending.type === "settle_receivable") {
+      updatedSummary = `Receive ₱${amt.toLocaleString(undefined, { minimumFractionDigits: 2 })} from ${updatedParams.counterparty || "Person"} into ${selected}`
     } else if (pending.type === "deposit_goal") {
       updatedSummary = `Deposit ₱${amt.toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${updatedParams.goalName} from ${selected}`
     } else if (pending.type === "transfer_funds") {

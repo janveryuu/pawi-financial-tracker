@@ -18,9 +18,13 @@ describe("Pawi Conversational Action Parser", () => {
     ],
     debts: [
       { id: "d1", name: "Sarah Loan", amount: 1000, person: "Sarah" },
+      { id: "d2", name: "Pag-IBIG Housing Loan", amount: 50000, person: "Pag-IBIG" },
     ],
     receivables: [
       { id: "r1", name: "Mike Borrowed", amount: 300, person: "Mike" },
+    ],
+    installments: [
+      { id: "inst_1", name: "Laptop", totalAmount: 50000, paid: 4167, remaining: 45833, monthlyAmount: 4167, monthsTotal: 12, monthsPaid: 1 },
     ],
   }
 
@@ -152,7 +156,35 @@ describe("Pawi Conversational Action Parser", () => {
     expect(cancelled).toBeNull()
   })
 
-  // 12. Fuzzy matching utilities
+  // 12. Pay Installment
+  it("parses 'Paid installment on laptop 1500' into pay_installment and prompts for account", () => {
+    const action = parseChatAction("Paid installment on laptop 1500", mockContext)
+    expect(action).not.toBeNull()
+    expect(action?.type).toBe("pay_installment")
+    expect(action?.params.amount).toBe(1500)
+    expect(action?.params.installmentName).toBe("Laptop")
+    expect(action?.params.installmentId).toBe("inst_1")
+    expect(action?.status).toBe("pending_clarification")
+    expect(action?.missingField).toBe("account")
+
+    // Resolving with BPI Savings
+    const resolved = parseChatAction("BPI Savings", mockContext, action)
+    expect(resolved?.status).toBe("ready_for_confirmation")
+    expect(resolved?.params.account).toBe("BPI Savings")
+    expect(resolved?.params.amount).toBe(1500)
+  })
+
+  // 13. Pay Debt
+  it("parses 'Paid 5000 to Pag-IBIG loan' into settle_debt", () => {
+    const action = parseChatAction("Paid 5000 to Pag-IBIG loan", mockContext)
+    expect(action).not.toBeNull()
+    expect(action?.type).toBe("settle_debt")
+    expect(action?.params.amount).toBe(5000)
+    expect(action?.params.debtName).toBe("Pag-IBIG Housing Loan")
+    expect(action?.status).toBe("pending_clarification")
+  })
+
+  // 14. Fuzzy matching utilities
   it("accurately fuzzy matches names with case tolerance", () => {
     expect(fuzzyMatchCandidate("netflix", ["Netflix Premium", "Spotify"])).toBe("Netflix Premium")
     expect(fuzzyMatchCandidate("emergency", ["Emergency Fund", "Vacation"])).toBe("Emergency Fund")

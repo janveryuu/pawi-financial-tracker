@@ -49,6 +49,18 @@ function getSmartLocalReply(
           action.params.amount || 0
         )} from **${action.params.account}**). Confirm below!`
       }
+      if (action.type === "pay_installment") {
+        return `Shell yeah! Logging **${fmt(action.params.amount || 0)}** for your **${
+          action.params.installmentName || "installment"
+        }** from **${action.params.account}**. Please confirm below! 🐢✨`
+      }
+      if (action.type === "settle_debt") {
+        return `Great step towards debt freedom! Ready to log **${fmt(
+          action.params.amount || 0
+        )}** payment towards **${action.params.debtName || action.params.counterparty || "debt"}** from **${
+          action.params.account
+        }**. Confirm below! 🐢🛡️`
+      }
       if (action.type === "deposit_goal") {
         return `Awesome progress! Ready to deposit **${fmt(action.params.amount || 0)}** into **${
           action.params.goalName

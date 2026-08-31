@@ -46,6 +46,7 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
     plannedPayments,
     debts,
     receivables,
+    installments = [],
     chatMessages,
     setChatMessages,
     defaultCurrency,
@@ -55,7 +56,10 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
     addPlannedPayment,
     addGoal,
     addDebt,
+    editDebt,
     addReceivable,
+    editReceivable,
+    editInstallment,
   } = useStore()
 
   const [input, setInput] = useState("")
@@ -129,6 +133,17 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
       plannedPayments: plannedPayments.map((p) => ({ id: p.id, label: p.label, amount: p.amount, dueDate: p.dueDate, frequency: p.frequency })),
       debts: debts.map((d) => ({ id: d.id, name: (d as any).name || d.lender, amount: d.amount, person: (d as any).person || d.lender })),
       receivables: receivables.map((r) => ({ id: r.id, name: (r as any).name || r.borrower, amount: r.amount, person: (r as any).person || r.borrower })),
+      installments: installments.map((i) => ({
+        id: i.id,
+        name: i.name,
+        totalAmount: i.totalAmount,
+        paid: i.paid,
+        remaining: i.remaining,
+        monthlyAmount: i.monthlyAmount,
+        card: i.card,
+        monthsTotal: i.monthsTotal,
+        monthsPaid: i.monthsPaid,
+      })),
       recentTransactions: transactions.slice(0, 8).map((t) => ({
         label: t.label,
         amount: t.amount,
@@ -187,7 +202,7 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
     const sourceWallet = wallets.find((w) => w.name.toLowerCase() === sourceAccName.toLowerCase())
 
     // 1. Balance Sufficiency Validation
-    const moneyOutActions = ["log_expense", "pay_bill", "deposit_goal", "transfer_funds"]
+    const moneyOutActions = ["log_expense", "pay_bill", "pay_installment", "settle_debt", "deposit_goal", "transfer_funds"]
     if (moneyOutActions.includes(action.type)) {
       if (sourceWallet && sourceWallet.balance < amt) {
         setExecutionError(
@@ -201,9 +216,109 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
     }
 
     try {
+      let successDetail = ""
+
       // 2. Execute corresponding shared atomic store function
       switch (action.type) {
-        case "log_expense":
+        case "pay_installment": {
+          await addTransaction({
+            label: action.params.label || `Installment ${action.params.installmentName || "Payment"}`,
+            category: "Installments",
+            account: sourceAccName,
+            amount: amt,
+            currency: defaultCurrency || "PHP",
+            kind: "expense",
+            dateHeader: "Today",
+          })
+
+          const targetInst =
+            installments.find(
+              (i) =>
+                i.id === action.params.installmentId ||
+                i.name.toLowerCase() === action.params.installmentName?.toLowerCase() ||
+                (action.params.label && i.name.toLowerCase().includes(action.params.label.toLowerCase())) ||
+                (action.params.installmentName && i.name.toLowerCase().includes(action.params.installmentName.toLowerCase()))
+            ) || (installments.length > 0 ? installments[0] : null)
+
+          if (targetInst) {
+            const newPaid = (targetInst.paid || 0) + amt
+            const newRemaining = Math.max(0, targetInst.totalAmount - newPaid)
+            const newMonthsPaid = Math.min(targetInst.monthsTotal, (targetInst.monthsPaid || 0) + 1)
+            await editInstallment({
+              ...targetInst,
+              paid: newPaid,
+              remaining: newRemaining,
+              monthsPaid: newMonthsPaid,
+            })
+            successDetail = ` Paid ${formatMoney(amt, defaultCurrency)} for your **${targetInst.name}** installment. Remaining: ${formatMoney(newRemaining, defaultCurrency)} (${newMonthsPaid}/${targetInst.monthsTotal} mos).`
+          }
+          break
+        }
+
+        case "settle_debt": {
+          await addTransaction({
+            label: action.params.label || `Debt Payment: ${action.params.debtName || action.params.counterparty || "Debt"}`,
+            category: "Debt Payment",
+            account: sourceAccName,
+            amount: amt,
+            currency: defaultCurrency || "PHP",
+            kind: "expense",
+            dateHeader: "Today",
+          })
+
+          const targetDebt =
+            debts.find(
+              (d) =>
+                d.id === action.params.debtId ||
+                d.lender.toLowerCase() === action.params.debtName?.toLowerCase() ||
+                d.lender.toLowerCase() === action.params.counterparty?.toLowerCase() ||
+                (action.params.debtName && d.lender.toLowerCase().includes(action.params.debtName.toLowerCase()))
+            ) || (debts.length > 0 ? debts[0] : null)
+
+          if (targetDebt) {
+            const newAmount = Math.max(0, targetDebt.amount - amt)
+            await editDebt({
+              ...targetDebt,
+              amount: newAmount,
+            })
+            successDetail = ` Recorded ${formatMoney(amt, defaultCurrency)} payment towards **${targetDebt.lender}**. Remaining: ${formatMoney(newAmount, defaultCurrency)}.`
+          }
+          break
+        }
+
+        case "settle_receivable": {
+          await addTransaction({
+            label: action.params.label || `Settled by ${action.params.counterparty || "Friend"}`,
+            category: "Income",
+            account: sourceAccName,
+            amount: amt,
+            currency: defaultCurrency || "PHP",
+            kind: "income",
+            dateHeader: "Today",
+          })
+
+          const targetRec =
+            receivables.find(
+              (r) =>
+                r.id === action.params.receivableId ||
+                r.borrower.toLowerCase() === action.params.counterparty?.toLowerCase() ||
+                (action.params.counterparty && r.borrower.toLowerCase().includes(action.params.counterparty.toLowerCase()))
+            ) || (receivables.length > 0 ? receivables[0] : null)
+
+          if (targetRec) {
+            const newAmount = Math.max(0, targetRec.amount - amt)
+            const status = newAmount <= 0 ? "received" : "pending"
+            await editReceivable({
+              ...targetRec,
+              amount: newAmount,
+              status,
+            })
+            successDetail = ` Marked ${formatMoney(amt, defaultCurrency)} received from **${targetRec.borrower}**!`
+          }
+          break
+        }
+
+        case "log_expense": {
           await addTransaction({
             label: action.params.label || action.params.category || "Expense",
             category: action.params.category || "General",
@@ -213,7 +328,36 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
             kind: "expense",
             dateHeader: "Today",
           })
+
+          const lowerLabel = (action.params.label || "").toLowerCase()
+          if (lowerLabel.includes("installment") || lowerLabel.includes("hulog")) {
+            const matchingInst = installments.find(
+              (i) => lowerLabel.includes(i.name.toLowerCase()) || i.name.toLowerCase().includes(lowerLabel)
+            )
+            if (matchingInst) {
+              const newPaid = (matchingInst.paid || 0) + amt
+              const newRemaining = Math.max(0, matchingInst.totalAmount - newPaid)
+              const newMonthsPaid = Math.min(matchingInst.monthsTotal, (matchingInst.monthsPaid || 0) + 1)
+              await editInstallment({
+                ...matchingInst,
+                paid: newPaid,
+                remaining: newRemaining,
+                monthsPaid: newMonthsPaid,
+              })
+              successDetail = ` Also updated your **${matchingInst.name}** installment: remaining is now ${formatMoney(newRemaining, defaultCurrency)}.`
+            }
+          } else if (lowerLabel.includes("loan") || lowerLabel.includes("debt") || lowerLabel.includes("utang")) {
+            const matchingDebt = debts.find(
+              (d) => lowerLabel.includes(d.lender.toLowerCase()) || d.lender.toLowerCase().includes(lowerLabel)
+            )
+            if (matchingDebt) {
+              const newAmount = Math.max(0, matchingDebt.amount - amt)
+              await editDebt({ ...matchingDebt, amount: newAmount })
+              successDetail = ` Also updated your **${matchingDebt.lender}** debt: remaining is now ${formatMoney(newAmount, defaultCurrency)}.`
+            }
+          }
           break
+        }
 
         case "log_income":
           await addTransaction({
@@ -300,18 +444,6 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
           })
           break
 
-        case "settle_receivable":
-          await addTransaction({
-            label: `Settled by ${action.params.counterparty || "Friend"}`,
-            category: "Income",
-            account: sourceAccName,
-            amount: amt,
-            currency: defaultCurrency || "PHP",
-            kind: "income",
-            dateHeader: "Today",
-          })
-          break
-
         default:
           break
       }
@@ -328,7 +460,7 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
         ...updatedMessages,
         {
           role: "assistant",
-          content: `✅ Successfully recorded and synced! Your balances and records are updated. 🐢💎`,
+          content: `✅ Successfully recorded and synced! Your balances and records are updated. 🐢💎${successDetail}`,
         },
       ])
       setActiveAction(null)
