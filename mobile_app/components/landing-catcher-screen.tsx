@@ -4,7 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { motion, useReducedMotion } from "framer-motion"
-import { Play, Wifi, Battery, Signal, ShieldCheck, Smartphone, Maximize2 } from "lucide-react"
+import { Play, ShieldCheck, Smartphone, Maximize2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
 /**
@@ -67,37 +67,10 @@ export function LandingCatcherScreen() {
               "linear-gradient(to top, rgba(9, 21, 14, 0.98) 0%, rgba(10, 24, 16, 0.92) 28%, rgba(10, 24, 16, 0.60) 48%, rgba(10, 24, 16, 0.18) 68%, transparent 100%)",
           }}
         />
-        {/* Soft top vignette for status bar readability */}
-        <div
-          className="absolute top-0 inset-x-0 h-20 pointer-events-none"
-          style={{
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 100%)",
-          }}
-        />
       </div>
 
-      {/* ── 2. Top iOS Status Bar (Authentic Mobile UI) ─────────────── */}
-      <header className="relative z-20 flex items-center justify-between px-6 pt-3 pb-1 text-white/90">
-        {/* Time */}
-        <span className="text-[13px] font-semibold tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
-          9:41
-        </span>
-
-        {/* Dynamic Island pill placeholder */}
-        <div className="hidden sm:flex h-5 w-24 items-center justify-center rounded-full bg-black/70 backdrop-blur-md px-2 border border-white/10 shadow-inner">
-          <div className="h-2 w-2 rounded-full bg-[#1A1A1A] border border-white/20" />
-        </div>
-
-        {/* Signal / Wifi / Battery */}
-        <div className="flex items-center gap-1.5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
-          <Signal className="h-3 w-3 stroke-[2.5]" />
-          <Wifi className="h-3 w-3 stroke-[2.5]" />
-          <Battery className="h-3.5 w-3.5 stroke-[2.5]" />
-        </div>
-      </header>
-
-      {/* ── 3. Center Mascot: PAWI Jumping in Mid-Air ─────────────────── */}
-      <div className="relative z-20 flex flex-1 flex-col items-center justify-center px-4 pt-4 pb-2">
+      {/* ── 2. Center Mascot: PAWI Jumping in Mid-Air ─────────────────── */}
+      <div className="relative z-20 flex flex-1 flex-col items-center justify-center px-4 pt-10 sm:pt-12 pb-2">
         <motion.div
           aria-label="Pawi turtle mascot jumping joyfully"
           animate={
