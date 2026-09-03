@@ -1,5 +1,5 @@
 import { calculateStreak, getLocalDateStr, getPreviousDayStr, parseTxDateToYYYYMMDD } from "../store"
-import type { Transaction } from "../types"
+import type { Transaction } from "../pawi-data"
 
 describe("Realtime Streak Engine", () => {
   it("normalizes diverse date formats to YYYY-MM-DD", () => {

@@ -7,7 +7,7 @@ export default function OnboardingPage() {
   const router = useRouter()
 
   const handleComplete = () => {
-    router.push("/")
+    router.push("/?tutorial=true")
   }
 
   return <PawiOnboardingFlow onComplete={handleComplete} />

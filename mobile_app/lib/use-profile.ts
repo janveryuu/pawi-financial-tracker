@@ -88,8 +88,23 @@ export function useProfile() {
 
   useEffect(() => {
     isMounted.current = true
+
+    const handleSync = (e: Event) => {
+      const custom = e as CustomEvent<UserProfile>
+      if (custom.detail && isMounted.current) {
+        setProfile(custom.detail)
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("pawi_profile_sync", handleSync)
+    }
+
     return () => {
       isMounted.current = false
+      if (typeof window !== "undefined") {
+        window.removeEventListener("pawi_profile_sync", handleSync)
+      }
     }
   }, [])
 
@@ -226,6 +241,7 @@ export function useProfile() {
         if (typeof window !== "undefined") {
           try {
             localStorage.setItem(cacheKey, JSON.stringify(next))
+            window.dispatchEvent(new CustomEvent("pawi_profile_sync", { detail: next }))
           } catch {}
         }
         return next
@@ -243,6 +259,75 @@ export function useProfile() {
     },
     [user, isGuest]
   )
+
+  // ── Force refresh profile from cache and database ──────────────────────────
+  const refreshProfile = useCallback(async () => {
+    if (!user || isGuest) return
+    const userId = user.id || (user as any).uid
+    const cacheKey = getCacheKey(userId)
+
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(cacheKey)
+        if (raw) {
+          const cached = JSON.parse(raw)
+          if (cached && isMounted.current) {
+            setProfile(cached)
+          }
+        }
+      } catch {}
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single()
+
+      if (!error && data && isMounted.current) {
+        const rawProfileType = data.profile_type as ProfileType | undefined
+        const derivedProfileType: ProfileType =
+          rawProfileType || (data.is_student === false ? "professional" : "student")
+
+        const freshProfile: UserProfile = {
+          id: data.id,
+          name: data.name || user.displayName || "Pawi User",
+          initials: data.initials || "PU",
+          avatar_url: data.avatar_url || null,
+          currency: data.currency || "PHP",
+          country: data.country || "PH",
+          monthly_income: Number(data.monthly_income) || 0,
+          weekly_allowance: Number(data.weekly_allowance) || 0,
+          monthly_budget_target: Number(data.monthly_budget_target) || 0,
+          profile_type: derivedProfileType,
+          is_student: derivedProfileType !== "professional",
+          is_suspended: Boolean(data.is_suspended),
+          suspended_reason: data.suspended_reason || null,
+          is_admin: Boolean(data.is_admin),
+          onboarding_completed: Boolean(data.onboarding_completed),
+          tutorial_completed: Boolean(data.tutorial_completed),
+          tutorial_step: data.tutorial_step ?? 0,
+          onboarding_step: data.onboarding_step ?? 0,
+          notifications_enabled: Boolean(data.notifications_enabled),
+          payday_type: (data.payday_type as PaydayType) || "once",
+          payday_day_1: data.payday_day_1 ?? null,
+          payday_day_2: data.payday_day_2 ?? null,
+          primary_goal: (data.primary_goal as PrimaryGoal) || null,
+        }
+
+        setProfile(freshProfile)
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(freshProfile))
+            window.dispatchEvent(new CustomEvent("pawi_profile_sync", { detail: freshProfile }))
+          } catch {}
+        }
+      }
+    } catch (e) {
+      console.warn("Could not refresh profile:", e)
+    }
+  }, [user, isGuest])
 
   // ── Save onboarding step progress (partial resume support) ──────────────────
   const saveOnboardingStep = useCallback(
@@ -276,6 +361,7 @@ export function useProfile() {
     profile,
     loadingProfile,
     saveProfile,
+    refreshProfile,
     saveOnboardingStep,
     completeOnboarding,
     completeTutorial,

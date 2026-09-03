@@ -24,7 +24,7 @@ import { useAndroidBackButton } from "@/lib/use-android-back-button"
 
 export default function Page() {
   const { user, loading, isGuest } = useAuth()
-  const { profile, loadingProfile, completeTutorial, saveTutorialStep } = useProfile()
+  const { profile, loadingProfile, completeTutorial, saveTutorialStep, refreshProfile } = useProfile()
   const router = useRouter()
 
   const [tab, setTab] = useState<TabId>("home")
@@ -99,8 +99,17 @@ export default function Page() {
     }
   }, [loading, loadingProfile, user, isGuest, profile])
 
-  // Tutorial gate: launch immediately on dashboard mount if tutorial is pending
+  // Tutorial gate: launch immediately on dashboard mount if tutorial is pending or requested
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get("tutorial") === "true" || params.get("tutorial") === "1") {
+        setTutorialInitialStep(0)
+        setTutorialOpen(true)
+        return
+      }
+    }
+
     if (!loading && !loadingProfile && user && !isGuest && !showOnboarding) {
       if (profile && profile.onboarding_completed && !profile.tutorial_completed) {
         const resumeStep = (profile.tutorial_step ?? 0) < 99 ? (profile.tutorial_step ?? 0) : 0
@@ -112,6 +121,10 @@ export default function Page() {
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false)
+    // Directly launch tutorial immediately upon onboarding completion
+    setTutorialInitialStep(0)
+    setTutorialOpen(true)
+    refreshProfile()
     if (typeof window !== "undefined" && window.location.search.includes("onboarding")) {
       router.replace("/")
     }
