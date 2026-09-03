@@ -1,7 +1,12 @@
 *.zip
+*.exe
 node_modules
 .next
 temp-login-interface
 server
 docs
 assets
+android_twa
+android_keystore
+scratch
+
