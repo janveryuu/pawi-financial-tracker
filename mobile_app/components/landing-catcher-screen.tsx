@@ -4,8 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { motion, useReducedMotion } from "framer-motion"
-import { Play, ShieldCheck, Smartphone, Maximize2 } from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
+import { ShieldCheck, Smartphone, Maximize2 } from "lucide-react"
 
 /**
  * LandingCatcherScreen — Pixel-perfect recreation of the nature intro/landing flow (Image 2)
@@ -21,8 +20,6 @@ import { useAuth } from "@/lib/auth-context"
  */
 export function LandingCatcherScreen() {
   const router = useRouter()
-  const { signInGuest } = useAuth()
-  const [isDemoLoading, setIsDemoLoading] = useState(false)
   const [isFullBleedOnDesktop, setIsFullBleedOnDesktop] = useState(false)
   const shouldReduceMotion = useReducedMotion()
 
@@ -32,18 +29,6 @@ export function LandingCatcherScreen() {
 
   const handleLogIn = () => {
     router.push("/login")
-  }
-
-  const handleTryDemo = async () => {
-    setIsDemoLoading(true)
-    try {
-      await signInGuest()
-      router.push("/")
-    } catch {
-      router.push("/")
-    } finally {
-      setIsDemoLoading(false)
-    }
   }
 
   // Inner Phone / Mobile Screen Content
@@ -120,17 +105,17 @@ export function LandingCatcherScreen() {
           PaWi
         </motion.h1>
 
-        {/* Subtitle / Companion Tagline */}
+        {/* Inspiring Brand Tagline */}
         <motion.p
           initial={false}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-3 text-[14px] sm:text-[14.5px] font-medium leading-relaxed text-white/95 max-w-[285px] sm:max-w-[310px]"
+          className="mt-3 text-[14px] sm:text-[14.5px] font-medium leading-relaxed text-white/95 max-w-[285px] sm:max-w-[320px]"
           style={{
             fontFamily: "var(--font-jakarta), 'Plus Jakarta Sans', sans-serif",
             textShadow: "0 2px 8px rgba(0, 0, 0, 0.6)",
           }}
         >
-          Your personal companion that helps you track your finances and save slow &amp; steady.
+          Slow, steady, and in control. Track your money, grow your savings, and build lasting wealth.
         </motion.p>
 
         {/* Primary CTA: Let's get started! */}
@@ -166,18 +151,6 @@ export function LandingCatcherScreen() {
             Log in
           </button>
         </div>
-
-        {/* Live Sandbox Demo option */}
-        <button
-          type="button"
-          disabled={isDemoLoading}
-          onClick={handleTryDemo}
-          className="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-200/85 transition-colors hover:text-white disabled:opacity-50 cursor-pointer"
-          style={{ fontFamily: "var(--font-jakarta), 'Plus Jakarta Sans', sans-serif" }}
-        >
-          <Play className="h-3 w-3 fill-current" />
-          <span>{isDemoLoading ? "Loading Sandbox…" : "Try Live Demo (Instant Sandbox)"}</span>
-        </button>
 
         {/* Micro-footer Trust Line */}
         <footer className="mt-4 flex items-center justify-center gap-2.5 text-[10px] font-medium text-white/50">

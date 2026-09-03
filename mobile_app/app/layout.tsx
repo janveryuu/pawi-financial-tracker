@@ -29,8 +29,13 @@ export const metadata: Metadata = {
     'Pawi helps you track every peso. Save smarter, slow and steady, with your friendly turtle finance companion.',
   generator: 'v0.app',
   icons: {
-    icon: '/pawikan-logo.png',
-    apple: '/pawikan-logo.png',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/pawi-app-icon.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
   manifest: "/manifest.json",
 }

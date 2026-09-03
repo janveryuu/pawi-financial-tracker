@@ -122,42 +122,112 @@ export function computePaydayCountdown(config?: PaydayConfig | null, customNow?:
   }
 }
 
-export function calculateStreak(transactions: Transaction[]): number {
-  if (!transactions || transactions.length === 0) return 0
+export function getLocalDateStr(d: Date = new Date()): string {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
 
-  const validDates = transactions
-    .map((t) => {
-      if (!t.date) return null
-      const parsed = new Date(t.date)
-      if (isNaN(parsed.getTime())) return null
-      return parsed.toISOString().split("T")[0]
-    })
-    .filter((d): d is string => d !== null)
+export function parseTxDateToYYYYMMDD(rawDate?: string | null): string | null {
+  if (!rawDate) return null
+  const trimmed = rawDate.trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed
+  }
+  if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) {
+    return trimmed.split("T")[0]
+  }
+  const parsed = new Date(trimmed)
+  if (isNaN(parsed.getTime())) return null
+  return getLocalDateStr(parsed)
+}
 
-  const uniqueSorted = Array.from(new Set(validDates)).sort().reverse()
-  if (uniqueSorted.length === 0) return 0
+export function getPreviousDayStr(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number)
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() - 1)
+  return getLocalDateStr(dt)
+}
 
-  const todayStr = new Date().toISOString().split("T")[0]
-  const yest = new Date()
-  yest.setDate(yest.getDate() - 1)
-  const yestStr = yest.toISOString().split("T")[0]
+export function getSavedActiveDates(): string[] {
+  if (typeof window === "undefined") return []
+  try {
+    const raw = localStorage.getItem("pawi_active_dates")
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
 
-  // If latest tx date is neither today nor yesterday, streak is inactive
-  if (uniqueSorted[0] !== todayStr && uniqueSorted[0] !== yestStr) {
+export function saveActiveDate(dateStr: string): string[] {
+  if (typeof window === "undefined") return [dateStr]
+  try {
+    const existing = getSavedActiveDates()
+    const set = new Set(existing)
+    set.add(dateStr)
+    const arr = Array.from(set).sort().reverse()
+    localStorage.setItem("pawi_active_dates", JSON.stringify(arr))
+    return arr
+  } catch {
+    return [dateStr]
+  }
+}
+
+export function calculateStreak(
+  transactions: Transaction[] = [],
+  extraActiveDates: string[] = []
+): number {
+  const dateSet = new Set<string>()
+
+  if (Array.isArray(transactions)) {
+    for (const t of transactions) {
+      const d = parseTxDateToYYYYMMDD(t.date)
+      if (d) dateSet.add(d)
+    }
+  }
+
+  if (Array.isArray(extraActiveDates)) {
+    for (const d of extraActiveDates) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+        dateSet.add(d)
+      }
+    }
+  }
+
+  if (dateSet.size === 0) return 0
+
+  const uniqueSorted = Array.from(dateSet).sort().reverse()
+
+  const todayLocal = getLocalDateStr(new Date())
+  const todayUTC = new Date().toISOString().split("T")[0]
+
+  const yestLocal = getPreviousDayStr(todayLocal)
+  const yestDateUTC = new Date()
+  yestDateUTC.setDate(yestDateUTC.getDate() - 1)
+  const yestUTC = yestDateUTC.toISOString().split("T")[0]
+
+  const latest = uniqueSorted[0]
+  const isToday = latest === todayLocal || latest === todayUTC
+  const isYesterday = latest === yestLocal || latest === yestUTC
+
+  // If latest active date is neither today nor yesterday, streak is inactive
+  if (!isToday && !isYesterday) {
     return 0
   }
 
   let count = 1
-  let curr = new Date(uniqueSorted[0])
+  let curr = latest
 
   for (let i = 1; i < uniqueSorted.length; i++) {
-    const prevDate = new Date(curr)
-    prevDate.setDate(prevDate.getDate() - 1)
-    const prevStr = prevDate.toISOString().split("T")[0]
+    const prevExpected = getPreviousDayStr(curr)
+    const [cy, cm, cd] = curr.split("-").map(Number)
+    const prevUTCExpected = new Date(Date.UTC(cy, cm - 1, cd - 1)).toISOString().split("T")[0]
 
-    if (uniqueSorted[i] === prevStr) {
+    const nextDate = uniqueSorted[i]
+    if (nextDate === prevExpected || nextDate === prevUTCExpected) {
       count++
-      curr = prevDate
+      curr = nextDate
     } else {
       break
     }
@@ -179,6 +249,7 @@ interface State {
   chatMessages: ChatMessage[]
   defaultCurrency: CurrencyCode
   streakDays: number
+  activeDates: string[]
   paydayConfig: PaydayConfig
   paydayCountdown: PaydayCountdownInfo
   /** Last insert/edit/delete error — exposed so UI can surface it instead of silently swallowing */
@@ -186,6 +257,7 @@ interface State {
 }
 
 interface StoreContextType extends State {
+  checkInToday: () => number
   addTransaction: (tx: Omit<Transaction, "id" | "time">) => Promise<void>
   editTransaction: (tx: Transaction) => Promise<void>
   deleteTransaction: (transactionId: string) => Promise<void>
@@ -513,6 +585,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     ],
     defaultCurrency: "PHP",
     streakDays: 0,
+    activeDates: typeof window !== "undefined" ? getSavedActiveDates() : [],
     paydayConfig: savedPaydayConfig,
     paydayCountdown: computePaydayCountdown(savedPaydayConfig),
     lastInsertError: null,
@@ -651,7 +724,45 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ])
 
         const loadedTx = txData ? txData.map(mapTxRowToTransaction) : []
-        const liveStreak = calculateStreak(loadedTx)
+        let activeDates = getSavedActiveDates()
+
+        // Ensure today is tracked as active
+        const todayStr = getLocalDateStr()
+        if (!activeDates.includes(todayStr)) {
+          activeDates = saveActiveDate(todayStr)
+        }
+
+        // Auto-seed active days if user has account history or transactions spanning ~1 week
+        if (loadedTx.length > 0) {
+          const txDates = loadedTx
+            .map((t) => parseTxDateToYYYYMMDD(t.date))
+            .filter((d): d is string => !!d)
+            .sort()
+
+          if (txDates.length > 0) {
+            const oldestTxDate = new Date(txDates[0] + "T00:00:00")
+            const now = new Date()
+            const daysDiff = Math.floor((now.getTime() - oldestTxDate.getTime()) / (1000 * 60 * 60 * 24))
+
+            // If user has account history/tx from ~2 to 14 days ago and local check-ins are sparse, honor their usage
+            if (daysDiff >= 2 && activeDates.length <= 3) {
+              const seeded = new Set(activeDates)
+              txDates.forEach((d) => seeded.add(d))
+              const fillDays = Math.min(Math.max(daysDiff, 1), 7)
+              for (let d = 0; d <= fillDays; d++) {
+                const past = new Date(now)
+                past.setDate(past.getDate() - d)
+                seeded.add(getLocalDateStr(past))
+              }
+              activeDates = Array.from(seeded).sort().reverse()
+              try {
+                localStorage.setItem("pawi_active_dates", JSON.stringify(activeDates))
+              } catch {}
+            }
+          }
+        }
+
+        const liveStreak = calculateStreak(loadedTx, activeDates)
 
         // Read payday configuration — prefer structured onboarding fields (payday_type/day_1/day_2)
         // over the fallback of inferring from monthly_income alone.
@@ -717,6 +828,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 }))
               : [],
             streakDays: liveStreak,
+            activeDates,
             paydayConfig: currentPaydayConfig,
             paydayCountdown: computePaydayCountdown(currentPaydayConfig),
           }))
@@ -787,7 +899,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             plannedPayments: [],
             installments: [],
             tags: [],
-            streakDays: 0,
+            streakDays: liveStreak,
+            activeDates,
             paydayConfig: currentPaydayConfig,
             paydayCountdown: computePaydayCountdown(currentPaydayConfig),
           }))
@@ -899,10 +1012,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     })
 
     // Optimistic UI Update — show immediately while Supabase write happens in background
+    const txDateStr = newTx.date || getLocalDateStr()
+    const updatedActiveDates = saveActiveDate(txDateStr)
+    const nextTransactions = [newTx, ...state.transactions]
+    const nextStreak = calculateStreak(nextTransactions, updatedActiveDates)
+
     setState((prev) => ({
       ...prev,
-      transactions: [newTx, ...prev.transactions],
+      transactions: nextTransactions,
       wallets: updatedWallets,
+      activeDates: updatedActiveDates,
+      streakDays: nextStreak,
       lastInsertError: null,
     }))
 
@@ -915,12 +1035,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const { error: insertError } = await supabase.from("transactions").insert(row)
         if (insertError) {
           console.error("[Pawi] Transaction insert failed:", insertError.code, insertError.message, insertError.details)
-          setState((prev) => ({
-            ...prev,
-            transactions: prev.transactions.filter((t) => t.id !== newTx.id),
-            wallets: state.wallets,
-            lastInsertError: `Could not save transaction: ${insertError.message || "Unknown error"}. Please try again.`,
-          }))
+          setState((prev) => {
+            const revertedTx = prev.transactions.filter((t) => t.id !== newTx.id)
+            return {
+              ...prev,
+              transactions: revertedTx,
+              wallets: state.wallets,
+              streakDays: calculateStreak(revertedTx, getSavedActiveDates()),
+              lastInsertError: `Could not save transaction: ${insertError.message || "Unknown error"}. Please try again.`,
+            }
+          })
           return
         }
 
@@ -964,6 +1088,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, lastInsertError: null }))
   }, [])
 
+  const checkInToday = useCallback(() => {
+    const today = getLocalDateStr()
+    const updated = saveActiveDate(today)
+    const streak = calculateStreak(state.transactions, updated)
+    setState((prev) => ({
+      ...prev,
+      activeDates: updated,
+      streakDays: streak,
+    }))
+    return streak
+  }, [state.transactions])
+
   const editTransaction = async (tx: Transaction) => {
     const oldTx = state.transactions.find((t) => t.id === tx.id)
     let updatedWallets = state.wallets
@@ -986,10 +1122,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       })
     }
 
+    const updatedTxList = state.transactions.map((t) => (t.id === tx.id ? tx : t))
+    const updatedActiveDates = saveActiveDate(tx.date || getLocalDateStr())
+    const nextStreak = calculateStreak(updatedTxList, updatedActiveDates)
+
     setState((prev) => ({
       ...prev,
-      transactions: prev.transactions.map((t) => (t.id === tx.id ? tx : t)),
+      transactions: updatedTxList,
       wallets: updatedWallets,
+      activeDates: updatedActiveDates,
+      streakDays: nextStreak,
     }))
 
     if (user) {
@@ -1025,10 +1167,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       })
     }
 
+    const updatedTxList = state.transactions.filter((t) => t.id !== transactionId)
+    const activeDates = getSavedActiveDates()
+    const nextStreak = calculateStreak(updatedTxList, activeDates)
+
     setState((prev) => ({
       ...prev,
-      transactions: prev.transactions.filter((t) => t.id !== transactionId),
+      transactions: updatedTxList,
       wallets: updatedWallets,
+      activeDates,
+      streakDays: nextStreak,
     }))
 
     if (user) {
@@ -1711,6 +1859,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ],
       defaultCurrency: "PHP",
       streakDays: 0,
+      activeDates: [],
       paydayConfig: cleanPayday,
       paydayCountdown: computePaydayCountdown(cleanPayday),
       lastInsertError: null,
@@ -1810,6 +1959,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ],
       defaultCurrency: "PHP",
       streakDays: 6,
+      activeDates: [],
       paydayConfig: demoPayday,
       paydayCountdown: computePaydayCountdown(demoPayday),
       lastInsertError: null,
@@ -1848,6 +1998,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       value={{
         ...state,
         budgets: computedBudgets,
+        checkInToday,
         addTransaction,
         editTransaction,
         deleteTransaction,

@@ -19,7 +19,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false)
   const router = useRouter()
 
-  const { signIn, signUp, signInWithGoogle, signInGuest } = useAuth()
+  const { signIn, signUp, signInWithGoogle } = useAuth()
 
   useEffect(() => {
     // Catch URL hash error parameters returned by OAuth providers
@@ -104,23 +104,6 @@ export default function LoginPage() {
     }
   }
 
-  const handleGuestAuth = async () => {
-    setError("")
-    setSubmitting(true)
-    try {
-      const { error: guestError } = await signInGuest()
-      if (guestError) {
-        setError(guestError)
-      } else {
-        router.push("/")
-      }
-    } catch {
-      router.push("/")
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   return (
     // Always enforced in Pure Light Theme
     <div className="light relative flex min-h-screen flex-col items-center justify-center bg-[#F6F8F6] px-4 py-8 text-neutral-900 selection:bg-[#3D784E]/20">
@@ -136,20 +119,20 @@ export default function LoginPage() {
       >
         {/* Header Branding Card */}
         <div className="mb-6 flex flex-col items-center text-center">
-          {/* Main Pawi Logo Emblem */}
-          <div className="relative mb-3 flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#3D784E]/20 bg-white p-1 shadow-md">
-            <div className="relative h-16 w-16 overflow-hidden rounded-full">
+          {/* Main Pawi App Icon Emblem (Maximized Space, No White Circle) */}
+          <div className="relative mb-4 flex items-center justify-center">
+            <div className="relative h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-[22px] shadow-lg border border-black/5 bg-transparent transition-transform hover:scale-105">
               <Image
-                src="/pawikan-logo.png"
-                alt="Pawi Logo"
+                src="/pawi-app-icon.png"
+                alt="Pawi App Icon"
                 fill
                 priority
-                className="object-cover scale-105"
+                className="object-contain"
               />
             </div>
             {/* Tiny Sparkle Badge */}
-            <div className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#3D784E] text-white shadow-xs border-2 border-white">
-              <Sparkles className="h-3 w-3" />
+            <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#3D784E] text-white shadow-md border-2 border-white">
+              <Sparkles className="h-3.5 w-3.5" />
             </div>
           </div>
 
@@ -373,16 +356,6 @@ export default function LoginPage() {
               />
             </svg>
             <span>Continue with Google</span>
-          </button>
-
-          {/* Instant Guest Demo Access */}
-          <button
-            type="button"
-            onClick={handleGuestAuth}
-            disabled={submitting}
-            className="mt-2.5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#3D784E]/30 bg-[#3D784E]/10 text-xs font-black text-[#3D784E] shadow-2xs hover:bg-[#3D784E]/15 active:scale-[0.98] transition-all disabled:opacity-50"
-          >
-            <span>🐢 Continue as Guest (Instant Access)</span>
           </button>
         </div>
 

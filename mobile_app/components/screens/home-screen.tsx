@@ -84,6 +84,7 @@ export function HomeScreen({
   const { profile } = useProfile()
   const {
     streakDays,
+    checkInToday,
     paydayCountdown,
     transactions = [],
     goals = [],
@@ -98,6 +99,7 @@ export function HomeScreen({
   const [timeFilter, setTimeFilter] = useState<"day" | "week" | "month">("day")
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [showPaydayModal, setShowPaydayModal] = useState(false)
+  const [showStreakModal, setShowStreakModal] = useState(false)
   const [currentDate, setCurrentDate] = useState<Date>(new Date())
 
   // Transaction action & edit modals
@@ -359,13 +361,15 @@ export function HomeScreen({
 
       {/* ─── 1. HEADER ROW ─────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between py-1">
-        <div
+        <button
+          type="button"
+          onClick={() => setShowStreakModal(true)}
           data-tutorial-id="pawi-streak-pill"
-          className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-500/10 px-3 py-1.5 text-xs font-black text-amber-900 dark:text-amber-300 shadow-2xs"
+          className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/50 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 px-3.5 py-1.5 text-xs font-black text-amber-900 dark:text-amber-200 shadow-xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
         >
-          <Flame className={cn("h-4 w-4", streakDays > 0 ? "text-orange-500 fill-orange-500" : "text-amber-400")} />
-          <span>{streakDays > 0 ? `x${streakDays} day streak!` : "Start streak! 🔥"}</span>
-        </div>
+          <Flame className={cn("h-4 w-4 transition-transform", streakDays > 0 ? "text-orange-500 fill-orange-500 animate-pulse" : "text-amber-500")} />
+          <span>{streakDays > 0 ? `${streakDays} day streak! 🔥` : "1 day streak! 🔥"}</span>
+        </button>
 
         <div className="flex items-center gap-2">
           <button type="button" onClick={onOpenNotifications}
@@ -1286,6 +1290,69 @@ export function HomeScreen({
             <button type="button" onClick={() => setShowCommunityModal(false)}
               className="w-full rounded-2xl bg-[#3D784E] py-3 text-xs font-black text-white shadow-md shadow-[#3D784E]/25 hover:bg-[#356B46]">
               Got it!
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── STREAK HABIT MODAL ─────────────────────────────────────── */}
+      {showStreakModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[2.5rem] border border-border/80 bg-card p-6 shadow-2xl text-foreground animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white shadow-md shadow-orange-500/25">
+                  <Flame className="h-5 w-5 fill-white text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-foreground">
+                    {streakDays > 0 ? `${streakDays} Day Streak! 🔥` : "1 Day Streak! 🔥"}
+                  </h3>
+                  <p className="text-[10px] text-muted-foreground font-semibold">Real-time habit tracker</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStreakModal(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:bg-accent cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 mb-5">
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-center">
+                <p className="text-3xl font-black text-amber-900 dark:text-amber-200">
+                  {streakDays > 0 ? streakDays : 1}
+                </p>
+                <p className="text-xs font-bold text-amber-700 dark:text-amber-300 mt-0.5">Consecutive Active Days</p>
+                <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                  Slow and steady wins the race! Every day you open Pawi, record spending, or review budgets keeps your financial momentum alive.
+                </p>
+              </div>
+
+              {/* 7-Day Week Momentum Row */}
+              <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-secondary/30 px-3 py-2.5 text-center">
+                {["M", "T", "W", "T", "F", "S", "S"].map((day, idx) => (
+                  <div key={idx} className="flex flex-col items-center gap-1">
+                    <span className="text-[10px] font-bold text-muted-foreground">{day}</span>
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-[10px]">
+                      ✓
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                checkInToday()
+                setShowStreakModal(false)
+              }}
+              className="w-full rounded-2xl bg-[#3D784E] py-3 text-xs font-black text-white shadow-md shadow-[#3D784E]/25 hover:bg-[#356B46] cursor-pointer"
+            >
+              Checked In Today! 🐢 Keep Going
             </button>
           </div>
         </div>
