@@ -4,26 +4,26 @@ import { useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { motion, useReducedMotion } from "framer-motion"
-import { ArrowRight, ShieldCheck, Play, TrendingUp, CheckCircle2 } from "lucide-react"
+import { Play, Wifi, Battery, Signal, ShieldCheck, Smartphone, Maximize2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
 /**
- * LandingCatcherScreen — V2 Light / Premium Fintech Palette
+ * LandingCatcherScreen — Pixel-perfect recreation of the nature intro/landing flow (Image 2)
  *
- * Color system:
- * - Base: warm off-white #FAFAF7 (premium, not clinical)
- * - Headlines: near-black charcoal #1A1A1A
- * - Accent highlight (headline 2nd line, CTAs, icons): deep muted sage #1E4D3A–#2B5940
- * - Card: subtle drop shadow + 1px #E4E4DC border — no glow, no neon
- * - Status chip: muted celadon tint bg + dark green text — never bright
- * - Bank logos: real brand colors, ONLY saturated accents on the page
- * - Primary CTA: solid #24503C white text
- * - Secondary CTA: light tinted bg with dark green text
+ * Visual hierarchy:
+ * - Background: Mangrove / lush river anime forest art (Image 4)
+ * - Mascot: PAWI jumping with open arms, green cap and shirt (Image 1)
+ * - Brand Logo: "PaWi" with bold rounded display font (Fredoka)
+ * - Tagline: "Your personal companion that helps you track your finances and save slow & steady." (Plus Jakarta Sans)
+ * - Primary CTA: "Let's get started!" in natural moss green (#587E56)
+ * - Desktop presentation: Photorealistic floating device frame mimicking Image 2, with toggle for full-bleed mode
+ * - Mobile presentation: Edge-to-edge native mobile app view
  */
 export function LandingCatcherScreen() {
   const router = useRouter()
   const { signInGuest } = useAuth()
   const [isDemoLoading, setIsDemoLoading] = useState(false)
+  const [isFullBleedOnDesktop, setIsFullBleedOnDesktop] = useState(false)
   const shouldReduceMotion = useReducedMotion()
 
   const handleGetStarted = () => {
@@ -46,256 +46,170 @@ export function LandingCatcherScreen() {
     }
   }
 
-  // PH bank / e-wallet services — real brand colors are the ONLY saturated accents on this page
-  const phServices = [
-    { name: "GCash", logo: "/gcash.png" },
-    { name: "Maya", logo: "/Paymaya-logo.png" },
-    { name: "BPI", logo: "/bpi.svg" },
-    { name: "BDO", logo: "/bdo.svg" },
-    { name: "GoTyme", logo: "/gotyme.svg" },
-    { name: "SeaBank", logo: "/seabank.svg" },
-  ]
+  // Inner Phone / Mobile Screen Content
+  const renderScreenContent = () => (
+    <div className="relative flex h-full w-full flex-col justify-between overflow-hidden select-none">
+      {/* ── 1. Mangrove Art Background ─────────────────────────────── */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="/landing-bg-mangrove.jpg"
+          alt="Mangrove Forest River"
+          fill
+          priority
+          sizes="(max-width: 640px) 100vw, 420px"
+          className="object-cover object-center pointer-events-none"
+        />
+        {/* Deep Nature Ambient Gradient at the bottom half for crystal-clear typography contrast */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(to top, rgba(9, 21, 14, 0.98) 0%, rgba(10, 24, 16, 0.92) 28%, rgba(10, 24, 16, 0.60) 48%, rgba(10, 24, 16, 0.18) 68%, transparent 100%)",
+          }}
+        />
+        {/* Soft top vignette for status bar readability */}
+        <div
+          className="absolute top-0 inset-x-0 h-20 pointer-events-none"
+          style={{
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 100%)",
+          }}
+        />
+      </div>
 
-  return (
-    <main
-      className="light relative flex min-h-screen w-full flex-col justify-between overflow-x-hidden px-5 pt-8 pb-10 select-none"
-      style={{ background: "#FAFAF7", color: "#1A1A1A" }}
-    >
-      {/* Very soft, barely-there ambient warmth — no blob, no glow */}
-      <div
-        className="pointer-events-none absolute -top-32 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full opacity-40"
-        style={{ background: "radial-gradient(ellipse at center, #DEEEE6 0%, transparent 72%)" }}
-      />
+      {/* ── 2. Top iOS Status Bar (Authentic Mobile UI) ─────────────── */}
+      <header className="relative z-20 flex items-center justify-between px-6 pt-3 pb-1 text-white/90">
+        {/* Time */}
+        <span className="text-[13px] font-semibold tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
+          9:41
+        </span>
 
-      {/* ── Top Header Bar ───────────────────────────────────── */}
-      <header className="relative z-10 flex items-center justify-between">
-        {/* Brand Wordmark */}
-        <div className="flex items-center gap-2">
-          <div
-            className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full p-0.5"
-            style={{ background: "#EEF5F0", border: "1px solid #C8DDD1" }}
-          >
-            <Image
-              src="/pawikan-logo.png"
-              alt="Pawi Logo"
-              width={32}
-              height={32}
-              priority
-              className="object-cover rounded-full"
-            />
-          </div>
-          <span className="text-sm font-black tracking-tight" style={{ color: "#1A1A1A" }}>
-            PAWI
-          </span>
+        {/* Dynamic Island pill placeholder */}
+        <div className="hidden sm:flex h-5 w-24 items-center justify-center rounded-full bg-black/70 backdrop-blur-md px-2 border border-white/10 shadow-inner">
+          <div className="h-2 w-2 rounded-full bg-[#1A1A1A] border border-white/20" />
         </div>
 
-        {/* Edition Badge */}
-        <div
-          className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wider"
-          style={{ background: "#EEF5F0", color: "#24503C", border: "1px solid #C8DDD1" }}
-        >
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#4A9068" }} />
-          <span>PH EDITION</span>
+        {/* Signal / Wifi / Battery */}
+        <div className="flex items-center gap-1.5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
+          <Signal className="h-3 w-3 stroke-[2.5]" />
+          <Wifi className="h-3 w-3 stroke-[2.5]" />
+          <Battery className="h-3.5 w-3.5 stroke-[2.5]" />
         </div>
       </header>
 
-      {/* ── Hero Section — Above the Fold ────────────────────── */}
-      <section className="relative z-10 flex flex-col items-center text-center mt-6 sm:mt-8 max-w-md mx-auto w-full">
-
-        {/* Mascot — Calm, Slow Floating Animation */}
+      {/* ── 3. Center Mascot: PAWI Jumping in Mid-Air ─────────────────── */}
+      <div className="relative z-20 flex flex-1 flex-col items-center justify-center px-4 pt-4 pb-2">
         <motion.div
-          aria-label="Pawi turtle mascot"
+          aria-label="Pawi turtle mascot jumping joyfully"
           animate={
             shouldReduceMotion
               ? {}
-              : { y: [0, -5, 0] }
+              : {
+                  y: [0, -14, 0],
+                  rotate: [-1.5, 1.5, -1.5],
+                }
           }
           transition={{
-            duration: 4.5,
+            duration: 4.2,
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="relative mb-4 flex h-[88px] w-[88px] sm:h-[96px] sm:w-[96px] items-center justify-center"
+          className="relative flex items-center justify-center"
         >
-          {/* Circular backing — soft celadon, not glowing */}
+          {/* Gentle ambient halo behind mascot */}
           <div
-            className="absolute inset-0 rounded-full"
-            style={{ background: "#EEF5F0", border: "1px solid #C8DDD1" }}
+            className="absolute -inset-4 rounded-full opacity-35 blur-xl pointer-events-none"
+            style={{ background: "radial-gradient(circle, rgba(162, 230, 185, 0.4) 0%, transparent 70%)" }}
           />
-          <div className="relative h-[70px] w-[70px] sm:h-[76px] sm:w-[76px] overflow-hidden rounded-full">
-            <Image
-              src="/pawi-new-home.png"
-              alt="Pawi — your financial wellness companion"
-              width={76}
-              height={76}
-              priority
-              className="h-full w-full object-contain"
-            />
-          </div>
-          {/* Calm tag beneath */}
-          <div
-            className="absolute -bottom-2 rounded-full px-2.5 py-[3px] text-[9px] font-black tracking-wider uppercase shadow-sm"
-            style={{ background: "#FAFAF7", border: "1px solid #C8DDD1", color: "#3D6B52" }}
-          >
-            SLOW &amp; STEADY
-          </div>
+
+          <Image
+            src="/pawi-mascot-jumping.png"
+            alt="Pawi Mascot"
+            width={260}
+            height={260}
+            priority
+            className="h-[210px] w-[210px] sm:h-[240px] sm:w-[240px] object-contain drop-shadow-[0_14px_28px_rgba(0,0,0,0.45)]"
+          />
         </motion.div>
+      </div>
 
-        {/* Primary Headline */}
-        <h1
-          className="text-[2.05rem] sm:text-[2.25rem] font-black tracking-tight leading-[1.1] mt-3"
-          style={{ color: "#1A1A1A" }}
-        >
-          Save smarter.{" "}
-          <br />
-          <span style={{ color: "#24503C" }}>Slow and steady.</span>
-        </h1>
-
-        {/* Subheadline — warm gray */}
-        <p
-          className="mt-3 text-[13px] sm:text-sm font-medium leading-relaxed max-w-[320px]"
-          style={{ color: "#6B7B72" }}
-        >
-          Offline-first, AI-assisted finance tracking designed for effortless daily budgeting.
-        </p>
-
-        {/* ── Proof Card ────────────────────────────────────── */}
-        <div
-          className="mt-5 w-full rounded-2xl p-4 text-left"
+      {/* ── 4. Lower Typography & CTA Cluster ───────────────────────── */}
+      <section className="relative z-20 flex flex-col items-center text-center px-6 pb-8 pt-2">
+        {/* Brand Name: PaWi (Matching Image 2 'TaRsi' bubbly display typography) */}
+        <motion.h1
+          initial={false}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-[44px] sm:text-[52px] font-black text-white tracking-tight leading-none"
           style={{
-            background: "#FFFFFF",
-            border: "1px solid #E4E4DC",
-            boxShadow: "0 2px 12px rgba(36, 80, 60, 0.06), 0 1px 4px rgba(0,0,0,0.04)",
+            fontFamily: "var(--font-fredoka), 'Fredoka', cursive, sans-serif",
+            textShadow: "0 4px 20px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0,0,0,0.8)",
           }}
         >
-          {/* Net Worth Row */}
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2">
-              <div
-                className="flex h-7 w-7 items-center justify-center rounded-lg"
-                style={{ background: "#EEF5F0" }}
-              >
-                <TrendingUp className="h-3.5 w-3.5" style={{ color: "#24503C" }} />
-              </div>
-              <span
-                className="text-[10px] font-black uppercase tracking-wider"
-                style={{ color: "#6B7B72" }}
-              >
-                Total Net Worth
-              </span>
-            </div>
+          PaWi
+        </motion.h1>
 
-            {/* Muted sage % chip — NOT bright green */}
-            <div
-              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-extrabold"
-              style={{ background: "#EEF5F0", color: "#24503C" }}
-            >
-              <CheckCircle2 className="h-3 w-3" />
-              +12.4%
-            </div>
-          </div>
+        {/* Subtitle / Companion Tagline */}
+        <motion.p
+          initial={false}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-3 text-[14px] sm:text-[14.5px] font-medium leading-relaxed text-white/95 max-w-[285px] sm:max-w-[310px]"
+          style={{
+            fontFamily: "var(--font-jakarta), 'Plus Jakarta Sans', sans-serif",
+            textShadow: "0 2px 8px rgba(0, 0, 0, 0.6)",
+          }}
+        >
+          Your personal companion that helps you track your finances and save slow &amp; steady.
+        </motion.p>
 
-          <p
-            className="text-[1.65rem] font-black tracking-tight tabular-nums mt-1.5"
-            style={{ color: "#1A1A1A" }}
-          >
-            ₱148,520<span className="text-lg" style={{ color: "#9BAAA2" }}>.00</span>
-          </p>
-
-          {/* Trust Strip — bank logos ARE the saturated color moment */}
-          <div
-            className="mt-3 pt-3 flex items-center justify-between"
-            style={{ borderTop: "1px solid #EDEDE7" }}
-          >
-            <span
-              className="text-[10px] font-bold uppercase tracking-wider"
-              style={{ color: "#9BAAA2" }}
-            >
-              Works with:
-            </span>
-            <div className="flex items-center gap-1.5">
-              {phServices.map((s) => (
-                <div
-                  key={s.name}
-                  className="relative flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full overflow-hidden"
-                  style={{
-                    background: "#FFFFFF",
-                    border: "1px solid #E4E4DC",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
-                  }}
-                  title={s.name}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={s.logo}
-                    alt={s.name}
-                    className="h-full w-full object-contain rounded-full"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA Cluster — Thumb-Zone ─────────────────────────── */}
-      <section className="relative z-10 mt-6 flex flex-col items-center gap-3 w-full max-w-md mx-auto">
-
-        {/* Primary CTA: Get Started Free */}
+        {/* Primary CTA: Let's get started! */}
         <motion.button
           type="button"
           onClick={handleGetStarted}
+          initial={false}
+          animate={{ opacity: 1, scale: 1 }}
           whileTap={shouldReduceMotion ? {} : { scale: 0.97 }}
-          className="group relative flex items-center justify-center gap-2.5 w-full rounded-2xl text-sm font-black text-white transition-all"
+          className="group mt-6 flex h-[52px] w-full max-w-[290px] sm:max-w-[320px] items-center justify-center rounded-2xl text-[15px] font-bold text-white transition-all duration-200 cursor-pointer shadow-lg"
           style={{
-            background: "#24503C",
-            height: "52px",
-            boxShadow: "0 2px 8px rgba(36, 80, 60, 0.22), 0 1px 3px rgba(36,80,60,0.14)",
+            background: "#587E56",
+            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0,0,0,0.2)",
+            fontFamily: "var(--font-jakarta), 'Plus Jakarta Sans', sans-serif",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#1E4433")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "#24503C")}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#638C61")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "#587E56")}
         >
-          <span>Get Started Free</span>
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          <span>Let&apos;s get started!</span>
         </motion.button>
 
-        {/* Secondary CTA: Try Demo */}
-        <motion.button
-          type="button"
-          disabled={isDemoLoading}
-          onClick={handleTryDemo}
-          whileTap={shouldReduceMotion ? {} : { scale: 0.97 }}
-          className="flex items-center justify-center gap-2 w-full rounded-2xl text-[13px] font-extrabold transition-all disabled:opacity-50"
-          style={{
-            height: "48px",
-            background: "#EEF5F0",
-            border: "1px solid #C8DDD1",
-            color: "#24503C",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#E4EFE8")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "#EEF5F0")}
+        {/* Secondary Log In Link for Returning Users */}
+        <div
+          className="mt-3 flex items-center justify-center gap-1.5 text-[12px] text-white/80"
+          style={{ fontFamily: "var(--font-jakarta), 'Plus Jakarta Sans', sans-serif" }}
         >
-          <Play className="h-3.5 w-3.5" style={{ fill: "#4A9068", color: "#4A9068" }} />
-          <span>{isDemoLoading ? "Loading Sandbox…" : "Try Live Demo (Instant Sandbox)"}</span>
-        </motion.button>
-
-        {/* Existing User Login Link */}
-        <div className="mt-1 flex items-center justify-center gap-1.5 text-[12px]" style={{ color: "#9BAAA2" }}>
           <span>Already have an account?</span>
           <button
             type="button"
             onClick={handleLogIn}
-            className="font-extrabold underline underline-offset-4 transition-colors hover:opacity-80"
-            style={{ color: "#24503C" }}
+            className="font-bold text-white underline underline-offset-4 transition-colors hover:text-emerald-200 cursor-pointer"
           >
             Log in
           </button>
         </div>
 
-        {/* Micro-footer — quiet, not crowded */}
-        <footer className="mt-4 flex items-center justify-center gap-3 text-[10px] font-semibold" style={{ color: "#B0BDB7" }}>
+        {/* Live Sandbox Demo option */}
+        <button
+          type="button"
+          disabled={isDemoLoading}
+          onClick={handleTryDemo}
+          className="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-200/85 transition-colors hover:text-white disabled:opacity-50 cursor-pointer"
+          style={{ fontFamily: "var(--font-jakarta), 'Plus Jakarta Sans', sans-serif" }}
+        >
+          <Play className="h-3 w-3 fill-current" />
+          <span>{isDemoLoading ? "Loading Sandbox…" : "Try Live Demo (Instant Sandbox)"}</span>
+        </button>
+
+        {/* Micro-footer Trust Line */}
+        <footer className="mt-4 flex items-center justify-center gap-2.5 text-[10px] font-medium text-white/50">
           <span className="flex items-center gap-1">
-            <ShieldCheck className="h-3 w-3" style={{ color: "#6B9B82" }} /> Offline-First
+            <ShieldCheck className="h-3 w-3 text-emerald-300/70" /> Offline-First
           </span>
           <span>·</span>
           <span>Zero Ads</span>
@@ -303,6 +217,71 @@ export function LandingCatcherScreen() {
           <span>Private by Design</span>
         </footer>
       </section>
+    </div>
+  )
+
+  return (
+    <main className="relative flex min-h-dvh w-full items-center justify-center overflow-hidden bg-[#0A160F]">
+      {/* ── DESKTOP AMBIENT BACKDROP (Image 2 Forest Environment) ── */}
+      <div className="absolute inset-0 hidden sm:block pointer-events-none">
+        <Image
+          src="/landing-bg-mangrove.jpg"
+          alt="Mangrove Backdrop"
+          fill
+          priority
+          className="object-cover object-center blur-md scale-105 opacity-60 brightness-75"
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, rgba(10, 24, 15, 0.4) 0%, rgba(5, 14, 9, 0.88) 100%)",
+          }}
+        />
+      </div>
+
+      {/* ── DESKTOP VIEWPORT CONTROLS ── */}
+      <div className="absolute top-4 right-5 z-40 hidden sm:flex items-center gap-2 rounded-full bg-black/40 backdrop-blur-md px-3 py-1.5 border border-white/10 text-white/80 text-xs">
+        <button
+          type="button"
+          onClick={() => setIsFullBleedOnDesktop(!isFullBleedOnDesktop)}
+          className="flex items-center gap-1.5 font-medium transition-colors hover:text-white"
+          title="Toggle between floating mobile device frame (Image 2 style) and full-screen view"
+        >
+          {isFullBleedOnDesktop ? (
+            <>
+              <Smartphone className="h-3.5 w-3.5" />
+              <span>Phone Frame</span>
+            </>
+          ) : (
+            <>
+              <Maximize2 className="h-3.5 w-3.5" />
+              <span>Full Screen</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* ── MAIN CONTENT CONTAINER ── */}
+      {isFullBleedOnDesktop ? (
+        /* Full-Bleed Desktop Mode */
+        <div className="relative z-10 flex min-h-dvh w-full max-w-lg flex-col justify-between mx-auto shadow-2xl">
+          {renderScreenContent()}
+        </div>
+      ) : (
+        /* Image 2 Replicated: Floating Smartphone Mockup with 3D feel */
+        <div className="relative z-10 sm:py-8 flex items-center justify-center w-full h-full min-h-dvh sm:min-h-0">
+          <motion.div
+            initial={false}
+            animate={shouldReduceMotion ? {} : { y: [0, -6, 0] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+            className="relative w-full sm:w-[380px] h-dvh sm:h-[812px] sm:max-h-[92vh] sm:rounded-[48px] overflow-hidden sm:border-[8px] sm:border-[#223026] sm:shadow-[0_25px_70px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.12)] sm:ring-1 sm:ring-black/50"
+          >
+            {renderScreenContent()}
+          </motion.div>
+        </div>
+      )}
     </main>
   )
 }
+

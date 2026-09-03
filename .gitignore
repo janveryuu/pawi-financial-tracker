@@ -13,5 +13,8 @@ scratch/
 android_keystore/
 .gradle/
 build/
+screenshot_*.png
+android_twa/.idea/
+android_twa/local.properties
 
 
