@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Pawi</string>
+    <string name="app_name">Pawi V2</string>
     <string name="shortcut_expense_title">Add Expense</string>
     <string name="shortcut_scan_title">Scan Receipt</string>
     <string name="shortcut_plan_title">Plan &amp; Goals</string>

@@ -1,6 +1,6 @@
 Add-Type -AssemblyName System.Drawing
 
-$srcLogo = "c:\Users\LEGION\Documents\Pawi-FinancialTracker\mobile_app\public\pawikan-logo.png"
+$srcLogo = "c:\Users\LEGION\Documents\Pawi-FinancialTracker\mobile_app\public\pawi-app-icon.png"
 $resDir = "c:\Users\LEGION\Documents\Pawi-FinancialTracker\android_twa\app\src\main\res"
 
 $drawableDir = Join-Path $resDir "drawable"

@@ -1,8 +1,8 @@
 {
   "packageId": "com.pawi.financialtracker",
-  "host": "pawi-finance.vercel.app",
-  "name": "Pawi — Personal Finance Tracker",
-  "launcherName": "Pawi",
+  "host": "pawi.vercel.app",
+  "name": "Pawi V2 — Personal Finance Tracker",
+  "launcherName": "Pawi V2",
   "themeColor": "#24503C",
   "navigationColor": "#FAFAF7",
   "navigationColorDark": "#121A15",
@@ -11,37 +11,37 @@
   "backgroundColor": "#FAFAF7",
   "enableNotifications": true,
   "startUrl": "/",
-  "iconUrl": "https://pawi-finance.vercel.app/icon-512.png",
-  "maskableIconUrl": "https://pawi-finance.vercel.app/icon-maskable-512.png",
+  "iconUrl": "https://pawi.vercel.app/icon-512.png",
+  "maskableIconUrl": "https://pawi.vercel.app/icon-maskable-512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "../../android_keystore/pawi-release-key.jks",
     "alias": "pawi_release"
   },
-  "appVersionName": "1.0.0",
-  "appVersionCode": 1,
+  "appVersionName": "2.0.0",
+  "appVersionCode": 2,
   "shortcuts": [
     {
       "name": "Add Expense",
       "short_name": "Expense",
-      "url": "https://pawi-finance.vercel.app/?action=new-expense",
+      "url": "https://pawi.vercel.app/?action=new-expense",
       "icon": "shortcut_expense"
     },
     {
       "name": "Scan Receipt",
       "short_name": "Scan",
-      "url": "https://pawi-finance.vercel.app/?action=scan-receipt",
+      "url": "https://pawi.vercel.app/?action=scan-receipt",
       "icon": "shortcut_scan"
     },
     {
       "name": "Plan & Goals",
       "short_name": "Plan",
-      "url": "https://pawi-finance.vercel.app/?tab=plan",
+      "url": "https://pawi.vercel.app/?tab=plan",
       "icon": "shortcut_plan"
     }
   ],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://pawi-finance.vercel.app/manifest.json",
+  "webManifestUrl": "https://pawi.vercel.app/manifest.json",
   "fallbackType": "customtabs",
   "features": {
     "locationDelegation": {
