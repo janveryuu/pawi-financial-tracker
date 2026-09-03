@@ -70,7 +70,7 @@ export function LandingCatcherScreen() {
       </div>
 
       {/* ── 2. Center Mascot: PAWI Jumping in Mid-Air ─────────────────── */}
-      <div className="relative z-20 flex flex-1 flex-col items-center justify-center px-4 pt-10 sm:pt-12 pb-2">
+      <div className="relative z-20 flex flex-1 flex-col items-center justify-center px-4 pt-4 sm:pt-6 pb-1">
         <motion.div
           aria-label="Pawi turtle mascot jumping joyfully"
           animate={
@@ -90,17 +90,17 @@ export function LandingCatcherScreen() {
         >
           {/* Gentle ambient halo behind mascot */}
           <div
-            className="absolute -inset-4 rounded-full opacity-35 blur-xl pointer-events-none"
-            style={{ background: "radial-gradient(circle, rgba(162, 230, 185, 0.4) 0%, transparent 70%)" }}
+            className="absolute -inset-6 rounded-full opacity-40 blur-2xl pointer-events-none"
+            style={{ background: "radial-gradient(circle, rgba(162, 230, 185, 0.45) 0%, transparent 70%)" }}
           />
 
           <Image
             src="/pawi-mascot-jumping.png"
             alt="Pawi Mascot"
-            width={260}
-            height={260}
+            width={320}
+            height={320}
             priority
-            className="h-[210px] w-[210px] sm:h-[240px] sm:w-[240px] object-contain drop-shadow-[0_14px_28px_rgba(0,0,0,0.45)]"
+            className="h-[275px] w-[275px] sm:h-[310px] sm:w-[310px] object-contain drop-shadow-[0_16px_32px_rgba(0,0,0,0.5)]"
           />
         </motion.div>
       </div>
