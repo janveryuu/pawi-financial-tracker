@@ -126,11 +126,11 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-foreground;
-  }
   html {
-    @apply font-sans;
+    @apply font-sans bg-background min-h-dvh;
+  }
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-foreground min-h-dvh;
   }
   button {
     @apply transition-all duration-200 ease-out active:scale-95 cursor-pointer;

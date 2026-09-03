@@ -29,6 +29,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react"
+import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   ChevronLeft,
@@ -440,7 +441,7 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
   const progressPercent = step === 0 ? 0 : Math.min(100, Math.round((step / totalSteps) * 100))
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col bg-background overflow-hidden">
+    <div className="fixed inset-0 z-[200] flex flex-col bg-background overflow-hidden min-h-[100dvh] h-[100dvh] pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
       {/* Top progress bar */}
       {step > 0 && (
         <div className="relative h-1 w-full bg-border/40">
@@ -495,7 +496,7 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
               animate="center"
               exit="exit"
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
+              className="absolute inset-0 flex flex-col items-center justify-center px-6 py-6 text-center overflow-y-auto"
             >
               <WelcomeStep
                 name={user?.displayName || user?.email?.split("@")[0] || ""}
@@ -673,7 +674,7 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
 
       {/* Sticky bottom CTA + error bar */}
       {step > 0 && (
-        <div className="pointer-events-none fixed bottom-0 inset-x-0 flex flex-col items-center pb-8 px-6 gap-2.5">
+        <div className="pointer-events-none fixed bottom-0 inset-x-0 flex flex-col items-center pb-[max(2rem,calc(env(safe-area-inset-bottom)+1rem))] px-6 gap-2.5">
           <AnimatePresence>
             {error && (
               <motion.p
@@ -715,9 +716,16 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
 function WelcomeStep({ name, onStart }: { name: string; onStart: () => void }) {
   const firstName = name.split(" ")[0] || ""
   return (
-    <div className="flex flex-col items-center gap-6 max-w-xs">
-      <div className="relative flex h-32 w-32 items-center justify-center rounded-full bg-[#3D784E]/10 ring-8 ring-[#3D784E]/20 shadow-xl">
-        <span className="text-6xl select-none">🐢</span>
+    <div className="flex flex-col items-center gap-6 max-w-xs my-auto w-full">
+      <div className="relative flex h-36 w-36 items-center justify-center rounded-full bg-[#3D784E]/10 ring-8 ring-[#3D784E]/20 shadow-xl p-3">
+        <Image
+          src="/pawi-new-home.png"
+          alt="Pawi Mascot"
+          width={130}
+          height={130}
+          className="object-contain w-full h-full drop-shadow-md select-none"
+          priority
+        />
         <div className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-[#3D784E] text-white shadow-md border-2 border-background">
           <Sparkles className="h-4 w-4" />
         </div>
