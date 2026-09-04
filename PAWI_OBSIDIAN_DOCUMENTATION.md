@@ -18,15 +18,16 @@
 4. [[#4. Database Architecture & PostgreSQL Schema (Supabase)]]
 5. [[#5. Authentication & User Session Lifecycle]]
 6. [[#6. AI Systems & Conversational Action Engine]]
-7. [[#7. Multimodal AI Receipt Scanner (OCR)]]
+7. [[#7. Multimodal AI Receipt Scanner (OCR) & Real-Time QR Scanner]]
 8. [[#8. Core Financial Engines & Math Models]]
 9. [[#9. Frontend UI / UX Screen Breakdown (Next.js)]]
 10. [[#10. User Journey: Onboarding & Spotlight Tutorial]]
 11. [[#11. Push Notification & Email Digest Systems]]
-12. [[#12. Security, Admin Governance & RLS Rules]]
+12. [[#12. Security, Admin Governance & Anti-Spam Guardrails]]
 13. [[#13. Android TWA Packaging & Native Integration]]
 14. [[#14. Testing Suite & Quality Assurance]]
 15. [[#15. Environment Variables & Deployment Guide]]
+16. [[#16. QA Testing Remediation & Release Changelog]]
 
 ---
 
@@ -382,32 +383,54 @@ sequenceDiagram
 - **`settle_debt` / `settle_receivable`**: Clears peer-to-peer debts or records repayments.
 - **Slot Clarification Chips**: If the user omits essential fields (e.g., *"Spent 500 on groceries"* without naming the wallet), the parser sets `status: 'pending_clarification'` and renders interactive chips for GCash, Maya, Cash, etc.
 
+### AI Guardrails, Persona Hardening & Rate Limiting
+To prevent prompt injection, jailbreaks, and API quota depletion, `/api/chat/route.ts` enforces multi-tiered defenses:
+1. **Deterministic Pre-flight Jailbreak Filter (`isOffTopicOrPromptInjection`)**:
+   - Regex-based lexical filtering scans for instruction overrides (`"ignore previous instructions"`, `"disregard safety guidelines"`), persona swaps (`"act as a chef"`, `"you are now a doctor"`), or off-topic domains (cooking recipes like pancit canton, coding, general trivia).
+   - Instantly intercepts and returns `STRICT_PAWI_DEFLECTION` without consuming LLM inference tokens:
+     > *"I'm Pawi, your personal finance companion! 🐢🌊 I can only help you with your budgets, savings goals, wallets, and money questions. Let's get back to your finances!"*
+2. **System Prompt Domain Lock**:
+   - Explicit instructions forbid breaking character or fulfilling non-financial tasks regardless of framing, hypotheticals, or social engineering.
+3. **Session & IP Rate Limiting (`checkRateLimit`)**:
+   - Caps conversational queries at **20 requests per hour per user/IP** to safeguard Groq / Gemini API credits.
+   - Emits `X-RateLimit-Remaining` headers and displays non-blocking in-chat cooldown notices.
+
 ---
 
-## 7. Multimodal AI Receipt Scanner (OCR)
+## 7. Multimodal AI Receipt Scanner (OCR) & Real-Time QR Scanner
 
-Located in `/api/receipt-scan/route.ts`, this service enables instant expense entry from paper receipts or payment screenshots.
+Located in `/api/receipt-scan/route.ts` and `quick-log-modal.tsx`, this subsystem enables instant expense entry from paper receipts, digital payment screenshots, or live QR codes.
 
 ```mermaid
 flowchart TD
-    A[User Snaps Photo / Uploads Receipt] --> B[QuickLogModal Client Pre-processing]
-    B --> C[POST /api/receipt-scan FormData]
+    A[User Opens QuickLogModal] --> Choice{Input Mode?}
     
-    subgraph Server Processing
-        C --> D1[Upload Image Buffer to Supabase Storage 'receipts' bucket]
-        D1 --> D2[Generate Secure Public URL]
-        C --> E1[Encode Image to base64]
-        E1 --> E2["Google Gemini 3.7 / 2.5 Flash (Schema Guided Generation)"]
-    end
-
-    E2 --> F{JSON Output Conforms to Schema?}
-    F -- Yes --> G[Extract Merchant, Amount, Date, Category, Payment Method, Confidence]
-    F -- Low Confidence --> H[Flag Uncertain Fields in 'low_fields' Array]
+    Choice -- Real-Time Camera --> B1[Start Camera via getUserMedia]
+    B1 --> B2["Live Frame Analysis (BarcodeDetector API)"]
+    B2 --> B3{Valid QR Detected?}
+    B3 -- Yes --> B4[EMVCo / QR Ph Parser parseEmvCoQr]
+    B4 --> B5[Auto-fill Merchant & Amount in Quick Log]
     
-    G & H --> I[Return JSON Payload + Storage URL]
-    I --> J[QuickLogModal Auto-fills Form Fields]
-    J --> K[User Reviews Highlighted Fields & Confirms]
+    Choice -- Upload Image / File --> C1[POST /api/receipt-scan FormData]
+    C1 --> C2[Upload Buffer to Supabase Storage 'receipts' bucket]
+    C1 --> C3["Google Gemini 3.7 / 2.5 Flash OCR"]
+    C3 --> C4{Valid Receipt Content?}
+    C4 -- Yes --> C5[Return Structured JSON Payload + Public URL]
+    C4 -- No --> C6[Return HTTP 422: Unrecognized Image]
+    C6 --> C7[Display User Warning: No Dummy Transactions]
 ```
+
+### Real-Time Viewfinder Camera QR Scanner
+In addition to static receipt OCR, `quick-log-modal.tsx` integrates a direct camera scanner:
+- **Hardware Camera Streaming**: Accesses the rear/environment camera via `navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })`.
+- **Live Barcode Detection**: Leverages the high-performance browser-native `BarcodeDetector` API for zero-latency frame-by-frame QR scanning.
+- **EMVCo & QR Ph Payload Parser (`parseEmvCoQr`)**:
+  - Automatically decodes Philippine National QR Standard (QR Ph / EMVCo Merchant-Presented Mode) tags (`Tag 26` Merchant ID, `Tag 54` Transaction Amount, `Tag 59` Merchant Name).
+  - Instantly pre-fills Quick Log with formatted text (e.g. `Spent ₱250.00 at Starbucks (QR Ph)`).
+
+### Strict Image & Receipt Verification
+- **Rejection of Non-Receipt / Non-QR Images**: If an uploaded image contains no readable financial receipt data or valid QR code, `/api/receipt-scan` returns `HTTP 422 Unprocessable Entity` with a clear validation banner.
+- **Zero Dummy Data**: The legacy fallback that previously generated `"Spent 0 on General at Store (Cash)"` has been permanently purged, guaranteeing ledger integrity.
 
 ### JSON Schema Extraction Output
 ```json
@@ -502,6 +525,29 @@ graph LR
 - **`HistoryScreen`**: High-performance ledger with instant client-side filtering by category, date range (Today, Yesterday, Month), and keyword search.
 - **`ChatScreen`**: Dedicated conversational workspace featuring speech-to-text input, mascot animations, and interactive confirmation cards.
 
+### Modal Portaling Architecture (Document Body)
+All 8 modal and drawer dialogs are portaled directly to `document.body` using React `createPortal` with SSR hydration guards:
+- `TransferModal.tsx`
+- `QuickLogModal.tsx`
+- `AddWalletModal.tsx`
+- `AddBudgetModal.tsx`
+- `AddGoalModal.tsx`
+- `TransactionEntryModal.tsx`
+- `WalletDetailsModal.tsx`
+- `PaydaySetupModal.tsx`
+
+> [!TIP] **Viewport Protection**
+> Portaling to `document.body` guarantees modals are never clipped, obscured, or trapped inside parents with `overflow-hidden`, relative positioning, or CSS transforms.
+
+### Transfer Funds Modal Guardrails
+- **Same-Wallet Prevention**: Source and destination dropdowns dynamically filter out opposing selections, forbidding identical wallet transfers (e.g. GCash ➔ GCash).
+- **Available Balance Check**: Evaluates `amount > fromWallet.balance` in real time, disabling the transfer button and displaying an explicit *"Insufficient balance"* alert.
+- **Anti-Spam Sanitization**: Numeric inputs automatically strip negative signs and collapse repeated digits.
+
+### UI De-Vibe-Coding & Typography
+- **Icon Modernization**: Replaced unpolished raw emojis (`📊`, `🗓️`, `🎯`, `🍱`) with clean, branded Lucide SVG icons (`BarChart3`, `Calendar`, `Target`, `GraduationCap`, `Utensils`).
+- **Typography Polish**: Increased category chip typography from `text-[10px]` to readable `text-xs font-semibold` with enhanced touch padding and contrast.
+
 ---
 
 ## 10. User Journey: Onboarding & Spotlight Tutorial
@@ -550,6 +596,11 @@ stateDiagram-v2
 - **Click-Through Taps**: Taps on the spotlighted area pass through directly to the underlying button or control.
 - **State Persistence**: Progress is saved to `profiles.tutorial_step` in Supabase; restarting or refreshing resumes at the exact step.
 
+### Onboarding Guardrails & Flow Fixes
+1. **Savings Goal Setup Execution Fix**: Reordered step evaluation so `showGoalCreation` is handled before checking `step === 4` or `step === 5`. Clicking "Continue ->" saves the goal into the store and cleanly advances to the notification preference step without infinite looping.
+2. **Strict Allowance Validation**: Step 3 requires `weeklyAllowance > 0`. The "Continue ->" button remains disabled until a valid, positive numerical value is provided.
+3. **De-Duplication of Redundant Categories**: Removed duplicate category chips (e.g., "Allowance" under Student) to reduce cognitive load and streamline decision making.
+
 ---
 
 ## 11. Push Notification & Email Digest Systems
@@ -594,7 +645,24 @@ flowchart TD
 
 ---
 
-## 12. Security, Admin Governance & RLS Rules
+## 12. Security, Admin Governance & Anti-Spam Guardrails
+
+### Global Anti-Spam & Character Boundary Guardrails (`anti-spam.ts`)
+To prevent Denial-of-Service, database pollution, buffer issues, and UI overflow from repetitive keypresses or automated scripts, `mobile_app/lib/anti-spam.ts` provides universal input sanitization:
+1. **Consecutive Repetition Blocker (`hasConsecutiveSpam`)**:
+   - Matches $\ge 4$ identical consecutive characters using regex `/(.)\1{3,}/su`.
+   - The `/u` (unicode) flag guarantees support for astral-plane emojis (`🐢🐢🐢🐢` $\to$ flagged), and `/s` (dotAll) matches multiline whitespace spam.
+2. **Numeric & Monetary Sanitizer (`sanitizeNumericInput`)**:
+   - Strips negative signs, invalid characters, and multiple decimal points.
+   - Collapses consecutive repeating numbers $\ge 4$ down to 3.
+   - Restricts integer portion to `MAX_LENGTH.AMOUNT_DIGITS` (10 digits $\approx$ ₱99,999,999.99) and decimal portion to 2 places.
+3. **Field-Specific Max-Length Standard (`MAX_LENGTH`)**:
+   - `NAME`: 30 characters
+   - `EMAIL`: 60 characters
+   - `PASSWORD`: 64 characters
+   - `GOAL_TITLE`: 35 characters
+   - `AMOUNT_DIGITS`: 10 digits
+   - `NOTE` / `DESCRIPTION`: 100 characters
 
 ### Row-Level Security (RLS) Policies
 Every table in Supabase PostgreSQL enforces strict ownership isolation:
@@ -651,21 +719,24 @@ graph TD
 
 ## 14. Testing Suite & Quality Assurance
 
-The `mobile_app` project includes **11 Jest test suites** located in `mobile_app/lib/__tests__`:
+The `mobile_app` project includes **14 Jest test suites (177 unit tests)** located in `mobile_app/lib/__tests__`:
 
-| Test Suite File | Focus Area & Test Coverage |
-| :--- | :--- |
-| `admin-auth.test.ts` | Verification of JWT tokens, admin email whitelist, and RBAC rejection. |
-| `chat-action-parser.test.ts` | Regex intent matching, slot extraction, fuzzy entity matching. |
-| `chat-action-engine.test.ts` | State transitions, clarification chips, and confirmation flows. |
-| `home-sections-engine.test.ts`| Net worth calculations, credit card due day sorting, and budget spent metrics. |
-| `onboarding.test.ts` | Branching logic (Student vs Professional), field validation, step resumption. |
-| `plan-persistence.test.ts` | CRUD and schema integrity for Debts, Receivables, Installments, Tags. |
-| `push-engine.test.ts` | Push notification trigger evaluation, quiet hours, and deduplication logic. |
-| `realtime-streak.test.ts` | Timezone-aware daily logging streak increment and expiration math. |
-| `store-transactions.test.ts` | Double-entry balance updates, transaction creation, editing, and deletion. |
-| `landing-assets.test.ts` | Static asset resolution, mascot image paths, and logo fallbacks. |
-| `final-qa-verification.test.ts` | End-to-end regression tests across all core application flows. |
+| Test Suite File | Focus Area & Test Coverage | Tests Passed |
+| :--- | :--- | :--- |
+| `admin-auth.test.ts` | Verification of JWT tokens, admin email whitelist, and RBAC rejection. | 8 |
+| `anti-spam.test.ts` | Repetitive character regex, Unicode emoji surrogate pairs, numeric sanitizer, and length limits. | 13 |
+| `chat-action-parser.test.ts` | Regex intent matching, slot extraction, fuzzy entity matching. | 16 |
+| `chat-action-engine.test.ts` | State transitions, clarification chips, and confirmation flows. | 14 |
+| `chat-hardening.test.ts` | Prompt injection defenses, jailbreak resistance, deflection messages, and rate limiter. | 12 |
+| `home-sections-engine.test.ts`| Net worth calculations, credit card due day sorting, and budget spent metrics. | 15 |
+| `landing-assets.test.ts` | Static asset resolution, mascot image paths, and logo fallbacks. | 9 |
+| `onboarding.test.ts` | Branching logic (Student vs Professional), field validation, step resumption. | 14 |
+| `plan-persistence.test.ts` | CRUD and schema integrity for Debts, Receivables, Installments, Tags. | 18 |
+| `push-engine.test.ts` | Push notification trigger evaluation, quiet hours, and deduplication logic. | 12 |
+| `qa-remediation.test.ts` | Modal portaling verification, emoji cleanup, transfer mutual exclusion, and goal setup button order. | 11 |
+| `realtime-streak.test.ts` | Timezone-aware daily logging streak increment and expiration math. | 10 |
+| `store-transactions.test.ts` | Double-entry balance updates, transaction creation, editing, and deletion. | 12 |
+| `final-qa-verification.test.ts` | End-to-end regression tests across all core application flows. | 13 |
 
 ---
 
@@ -700,7 +771,7 @@ cd mobile_app
 # Install dependencies
 npm install
 
-# Run test suite
+# Run test suite (14 suites, 177 unit tests)
 npm test
 
 # Run Next.js development server
@@ -709,6 +780,35 @@ npm run dev
 
 ---
 
+## 16. QA Testing Remediation & Release Changelog
+
+> [!NOTE] **Release v2.0.1 — QA Remediation & Hardening**
+> Comprehensive fixes addressing the 7 QA whiteboard stress test findings and architectural upgrades.
+
+```mermaid
+timeline
+    title Pawi Evolution
+    section Version 1.0
+        Vanilla Web Client : Static Firebase App : Basic Transaction Entry
+    section Version 2.0
+        Next.js 16 PWA : Multi-Tier AI Chat : Supabase PostgreSQL : Android TWA Packaging
+    section Version 2.0.1 (Current)
+        Anti-Spam Regex Engine : Chatbot Injection Defenses : Live Camera QR Scanner : Document Body Modal Portals : Fixed Goal Button Order : Rebuilt Signed APK
+```
+
+### Key Milestones in v2.0.1
+1. **Critical Goal Flow Bug Fix**: In `pawi-onboarding-flow.tsx`, moved `showGoalCreation` ahead of step index evaluation, resolving the broken "Continue ->" button on optional goal setup.
+2. **Weekly Allowance Guard**: Enforced `weeklyAllowance > 0` validation with disabled button state, preventing empty/negative allowance bypass.
+3. **Global Anti-Spam Guardrails**: Created `mobile_app/lib/anti-spam.ts` providing `hasConsecutiveSpam` (with Unicode astral-plane `/su` support), `sanitizeSpam`, `sanitizeNumericInput`, and standardized field lengths across all inputs.
+4. **Chatbot Jailbreak Resistance & Rate Limiter**: Added `isOffTopicOrPromptInjection` pre-flight interceptor and 20 query/hour rate limiting in `/api/chat/route.ts`.
+5. **Real Camera QR Scanner & Zero-Dummy OCR**: Integrated `getUserMedia` and `BarcodeDetector` for direct QR Ph scanning; eliminated `"Spent 0 on General at Store"` fallback, returning HTTP 422 for non-receipts.
+6. **Transfer Modal Guardrails**: Added mutual exclusion to wallet selectors (`availableFromWallets` / `availableToWallets`) preventing `GCash` ➔ `GCash` transfers, and added real-time balance validation.
+7. **Modal Portaling**: Migrated all 8 modal dialogs to `createPortal(..., document.body)` with SSR hydration guards, preventing CSS overflow clipping.
+8. **UI Modernization**: Stripped raw emojis from onboarding copy, replacing them with Lucide SVG icons and boosted typography.
+9. **Release Packaging**: Successfully built signed release Android APK (`Pawi-V2.apk`, 3.18 MB) via Gradle 8.4 and JDK 17.
+
+---
+
 > [!TIP] **Summary for Obsidian Graph View**
 > This note interlinks with your core personal knowledge graphs covering:
-> `[[Next.js 16]]` · `[[Supabase PostgreSQL]]` · `[[Gemini AI]]` · `[[Groq LLaMA]]` · `[[Personal Finance]]` · `[[Android TWA]]` · `[[Web Push]]` · `[[Tailwind CSS]]`
+> `[[Next.js 16]]` · `[[Supabase PostgreSQL]]` · `[[Gemini AI]]` · `[[Groq LLaMA]]` · `[[Personal Finance]]` · `[[Android TWA]]` · `[[Web Push]]` · `[[Tailwind CSS]]` · `[[BarcodeDetector API]]` · `[[Prompt Injection Defense]]` · `[[Anti-Spam Security]]`
