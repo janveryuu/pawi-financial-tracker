@@ -24,6 +24,8 @@ describe("Anti-Spam & Input Validation Utilities", () => {
       expect(hasConsecutiveSpam("P -----------------")).toBe(true)
       expect(hasConsecutiveSpam("3333")).toBe(true)
       expect(hasConsecutiveSpam("1111000")).toBe(true)
+      expect(hasConsecutiveSpam("🐢🐢🐢🐢")).toBe(true)
+      expect(hasConsecutiveSpam("\n\n\n\n")).toBe(true)
     })
   })
 
@@ -32,6 +34,7 @@ describe("Anti-Spam & Input Validation Utilities", () => {
       expect(sanitizeSpam("aaaa")).toBe("aaa")
       expect(sanitizeSpam("Jay jjjjjjjjj")).toBe("Jay jjj")
       expect(sanitizeSpam("11111")).toBe("111")
+      expect(sanitizeSpam("🐢🐢🐢🐢")).toBe("🐢🐢🐢")
     })
 
     it("enforces maxLength", () => {

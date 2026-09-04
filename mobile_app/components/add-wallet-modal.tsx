@@ -1,12 +1,19 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Wallet, X, Plus, CreditCard, Banknote, Smartphone, Landmark, ShieldCheck, Check } from "lucide-react"
+import { createPortal } from "react-dom"
+import { Wallet, X, Plus, CreditCard, Banknote, Smartphone, Landmark, ShieldCheck, Check, AlertCircle } from "lucide-react"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { useStore } from "@/lib/store"
 import { getWalletBrandLogo } from "@/lib/pawi-data"
 import { cn } from "@/lib/utils"
+import {
+  hasConsecutiveSpam,
+  sanitizeSpam,
+  sanitizeNumericInput,
+  MAX_LENGTH,
+} from "@/lib/anti-spam"
 
 interface AddWalletModalProps {
   open: boolean
@@ -29,6 +36,7 @@ const PRESET_BANKS = [
 ]
 
 export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
+  const [mounted, setMounted] = useState(false)
   const [name, setName] = useState("")
   const [type, setType] = useState<"cash" | "ewallet" | "card" | "savings">("cash")
   const [group, setGroup] = useState<"cash" | "ewallet" | "bank" | "credit" | "loan">("cash")
@@ -40,6 +48,10 @@ export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
   const [dueDay, setDueDay] = useState("15")
 
   const { addWallet } = useStore()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Reset form when opened
   useEffect(() => {
@@ -68,14 +80,17 @@ export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
     }
   }
 
+  const isNameSpam = hasConsecutiveSpam(name)
+  const isNameValid = name.trim().length > 0 && !isNameSpam
+
   const handleAdd = () => {
-    if (!name.trim()) return
+    if (!isNameValid) return
 
     const parsedBalance = parseFloat(balance) || 0
     const parsedCreditLimit = parseFloat(creditLimit) || 0
 
     addWallet({
-      name: name.trim(),
+      name: name.trim().slice(0, MAX_LENGTH.NAME),
       subtitle: `${type.charAt(0).toUpperCase() + type.slice(1)} · ${currency}`,
       balance: parsedBalance,
       currency,
@@ -104,9 +119,9 @@ export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
     }
   }, [open, onClose])
 
-  if (!open) return null
+  if (!open || !mounted) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <motion.button
         initial={{ opacity: 0 }}
@@ -236,11 +251,17 @@ export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              maxLength={MAX_LENGTH.NAME}
+              onChange={(e) => setName(sanitizeSpam(e.target.value, MAX_LENGTH.NAME))}
               placeholder="e.g. BDO Savings, Maya Wallet, GCash"
               required
               className="h-12 w-full rounded-2xl border border-border/80 bg-secondary/30 px-4 text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
             />
+            {isNameSpam && (
+              <p className="text-xs font-semibold text-rose-500">
+                Please avoid excessively repeated characters.
+              </p>
+            )}
           </div>
 
           {/* Type & Currency Row */}
@@ -301,7 +322,8 @@ export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
                 type="number"
                 step="any"
                 value={balance}
-                onChange={(e) => setBalance(e.target.value)}
+                maxLength={MAX_LENGTH.AMOUNT_DIGITS}
+                onChange={(e) => setBalance(sanitizeNumericInput(e.target.value, MAX_LENGTH.AMOUNT_DIGITS))}
                 placeholder="0.00"
                 className="h-12 w-full rounded-2xl border border-border/80 bg-secondary/30 pl-9 pr-4 text-base font-black text-foreground placeholder:text-muted-foreground/60 focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
               />
@@ -318,7 +340,8 @@ export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
                 <input
                   type="number"
                   value={creditLimit}
-                  onChange={(e) => setCreditLimit(e.target.value)}
+                  maxLength={MAX_LENGTH.AMOUNT_DIGITS}
+                  onChange={(e) => setCreditLimit(sanitizeNumericInput(e.target.value, MAX_LENGTH.AMOUNT_DIGITS))}
                   placeholder="50000"
                   className="h-12 w-full rounded-2xl border border-border/80 bg-secondary/30 px-3 text-sm font-semibold text-foreground focus:border-[#3D784E] focus:bg-card focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
                 />
@@ -354,7 +377,7 @@ export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
           <button
             type="button"
             onClick={handleAdd}
-            disabled={!name.trim()}
+            disabled={!isNameValid}
             className="flex-1 flex items-center justify-center gap-1.5 rounded-2xl bg-[#3D784E] py-3 text-xs font-black text-white shadow-md shadow-[#3D784E]/20 transition-all hover:bg-[#356B46] active:scale-[0.98] disabled:opacity-50"
           >
             <Check className="h-4 w-4" />
@@ -362,6 +385,7 @@ export function AddWalletModal({ open, onClose }: AddWalletModalProps) {
           </button>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   )
 }

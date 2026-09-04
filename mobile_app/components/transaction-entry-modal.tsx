@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { createPortal } from "react-dom"
 import { Tag, Check, ChevronDown, Sparkles } from "lucide-react"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
@@ -8,6 +9,11 @@ import { useStore } from "@/lib/store"
 import { getWalletBrandLogo, formatMoney } from "@/lib/pawi-data"
 import { IOS_SPRING, IOS_VARIANTS } from "@/lib/motion"
 import { cn } from "@/lib/utils"
+import {
+  hasConsecutiveSpam,
+  sanitizeSpam,
+  MAX_LENGTH,
+} from "@/lib/anti-spam"
 
 interface TransactionEntryModalProps {
   open: boolean
@@ -43,6 +49,7 @@ const EXPENSE_CATEGORIES = [
 export function TransactionEntryModal({ open, kind, initialAccount, onClose }: TransactionEntryModalProps) {
   const { wallets, transactions = [], budgets = [], addTransaction, defaultCurrency } = useStore()
 
+  const [mounted, setMounted] = useState(false)
   const [displayValue, setDisplayValue] = useState("0")
   const [expression, setExpression] = useState("")
   const [note, setNote] = useState("")
@@ -52,14 +59,19 @@ export function TransactionEntryModal({ open, kind, initialAccount, onClose }: T
   const [showTagInput, setShowTagInput] = useState(false)
   const [tag, setTag] = useState("")
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const isIncome = kind === "income"
   const categories = isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
 
   const handleNoteChange = (text: string) => {
-    setNote(text)
-    if (!text.trim() || isIncome) return
+    const sanitized = sanitizeSpam(text, MAX_LENGTH.NOTE)
+    setNote(sanitized)
+    if (!sanitized.trim() || isIncome) return
 
-    const lower = text.toLowerCase()
+    const lower = sanitized.toLowerCase()
 
     // 1. Check if an existing budget matches this note
     const matchingBudget = budgets.find((b) => {
@@ -322,7 +334,9 @@ export function TransactionEntryModal({ open, kind, initialAccount, onClose }: T
       }
     }
 
-    if (finalAmount <= 0) return
+    const isNoteSpam = hasConsecutiveSpam(note)
+    const isTagSpam = hasConsecutiveSpam(tag)
+    if (finalAmount <= 0 || isNoteSpam || isTagSpam) return
 
     const finalLabel = note.trim()
       ? (tag ? `[${tag}] ${note.trim()}` : note.trim())
@@ -343,7 +357,12 @@ export function TransactionEntryModal({ open, kind, initialAccount, onClose }: T
   const activeWallet = wallets.find((w) => w.name === selectedWalletName) || wallets[0]
   const brandLogo = activeWallet ? getWalletBrandLogo(activeWallet.name) : "/cash-logo.png"
 
-  return (
+  const isNoteSpam = hasConsecutiveSpam(note)
+  const isTagSpam = hasConsecutiveSpam(tag)
+
+  if (!open || !mounted) return null
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -414,20 +433,32 @@ export function TransactionEntryModal({ open, kind, initialAccount, onClose }: T
             <input
               type="text"
               value={note}
+              maxLength={MAX_LENGTH.NOTE}
               onChange={(e) => handleNoteChange(e.target.value)}
               placeholder={isIncome ? "e.g. March salary, freelance project" : "e.g. Dinner with friends, grocery run"}
               className="w-full bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground/60 outline-none"
             />
+            {isNoteSpam && (
+              <p className="text-xs font-semibold text-rose-500 pt-0.5">
+                Please avoid excessively repeated characters.
+              </p>
+            )}
             {showTagInput && (
-              <div className="flex items-center gap-1.5 pt-1">
+              <div className="flex flex-col gap-1 pt-1">
                 <input
                   type="text"
                   value={tag}
-                  onChange={(e) => setTag(e.target.value)}
+                  maxLength={30}
+                  onChange={(e) => setTag(sanitizeSpam(e.target.value, 30))}
                   placeholder="Custom tag (e.g. Work, Vacation)"
                   className="rounded-lg border border-border/60 bg-card px-2.5 py-1 text-xs outline-none"
                   autoFocus
                 />
+                {isTagSpam && (
+                  <p className="text-xs font-semibold text-rose-500">
+                    Please avoid excessively repeated characters in tag.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -680,8 +711,9 @@ export function TransactionEntryModal({ open, kind, initialAccount, onClose }: T
             <button
               type="button"
               onClick={handleSave}
+              disabled={isNoteSpam || isTagSpam}
               className={cn(
-                "flex h-12 flex-1 items-center justify-center rounded-2xl font-extrabold text-sm shadow-md transition-all active:scale-95",
+                "flex h-12 flex-1 items-center justify-center rounded-2xl font-extrabold text-sm shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed",
                 isIncome
                   ? "bg-primary text-primary-foreground shadow-primary/20 hover:bg-primary/90"
                   : "bg-[#3D784E] text-white shadow-emerald-700/20 hover:bg-[#356B46]"
@@ -694,6 +726,7 @@ export function TransactionEntryModal({ open, kind, initialAccount, onClose }: T
       </motion.div>
     </motion.div>
   )}
-</AnimatePresence>
+</AnimatePresence>,
+document.body
 )
 }

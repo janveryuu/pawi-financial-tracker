@@ -23,7 +23,7 @@ export const MAX_LENGTH = {
  */
 export function hasConsecutiveSpam(text: string | null | undefined): boolean {
   if (!text) return false
-  return /(.)\1{3,}/.test(text)
+  return /(.)\1{3,}/su.test(text)
 }
 
 /**
@@ -32,7 +32,7 @@ export function hasConsecutiveSpam(text: string | null | undefined): boolean {
  */
 export function sanitizeSpam(text: string | null | undefined, maxLength?: number): string {
   if (!text) return ""
-  let sanitized = text.replace(/(.)\1{3,}/g, "$1$1$1")
+  let sanitized = text.replace(/(.)\1{3,}/gsu, "$1$1$1")
   if (maxLength && maxLength > 0 && sanitized.length > maxLength) {
     sanitized = sanitized.slice(0, maxLength)
   }
@@ -55,7 +55,7 @@ export function sanitizeNumericInput(text: string | null | undefined, maxDigits:
     cleaned = parts[0] + "." + parts.slice(1).join("")
   }
   // Collapse repeating digits >= 4
-  cleaned = cleaned.replace(/(.)\1{3,}/g, "$1$1$1")
+  cleaned = cleaned.replace(/(.)\1{3,}/gsu, "$1$1$1")
 
   // Limit integer digits
   const [intPart, decPart] = cleaned.split(".")

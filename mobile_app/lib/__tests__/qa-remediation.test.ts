@@ -215,3 +215,47 @@ describe("QA Remediation: 4. Receipt OCR & Live QR Scanner Logic", () => {
     expect(valid.value).toBe("Spent 450 on Food & Dining at Jollibee")
   })
 })
+
+describe("QA Remediation: 5. Modal Viewport Portaling & DOM Isolation", () => {
+  it("verifies all modals are portaled directly to document.body to prevent parent overflow clipping", () => {
+    const fs = require("fs")
+    const path = require("path")
+
+    const modalFiles = [
+      "components/quick-log-modal.tsx",
+      "components/transfer-modal.tsx",
+      "components/add-budget-modal.tsx",
+      "components/add-goal-modal.tsx",
+      "components/add-wallet-modal.tsx",
+      "components/transaction-entry-modal.tsx",
+      "components/wallet-details-modal.tsx",
+      "components/payday-setup-modal.tsx",
+    ]
+
+    for (const relPath of modalFiles) {
+      const fullPath = path.resolve(__dirname, "../../", relPath)
+      const content = fs.readFileSync(fullPath, "utf8")
+      expect(content).toContain("createPortal(")
+      expect(content).toContain("document.body")
+    }
+  })
+})
+
+describe("QA Remediation: 6. Onboarding Flow UI/UX & De-Vibe-Coding", () => {
+  it("verifies onboarding feature checklists and text use SVG Lucide icons instead of raw emojis", () => {
+    const fs = require("fs")
+    const path = require("path")
+
+    const onboardingPath = path.resolve(__dirname, "../../components/pawi-onboarding-flow.tsx")
+    const content = fs.readFileSync(onboardingPath, "utf8")
+
+    // Must not contain raw emoji bullets
+    expect(content).not.toContain("💡 Pawi will track")
+    expect(content).not.toContain("🐢 Preview:")
+    expect(content).not.toContain("💪")
+    // Must include Lucide icons for feature lists
+    expect(content).toContain("BarChart3")
+    expect(content).toContain("Calendar")
+    expect(content).toContain("Target")
+  })
+})

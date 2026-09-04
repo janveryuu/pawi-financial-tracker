@@ -227,6 +227,7 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
 
   const goBack = useCallback(() => {
     setError(null)
+    setSkipGoalCreation(false)
     if (showGoalCreation) {
       setShowGoalCreation(false)
       return
@@ -272,7 +273,7 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
         // Step 1: Name — required
         const cleaned = name.trim()
         if (!cleaned) {
-          setError("Please enter your name so Pawi can greet you! 🐢")
+          setError("Please enter your name so Pawi can greet you!")
           return
         }
         if (hasConsecutiveSpam(cleaned)) {
@@ -636,7 +637,14 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
               className="absolute inset-0 overflow-y-auto flex flex-col px-6 pt-2 pb-32"
             >
               {isStudentBranch ? (
-                <PrimaryGoalStep goal={primaryGoal} onChange={setPrimaryGoal} stepNum={4} />
+                <PrimaryGoalStep
+                  goal={primaryGoal}
+                  onChange={(g) => {
+                    setPrimaryGoal(g)
+                    setSkipGoalCreation(false)
+                  }}
+                  stepNum={4}
+                />
               ) : (
                 <PaydayStep
                   paydayType={paydayType}
@@ -693,7 +701,14 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
               {isStudentBranch ? (
                 <NotificationsStep value={notificationsEnabled} onChange={setNotificationsEnabled} stepNum={5} />
               ) : (
-                <PrimaryGoalStep goal={primaryGoal} onChange={setPrimaryGoal} stepNum={5} />
+                <PrimaryGoalStep
+                  goal={primaryGoal}
+                  onChange={(g) => {
+                    setPrimaryGoal(g)
+                    setSkipGoalCreation(false)
+                  }}
+                  stepNum={5}
+                />
               )}
             </motion.div>
           )}
@@ -874,8 +889,9 @@ function NameStep({ name, onChange }: { name: string; onChange: (v: string) => v
           animate={{ opacity: 1, y: 0 }}
           className="rounded-2xl bg-[#3D784E]/10 border border-[#3D784E]/20 px-4 py-3.5"
         >
-          <p className="text-sm font-bold text-[#3D784E]">
-            🐢 Preview: &quot;Good morning, {name.split(" ")[0]}! Ready to swim ahead today?&quot;
+          <p className="flex items-center gap-1.5 text-sm font-bold text-[#3D784E]">
+            <Sparkles className="h-4 w-4 shrink-0 text-[#3D784E]" />
+            <span>Preview: &quot;Good morning, {name.split(" ")[0]}! Ready to swim ahead today?&quot;</span>
           </p>
         </motion.div>
       )}
@@ -1070,8 +1086,9 @@ function WeeklyAllowanceStep({
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-muted-foreground">
-            💡 Pawi will track your weekly allowance pacing on your dashboard so you never run out of baon early!
+          <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <Sparkles className="h-3 w-3 shrink-0 text-[#3D784E]" />
+            <span>Pawi will track your weekly allowance pacing on your dashboard so you never run out of baon early!</span>
           </p>
         </motion.div>
       )}
@@ -1491,7 +1508,7 @@ function NotificationsStep({
             val: false,
             icon: <BellOff className="h-7 w-7" />,
             title: "No thanks",
-            sub: "I'll check in on my own schedule 💪",
+            sub: "I'll check in on my own schedule",
           },
         ].map((opt) => (
           <button

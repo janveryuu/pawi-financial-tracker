@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { X, ArrowDownRight, ArrowUpRight, Banknote, Smartphone, CreditCard, PiggyBank, Trash2, FileText, Plus, Minus, History, Wallet as WalletIcon } from "lucide-react"
 import Image from "next/image"
 import { useStore } from "@/lib/store"
@@ -33,7 +34,12 @@ function getWalletMonogram(name: string): string {
 
 export function WalletDetailsModal({ wallet, open, onClose, onAddTransaction }: WalletDetailsModalProps) {
   const { transactions, deleteWallet } = useStore()
+  const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState<"overview" | "history">("overview")
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -48,7 +54,7 @@ export function WalletDetailsModal({ wallet, open, onClose, onAddTransaction }: 
     }
   }, [open, onClose])
 
-  if (!open || !wallet) return null
+  if (!open || !wallet || !mounted) return null
 
   const Icon = icons[wallet.type] || Banknote
   const brandLogo = getWalletBrandLogo(wallet.name)
@@ -56,7 +62,7 @@ export function WalletDetailsModal({ wallet, open, onClose, onAddTransaction }: 
   const monogram = !brandLogo ? getWalletMonogram(wallet.name) : null
   const walletTransactions = transactions.filter(t => t.account === wallet.name)
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <button
         type="button"
@@ -169,6 +175,7 @@ export function WalletDetailsModal({ wallet, open, onClose, onAddTransaction }: 
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

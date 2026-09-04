@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { X, Calendar, DollarSign, Check, TrendingUp } from "lucide-react"
 import { useStore, PaydayConfig } from "@/lib/store"
 import { formatMoney } from "@/lib/pawi-data"
 import { cn } from "@/lib/utils"
+import { sanitizeNumericInput, MAX_LENGTH } from "@/lib/anti-spam"
 
 interface PaydaySetupModalProps {
   open: boolean
@@ -20,6 +22,7 @@ const PRESET_SCHEDULES = [
 
 export function PaydaySetupModal({ open, onClose }: PaydaySetupModalProps) {
   const { paydayConfig, updatePaydayConfig } = useStore()
+  const [mounted, setMounted] = useState(false)
 
   const [frequency, setFrequency] = useState<"monthly" | "semi-monthly">(
     paydayConfig?.frequency || "semi-monthly"
@@ -31,7 +34,11 @@ export function PaydaySetupModal({ open, onClose }: PaydaySetupModalProps) {
   )
   const [isSaving, setIsSaving] = useState(false)
 
-  if (!open) return null
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!open || !mounted) return null
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,7 +65,7 @@ export function PaydaySetupModal({ open, onClose }: PaydaySetupModalProps) {
     if (preset.day2) setDay2(preset.day2)
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center bg-black/60 p-0 sm:p-4 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] border border-border/80 bg-card p-6 shadow-2xl text-foreground animate-in slide-in-from-bottom duration-300">
         <div className="flex items-center justify-between pb-3 border-b border-border/50">
@@ -193,7 +200,8 @@ export function PaydaySetupModal({ open, onClose }: PaydaySetupModalProps) {
                 type="number"
                 placeholder="e.g. 25,000.00"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                maxLength={MAX_LENGTH.AMOUNT_DIGITS}
+                onChange={(e) => setAmount(sanitizeNumericInput(e.target.value, MAX_LENGTH.AMOUNT_DIGITS))}
                 className="flex h-11 w-full rounded-2xl border border-border/80 bg-secondary/40 pl-8 pr-3.5 text-sm font-black text-foreground outline-none focus:ring-2 focus:ring-[#3D784E]"
               />
             </div>
@@ -221,6 +229,7 @@ export function PaydaySetupModal({ open, onClose }: PaydaySetupModalProps) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

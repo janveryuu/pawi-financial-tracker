@@ -43,52 +43,26 @@ export function isOffTopicOrPromptInjection(text: string): boolean {
   if (!text) return false
   const lower = text.trim().toLowerCase()
 
-  // 1. Jailbreak & Prompt Override Phrases
-  const jailbreakPhrases = [
-    "ignore all previous",
-    "ignore previous instructions",
-    "ignore the previous",
-    "ignore your instructions",
-    "disregard all previous",
-    "disregard previous",
-    "system prompt",
-    "reveal your prompt",
-    "developer instructions",
-    "jailbreak",
-    "dan mode",
-    "bypass your rules",
-    "do anything now",
-    "pretend to be",
-    "act as an unrestricted",
-    "you are now an ai that",
-    "forget that you are",
-    "drop your persona",
+  // 1. Jailbreak & Prompt Override Patterns
+  const jailbreakPatterns = [
+    /\b(ignore|disregard|forget|bypass|override)\b.*\b(instruction|previous|prompt|rule|guideline|system|persona|constraint|guardrail)/i,
+    /\b(system\s+prompt|developer\s+mode|unrestricted\s+mode|dan\s+mode|jailbreak|jailbroken)\b/i,
+    /\b(act\s+as|act\s+like|pretend\s+to\s+be|pretend\s+you\s+are|roleplay\s+as|simulate\s+a)\b/i,
+    /\b(you\s+are\s+now\s+(an?|in)|drop\s+your\s+persona|reveal\s+your\s+(prompt|instructions)|developer\s+instructions)\b/i,
+    /\b(do\s+anything\s+now|bypass\s+your\s+rules)\b/i,
   ]
 
-  if (jailbreakPhrases.some((phrase) => lower.includes(phrase))) {
+  if (jailbreakPatterns.some((pattern) => pattern.test(lower))) {
     return true
   }
 
-  // 2. Off-Topic Keywords (e.g. cooking, coding, creative fiction, non-finance)
-  const offTopicTriggers = [
-    "pancit canton",
-    "recipe",
-    "how to cook",
-    "ingredients for",
-    "write code",
-    "write python",
-    "python script",
-    "python",
-    "javascript",
-    "write an essay",
-    "write a poem",
-    "write a song",
-    "write a story",
-    "bedtime story",
-    "story about",
-    "play a game",
-    "solve this math",
-    "translate this to",
+  // 2. Off-Topic Patterns (e.g. cooking/recipes, coding, creative fiction, non-finance)
+  const offTopicPatterns = [
+    /\b(pancit\s+canton|how\s+to\s+cook|recipe|recipes|how\s+to\s+bake|ingredients?\s+for|cook\s+[a-z]+)\b/i,
+    /\b(write|generate|create)\s+(code|python|javascript|typescript|c\+\+|java|html|css|sql|script|program)\b/i,
+    /\b(python\s+script|python\s+code|javascript\s+code)\b/i,
+    /\b(write|tell)\s+(me\s+)?(an?\s+)?(essay|poem|song|lyrics|story|bedtime\s+story)\b/i,
+    /\b(story\s+about|bedtime\s+story|play\s+a\s+game|solve\s+this\s+math|translate\s+this)\b/i,
   ]
 
   const financialKeywords = [
@@ -97,10 +71,11 @@ export function isOffTopicOrPromptInjection(text: string): boolean {
     "pay", "transfer", "interest", "bank", "credit", "card", "fund", "baon", "allowance",
   ]
 
-  const hasOffTopic = offTopicTriggers.some((t) => lower.includes(t))
+  const hasOffTopic = offTopicPatterns.some((pattern) => pattern.test(lower))
   const hasFinance = financialKeywords.some((k) => lower.includes(k))
 
-  if (lower.includes("pancit canton") || (hasOffTopic && !hasFinance)) {
+  // Explicit recipe or cooking queries are deflected even if framed with currency/budget
+  if (lower.includes("pancit canton") || (hasOffTopic && !hasFinance) || /\b(how\s+to\s+cook|recipe\s+for|how\s+to\s+bake)\b/i.test(lower)) {
     return true
   }
 
