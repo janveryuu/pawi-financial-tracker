@@ -16,6 +16,7 @@ tags:
 related_projects:
   - "[[Capy — Deep Project Architecture & System|Capy Mood & Travel Companion]]"
   - "[[Dormosaur — AI-Powered Student Campus & Dorm Companion — Complete Project Architecture & Knowledge Base|Dormosaur Campus Companion]]"
+  - "[[Janver Manlapaz — 3D Interactive Developer Portfolio — Complete Project Architecture & Knowledge Base|Janver Manlapaz 3D Portfolio]]"
 tech_stack:
   - "[[Next.js]]"
   - "[[PostgreSQL]]"
