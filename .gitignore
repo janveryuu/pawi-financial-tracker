@@ -1,20 +1,78 @@
+# Dependencies
 node_modules/
-.firebase/
-*.zip
-*.exe
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Next.js & Build outputs
+.next/
+out/
+build/
+dist/
+.turbo/
 *.tsbuildinfo
-.env*
-temp-login-interface/
-server/node_modules/
+
+# Environment Variables
+.env
+.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 server/.env
-scratch/
+
+# Obsidian & Editor Configuration
+.obsidian/
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Binary Builds & Archives
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.apk
+*.aab
+*.exe
+
+# Android TWA & Native Builds
+android_twa/.gradle/
+android_twa/build/
+android_twa/app/build/
+android_twa/local.properties
+android_twa/.idea/
+android_keystore/
 *.jks
 *.keystore
-android_keystore/
-.gradle/
-build/
+
+# Deployment Platforms & Server State
+.vercel/
+.firebase/
+coverage/
+
+# Temporary / Scratch Dirs & Test Logs
+temp*/
+tmp/
+scratch/
+mobile_app/scratch/
 screenshot_*.png
-android_twa/.idea/
-android_twa/local.properties
-
-
+test_*.js
+*.log

@@ -1,12 +1,14 @@
 *.zip
 *.exe
+*.apk
+*.aab
 node_modules
 .next
-temp-login-interface
+.obsidian
+temp*
 server
 docs
 assets
 android_twa
 android_keystore
 scratch
-
