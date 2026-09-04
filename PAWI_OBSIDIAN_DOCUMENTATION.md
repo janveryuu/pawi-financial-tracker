@@ -15,6 +15,7 @@ tags:
   - architecture/fullstack
 related_projects:
   - "[[Capy — Deep Project Architecture & System|Capy Mood & Travel Companion]]"
+  - "[[Dormosaur — AI-Powered Student Campus & Dorm Companion — Complete Project Architecture & Knowledge Base|Dormosaur Campus Companion]]"
 tech_stack:
   - "[[Next.js]]"
   - "[[PostgreSQL]]"
