@@ -1,20 +1,21 @@
 "use client"
 
-import { useEffect, useState, useRef, useMemo } from "react"
+import { useEffect, useState, useRef, useMemo, useCallback } from "react"
+import { createPortal } from "react-dom"
 import {
-  Lightbulb,
+  Camera,
   ScanLine,
   Sparkles,
   X,
   Loader2,
   AlertCircle,
-  ArrowRight,
   Check,
   Mic,
   Tag,
   Wallet as WalletIcon,
   TrendingDown,
   TrendingUp,
+  Upload,
 } from "lucide-react"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
@@ -22,6 +23,7 @@ import { useStore } from "@/lib/store"
 import { useAuth } from "@/lib/auth-context"
 import { formatMoney } from "@/lib/pawi-data"
 import { cn } from "@/lib/utils"
+import { hasConsecutiveSpam, sanitizeSpam, MAX_LENGTH } from "@/lib/anti-spam"
 
 interface QuickLogModalProps {
   open: boolean
@@ -37,16 +39,52 @@ const QUICK_PROMPTS = [
   { text: "Grab ride 240", icon: "🚗", category: "Transport" },
 ]
 
+/**
+ * Parses EMVCo standard Philippine QR Ph payloads if detected by camera.
+ */
+function parseEmvCoQr(qr: string) {
+  if (!qr.startsWith("000201")) return null
+  let merchant = ""
+  let amount = 0
+  let i = 0
+  while (i < qr.length - 4) {
+    const tag = qr.substring(i, i + 2)
+    const len = parseInt(qr.substring(i + 2, i + 4), 10)
+    if (isNaN(len) || i + 4 + len > qr.length) break
+    const val = qr.substring(i + 4, i + 4 + len)
+    if (tag === "59") merchant = val
+    else if (tag === "54") amount = parseFloat(val) || 0
+    i += 4 + len
+  }
+  return { merchant, amount }
+}
+
 export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
+  const [mounted, setMounted] = useState(false)
   const [value, setValue] = useState("")
   const [isScanning, setIsScanning] = useState(false)
+  const [scanError, setScanError] = useState<string | null>(null)
   const [lowFields, setLowFields] = useState<string[]>([])
   const [scannedReceiptUrl, setScannedReceiptUrl] = useState<string | null>(null)
   const [isListening, setIsListening] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const { addTransaction, wallets, budgets = [], lastInsertError, clearInsertError } = useStore()
+
+  // Live Camera Viewfinder state
+  const [showCamera, setShowCamera] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+
+  const { addTransaction, budgets = [], lastInsertError, clearInsertError } = useStore()
   const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Anti-spam checks
+  const isSpam = useMemo(() => hasConsecutiveSpam(value), [value])
 
   // Realtime Live Parser for instant visual feedback
   const parsedData = useMemo(() => {
@@ -87,7 +125,6 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
       else if (lowerValue.includes("allowance")) category = "Allowance"
       else if (lowerValue.includes("bonus")) category = "Bonus"
     } else {
-      // 1. Check if an active budget matches this text
       const matchingBudget = budgets.find((b) => {
         const bLower = b.category.toLowerCase()
         return lowerValue.includes(bLower) || bLower.includes(lowerValue)
@@ -167,47 +204,103 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
     }
   }, [value, budgets])
 
-  const handleLog = async () => {
-    if (!value.trim() || !parsedData) return
-    setIsSaving(true)
-    clearInsertError()
+  // Stop camera stream cleanly
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+  }, [])
 
-    await addTransaction({
-      label: value.trim(),
-      category: parsedData.category,
-      account: parsedData.account,
-      amount: parsedData.amount || 250,
-      currency: "PHP",
-      kind: parsedData.isIncome ? "income" : "expense",
-      receipt_url: scannedReceiptUrl || undefined,
-    })
+  // Start camera stream
+  const startCamera = useCallback(async () => {
+    try {
+      setCameraError(null)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false,
+      })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play().catch(() => {})
+      }
+    } catch (err: any) {
+      console.warn("Camera access error:", err)
+      setCameraError("Camera access denied or unavailable. Please grant permission or upload an image file.")
+    }
+  }, [])
 
-    setIsSaving(false)
+  // Handle detected QR Code payload
+  const handleQrDetected = useCallback((qrText: string) => {
+    setScanError(null)
+    const emv = parseEmvCoQr(qrText)
+    if (emv && (emv.merchant || emv.amount > 0)) {
+      if (emv.amount > 0 && emv.merchant) {
+        setValue(`Spent ${emv.amount} at ${emv.merchant} (QR Ph)`)
+      } else if (emv.merchant) {
+        setValue(`Spent at ${emv.merchant} (QR Ph)`)
+      } else {
+        setValue(`Spent ${emv.amount} (QR Ph)`)
+      }
+    } else {
+      setValue(`Paid via QR: ${qrText.slice(0, 40)}`)
+    }
+    setShowCamera(false)
+    stopCamera()
+  }, [stopCamera])
 
-    // Only close the modal if the insert succeeded (no error in store)
-    // lastInsertError is checked after the await — store sets it synchronously in setState
-    // We use a small trick: re-read from the store state after the await by checking the ref.
-    // The simplest approach: always close if no error was set. The store rolls back state on error.
-    // Since lastInsertError is part of React state, we need to check it via a local flag.
-    // addTransaction sets lastInsertError on failure — the component will re-render with it.
-    // We close only on success by checking if an error was just set (store rollback happened).
-    // We can't read React state mid-render, so we close optimistically and let the error banner
-    // keep the user informed if the next render shows an error.
-    setValue("")
-    setLowFields([])
-    setScannedReceiptUrl(null)
-    onClose()
-  }
+  // BarcodeDetector loop when camera is open
+  useEffect(() => {
+    if (!showCamera) {
+      stopCamera()
+      return
+    }
 
-  const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    startCamera()
+    let active = true
+    let detector: any = null
+
+    if (typeof window !== "undefined" && "BarcodeDetector" in window) {
+      try {
+        detector = new (window as any).BarcodeDetector({ formats: ["qr_code"] })
+      } catch (err) {
+        console.warn("BarcodeDetector not available:", err)
+      }
+    }
+
+    const intervalId = setInterval(async () => {
+      if (!active || !detector || !videoRef.current || videoRef.current.readyState < 2) return
+      try {
+        const barcodes = await detector.detect(videoRef.current)
+        if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+          active = false
+          handleQrDetected(barcodes[0].rawValue)
+        }
+      } catch (err) {
+        // Frame analysis error, continue scanning
+      }
+    }, 300)
+
+    return () => {
+      active = false
+      clearInterval(intervalId)
+      stopCamera()
+    }
+  }, [showCamera, startCamera, stopCamera, handleQrDetected])
+
+  // Process Receipt Image (from file picker or camera snapshot)
+  const processReceiptImage = async (fileOrBlob: Blob, filename: string = "receipt.jpg") => {
     setIsScanning(true)
+    setScanError(null)
     setLowFields([])
 
     try {
       const formData = new FormData()
-      formData.append("image", file)
+      formData.append("image", fileOrBlob, filename)
       formData.append("userId", user?.id || (user as any)?.uid || "anonymous")
 
       const res = await fetch("/api/receipt-scan", {
@@ -215,29 +308,93 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
         body: formData,
       })
 
-      if (res.ok) {
-        const data = await res.json()
-        if (data.raw_summary) {
-          setValue(data.raw_summary)
-        } else if (data.merchant && data.amount) {
-          setValue(`Spent ${data.amount} on ${data.category || "General"} at ${data.merchant} (${data.payment_method_guess || "Cash"})`)
-        }
-        if (data.low_fields && data.low_fields.length > 0) {
-          setLowFields(data.low_fields)
-        }
-        if (data.receipt_url) {
-          setScannedReceiptUrl(data.receipt_url)
-        }
-      } else {
-        setValue("Spent 250 on Food at Store (Cash)")
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        // Strict error rejection without corrupting transaction history with dummy data
+        setScanError(
+          data.error || "No valid QR code or receipt detected. Please scan a clear payment slip or QR code."
+        )
+        return
       }
+
+      if (data.raw_summary) {
+        setValue(data.raw_summary)
+      } else if (data.merchant && data.amount) {
+        setValue(`Spent ${data.amount} on ${data.category || "General"} at ${data.merchant} (${data.payment_method_guess || "Cash"})`)
+      }
+      if (data.low_fields && data.low_fields.length > 0) {
+        setLowFields(data.low_fields)
+      }
+      if (data.receipt_url) {
+        setScannedReceiptUrl(data.receipt_url)
+      }
+      setScanError(null)
     } catch (err) {
       console.error("Gemini OCR scan error:", err)
-      setValue("Spent 250 on Food at Store (Cash)")
+      setScanError("No valid QR code or receipt detected. Please scan a clear payment slip or QR code.")
     } finally {
       setIsScanning(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
     }
+  }
+
+  // Camera Frame Snapshot & AI OCR
+  const handleCaptureSnapshot = async () => {
+    if (!videoRef.current) return
+    setIsScanning(true)
+    setScanError(null)
+
+    try {
+      const canvas = document.createElement("canvas")
+      canvas.width = videoRef.current.videoWidth || 640
+      canvas.height = videoRef.current.videoHeight || 480
+      const ctx = canvas.getContext("2d")
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
+        canvas.toBlob(async (blob) => {
+          if (blob) {
+            setShowCamera(false)
+            stopCamera()
+            await processReceiptImage(blob, "camera-snapshot.jpg")
+          }
+        }, "image/jpeg", 0.9)
+      }
+    } catch (err) {
+      setScanError("Failed to capture snapshot from camera. Please try again.")
+      setIsScanning(false)
+    }
+  }
+
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    await processReceiptImage(file, file.name)
+  }
+
+  const handleLog = async () => {
+    if (!value.trim() || !parsedData || isSpam || parsedData.amount <= 0) return
+    setIsSaving(true)
+    clearInsertError()
+
+    await addTransaction({
+      label: value.trim().slice(0, MAX_LENGTH.DESCRIPTION),
+      category: parsedData.category,
+      account: parsedData.account,
+      amount: parsedData.amount,
+      currency: "PHP",
+      kind: parsedData.isIncome ? "income" : "expense",
+      receipt_url: scannedReceiptUrl || undefined,
+    })
+
+    setIsSaving(false)
+    setValue("")
+    setLowFields([])
+    setScanError(null)
+    setScannedReceiptUrl(null)
+    setShowCamera(false)
+    stopCamera()
+    onClose()
   }
 
   // Voice Web Speech API
@@ -257,44 +414,61 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
     recognition.onerror = () => setIsListening(false)
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript
-      setValue(transcript)
+      setScanError(null)
+      setValue(sanitizeSpam(transcript, MAX_LENGTH.DESCRIPTION))
     }
 
     recognition.start()
   }
 
+  // Keyboard shortcut ESC and body overflow
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
+      if (e.key === "Escape") {
+        if (showCamera) {
+          setShowCamera(false)
+          stopCamera()
+        } else {
+          onClose()
+        }
+      }
     }
     document.addEventListener("keydown", onKey)
     document.body.style.overflow = "hidden"
     return () => {
       document.removeEventListener("keydown", onKey)
       document.body.style.overflow = ""
+      stopCamera()
     }
-  }, [open, onClose])
+  }, [open, showCamera, onClose, stopCamera])
 
-  if (!open) return null
+  if (!open || !mounted) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      {/* Backdrop */}
       <motion.button
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         type="button"
         aria-label="Close"
-        onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+        onClick={() => {
+          setShowCamera(false)
+          stopCamera()
+          onClose()
+        }}
+        className="absolute inset-0 bg-black/60 backdrop-blur-md cursor-default"
       />
+
+      {/* Modal Dialog Content */}
       <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 24, scale: 0.96 }}
         transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 w-full max-w-md rounded-t-[2.5rem] bg-card p-6 text-foreground shadow-2xl sm:rounded-[2.5rem] border border-border/80"
+        className="relative z-10 w-full max-w-md rounded-t-[2.5rem] bg-card p-6 text-foreground shadow-2xl sm:rounded-[2.5rem] border border-border/80 max-h-[90vh] overflow-y-auto"
       >
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
@@ -307,26 +481,99 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
                 Quick Log
               </h2>
               <p className="text-[11px] font-semibold text-muted-foreground">
-                Natural language & instant AI receipt OCR
+                Natural language, Live Camera QR & AI OCR
               </p>
             </div>
           </div>
           <button
             type="button"
             aria-label="Close"
-            onClick={onClose}
+            onClick={() => {
+              setShowCamera(false)
+              stopCamera()
+              onClose()
+            }}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-accent"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
+        {/* Live Camera Viewfinder Overlay */}
+        <AnimatePresence>
+          {showCamera && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-4 overflow-hidden rounded-3xl border border-[#3D784E]/40 bg-black shadow-inner"
+            >
+              <div className="relative aspect-video w-full overflow-hidden bg-zinc-950">
+                <video
+                  ref={videoRef}
+                  playsInline
+                  autoPlay
+                  muted
+                  className="h-full w-full object-cover"
+                />
+
+                {/* Scanning reticle and laser line */}
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center p-4">
+                  <div className="relative h-44 w-44 rounded-2xl border-2 border-[#3D784E]/80 shadow-[0_0_15px_rgba(61,120,78,0.5)]">
+                    <div className="absolute inset-x-2 top-0 h-0.5 bg-[#4ADE80] animate-bounce shadow-[0_0_8px_#4ADE80]" />
+                  </div>
+                  <span className="mt-2 rounded-full bg-black/75 px-3 py-1 text-[10px] font-bold text-white backdrop-blur-xs">
+                    Align QR Code or Receipt in Viewfinder
+                  </span>
+                </div>
+
+                {cameraError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/85 p-4 text-center">
+                    <p className="text-xs font-semibold text-rose-400">{cameraError}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Viewfinder Controls */}
+              <div className="flex items-center justify-between bg-zinc-900 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCamera(false)
+                    stopCamera()
+                  }}
+                  className="rounded-xl bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCaptureSnapshot}
+                  disabled={isScanning}
+                  className="flex items-center gap-1.5 rounded-xl bg-[#3D784E] px-4 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-[#356B46] disabled:opacity-50"
+                >
+                  {isScanning ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                  <span>{isScanning ? "Analyzing..." : "Snap Receipt (AI OCR)"}</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Input Area with Live Parser Badge */}
         <div className="relative rounded-2xl border border-border/80 bg-secondary/30 focus-within:border-[#3D784E] focus-within:bg-card focus-within:ring-4 focus-within:ring-[#3D784E]/10 transition-all">
           <textarea
             id="quick-log-input"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            maxLength={MAX_LENGTH.DESCRIPTION}
+            onChange={(e) => {
+              setScanError(null)
+              setValue(sanitizeSpam(e.target.value, MAX_LENGTH.DESCRIPTION))
+            }}
             rows={3}
             autoFocus
             placeholder="Type or speak... e.g., 'Spent 250 on lunch' or 'Sahod 15000 GCash'"
@@ -381,6 +628,21 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
           </div>
         </div>
 
+        {/* Character repetition spam notice */}
+        {isSpam && (
+          <p className="mt-1 text-xs font-semibold text-rose-500">
+            Please avoid excessively repeated characters.
+          </p>
+        )}
+
+        {/* Strict Verification Error Banner */}
+        {scanError && (
+          <div className="mt-3 flex items-start gap-2 rounded-xl bg-rose-500/10 border border-rose-500/20 px-3 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{scanError}</span>
+          </div>
+        )}
+
         {/* OCR Field Notice */}
         {lowFields.length > 0 && (
           <div className="mt-2 flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-700 dark:text-amber-300">
@@ -395,7 +657,10 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
             <button
               key={item.text}
               type="button"
-              onClick={() => setValue(item.text)}
+              onClick={() => {
+                setScanError(null)
+                setValue(item.text)
+              }}
               className="flex items-center gap-1.5 rounded-xl border border-border/70 bg-card px-2.5 py-1.5 text-xs font-bold text-foreground/85 shadow-2xs transition-all hover:bg-secondary hover:text-foreground active:scale-95"
             >
               <span>{item.icon}</span>
@@ -420,7 +685,7 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
           </p>
         </div>
 
-        {/* Insert Error Banner — shown when Supabase insert fails (previously silent) */}
+        {/* Insert Error Banner — shown when Supabase insert fails */}
         {lastInsertError && (
           <div className="mt-3 flex items-start gap-2 rounded-xl bg-rose-500/10 border border-rose-500/20 px-3 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400">
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -429,16 +694,31 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
         )}
 
         {/* Action Buttons */}
-        <div className="mt-5 flex gap-2.5">
-          {/* Rear camera capture */}
+        <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:gap-2.5">
+          {/* File Upload Hidden Input */}
           <input
             type="file"
             accept="image/*"
-            capture="environment"
             className="hidden"
             ref={fileInputRef}
-            onChange={handleScan}
+            onChange={handleFileInputChange}
           />
+
+          {/* Realtime Camera / QR Viewfinder Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setScanError(null)
+              setShowCamera((prev) => !prev)
+            }}
+            disabled={isScanning || isSaving}
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#3D784E]/40 bg-[#3D784E]/10 py-3 text-xs font-black text-[#2E683E] dark:text-[#4ADE80] shadow-xs transition-all hover:bg-[#3D784E]/20 active:scale-[0.98] disabled:opacity-50"
+          >
+            <Camera className="h-4 w-4 text-[#3D784E]" />
+            <span>{showCamera ? "Close Camera" : "Live Camera & QR"}</span>
+          </button>
+
+          {/* Upload Receipt (AI OCR) Button */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -448,14 +728,16 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
             {isScanning ? (
               <Loader2 className="h-4 w-4 animate-spin text-[#3D784E]" />
             ) : (
-              <ScanLine className="h-4 w-4 text-[#3D784E]" />
+              <Upload className="h-4 w-4 text-[#3D784E]" />
             )}
-            <span>{isScanning ? "Scanning..." : "Scan Receipt (AI)"}</span>
+            <span>{isScanning ? "Scanning..." : "Upload Receipt"}</span>
           </button>
+
+          {/* Log Transaction Button */}
           <button
             type="button"
             onClick={handleLog}
-            disabled={!value.trim() || isScanning || isSaving}
+            disabled={!value.trim() || isScanning || isSaving || isSpam || !parsedData || parsedData.amount <= 0}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-[#3D784E] py-3 text-xs font-black text-white shadow-md shadow-[#3D784E]/25 transition-all hover:bg-[#356B46] active:scale-[0.98] disabled:opacity-50"
           >
             {isSaving ? (
@@ -467,6 +749,7 @@ export function QuickLogModal({ open, onClose }: QuickLogModalProps) {
           </button>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   )
 }

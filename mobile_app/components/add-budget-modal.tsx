@@ -1,10 +1,18 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 import Image from "next/image"
 import { Wallet, X, Sparkles } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { getBrandLogo } from "@/lib/pawi-data"
+import {
+  hasConsecutiveSpam,
+  sanitizeSpam,
+  sanitizeNumericInput,
+  isValidPositiveAmount,
+  MAX_LENGTH,
+} from "@/lib/anti-spam"
 
 interface AddBudgetModalProps {
   open: boolean
@@ -20,17 +28,22 @@ const accents = [
 ]
 
 export function AddBudgetModal({ open, onClose }: AddBudgetModalProps) {
+  const [mounted, setMounted] = useState(false)
   const [category, setCategory] = useState("")
   const [limit, setLimit] = useState("")
   const { addBudget } = useStore()
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const detectedLogo = getBrandLogo(category)
 
   const handleAdd = () => {
-    if (!category.trim() || !limit) return
+    if (!category.trim() || !isValidPositiveAmount(limit) || hasConsecutiveSpam(category)) return
 
     addBudget({
-      category,
+      category: category.trim().slice(0, MAX_LENGTH.NAME),
       limit: Number(limit),
       spent: 0,
       accent: accents[Math.floor(Math.random() * accents.length)],
@@ -55,9 +68,9 @@ export function AddBudgetModal({ open, onClose }: AddBudgetModalProps) {
     }
   }, [open, onClose])
 
-  if (!open) return null
+  if (!open || !mounted) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <button
         type="button"
@@ -99,7 +112,8 @@ export function AddBudgetModal({ open, onClose }: AddBudgetModalProps) {
               <input
                 type="text"
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                maxLength={MAX_LENGTH.NAME}
+                onChange={(e) => setCategory(sanitizeSpam(e.target.value, MAX_LENGTH.NAME))}
                 placeholder="e.g. Netflix, Starbucks, Foodpanda, Grab..."
                 className="flex h-12 w-full rounded-xl border border-border/60 bg-card px-4 pr-12 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               />
@@ -117,11 +131,13 @@ export function AddBudgetModal({ open, onClose }: AddBudgetModalProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Monthly Limit</label>
+            <label className="text-sm font-medium text-foreground">Monthly Limit (PHP)</label>
             <input
               type="number"
               value={limit}
-              onChange={(e) => setLimit(e.target.value)}
+              min={1}
+              maxLength={MAX_LENGTH.AMOUNT_DIGITS}
+              onChange={(e) => setLimit(sanitizeNumericInput(e.target.value, MAX_LENGTH.AMOUNT_DIGITS))}
               placeholder="e.g. 5000"
               className="flex h-12 w-full rounded-xl border border-border/60 bg-card px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             />
@@ -132,13 +148,14 @@ export function AddBudgetModal({ open, onClose }: AddBudgetModalProps) {
           <button
             type="button"
             onClick={handleAdd}
-            disabled={!category.trim() || !limit}
-            className="flex-1 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-opacity disabled:opacity-50"
+            disabled={!category.trim() || !isValidPositiveAmount(limit) || hasConsecutiveSpam(category)}
+            className="flex-1 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Create Budget
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

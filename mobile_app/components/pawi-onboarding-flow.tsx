@@ -47,12 +47,27 @@ import {
   Globe,
   ArrowRight,
   Wallet,
+  Calendar,
+  Laptop,
+  Plane,
+  Home,
+  Car,
+  Smartphone,
+  Coins,
+  Gift,
+  Heart,
 } from "lucide-react"
 import { useProfile, PrimaryGoal, ProfileType } from "@/lib/use-profile"
 import { useStore } from "@/lib/store"
 import { useAuth } from "@/lib/auth-context"
 import { requestPushPermission } from "@/lib/push-notifications"
 import { cn } from "@/lib/utils"
+import {
+  hasConsecutiveSpam,
+  sanitizeSpam,
+  sanitizeNumericInput,
+  MAX_LENGTH,
+} from "@/lib/anti-spam"
 
 interface PawiOnboardingFlowProps {
   onComplete: () => void
@@ -97,9 +112,9 @@ const PRIMARY_GOAL_OPTIONS: { value: PrimaryGoal; label: string; sub: string; ic
 ]
 
 const SUGGESTED_CATEGORIES: Record<ProfileType, string[]> = {
-  student: ["🎓 Tuition", "🍱 Food & Snacks", "🚌 Transportation", "📚 School Supplies", "💸 Allowance"],
-  working_student: ["💸 Allowance", "💼 Part-time Income", "🎓 Tuition", "🚌 Commute", "🍱 Meals & Dining"],
-  professional: ["💼 Salary", "📊 Commission", "🤝 Client Payment", "🍱 Meals & Dining", "🚗 Transportation"],
+  student: ["Tuition", "Food & Snacks", "Transportation", "School Supplies"],
+  working_student: ["Part-time Income", "Tuition", "Commute", "Meals & Dining"],
+  professional: ["Salary", "Commission", "Client Payment", "Meals & Dining", "Transportation"],
 }
 
 // Slide transition variants
@@ -225,6 +240,34 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
     setError(null)
     setSaving(true)
     try {
+      if (showGoalCreation) {
+        // Step 4b / 5b: Optional savings goal creation — evaluate BEFORE checking step === 4 or 5
+        const targetNum = parseFloat(goalTarget)
+        if (!goalName.trim()) {
+          setError("Give your goal a name, like 'Laptop Fund' or 'School Trip'")
+          return
+        }
+        if (hasConsecutiveSpam(goalName) || hasConsecutiveSpam(goalTarget)) {
+          setError("Please avoid excessively repeated characters.")
+          return
+        }
+        if (!goalTarget || isNaN(targetNum) || targetNum <= 0) {
+          setError("Please enter a target amount greater than ₱0.")
+          return
+        }
+        await addGoal({
+          name: goalName.trim().slice(0, MAX_LENGTH.GOAL_TITLE),
+          target: targetNum,
+          saved: 0,
+          due: null,
+          icon: goalIcon,
+          accent: "#3D784E",
+        })
+        setShowGoalCreation(false)
+        await goForward(isStudentBranch ? 5 : 6)
+        return
+      }
+
       if (step === 1) {
         // Step 1: Name — required
         const cleaned = name.trim()
@@ -232,7 +275,14 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
           setError("Please enter your name so Pawi can greet you! 🐢")
           return
         }
-        await saveProfile({ name: cleaned, initials: cleaned.slice(0, 2).toUpperCase() })
+        if (hasConsecutiveSpam(cleaned)) {
+          setError("Please avoid excessively repeated characters in your name.")
+          return
+        }
+        await saveProfile({
+          name: cleaned.slice(0, MAX_LENGTH.NAME),
+          initials: cleaned.slice(0, 2).toUpperCase(),
+        })
         await goForward()
       } else if (step === 2) {
         // Step 2: Profile Type — required
@@ -248,8 +298,16 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
       } else if (isStudentBranch) {
         // ── STUDENT & WORKING STUDENT BRANCH (6 Steps Total) ──────────────────
         if (step === 3) {
-          // Step 3: Weekly Allowance — optional/numeric
-          const num = parseFloat(weeklyAllowance) || 0
+          // Step 3: Weekly Allowance — strictly required > 0
+          const num = parseFloat(weeklyAllowance)
+          if (!weeklyAllowance.trim() || isNaN(num) || num <= 0) {
+            setError("Please enter a valid weekly allowance greater than ₱0.")
+            return
+          }
+          if (hasConsecutiveSpam(weeklyAllowance)) {
+            setError("Please avoid excessively repeated characters.")
+            return
+          }
           const approxMonthly = num * 4
           await saveProfile({
             weekly_allowance: num,
@@ -272,27 +330,6 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
             return
           }
           await goForward()
-        } else if (showGoalCreation) {
-          // Step 4b: Optional savings goal creation
-          const targetNum = parseFloat(goalTarget)
-          if (!goalName.trim()) {
-            setError("Give your goal a name, like 'Laptop Fund' or 'School Trip' 🎯")
-            return
-          }
-          if (!goalTarget || isNaN(targetNum) || targetNum <= 0) {
-            setError("Please enter a target amount greater than ₱0.")
-            return
-          }
-          await addGoal({
-            name: goalName.trim(),
-            target: targetNum,
-            saved: 0,
-            due: null,
-            icon: goalIcon,
-            accent: "#3D784E",
-          })
-          setShowGoalCreation(false)
-          await goForward(5)
         } else if (step === 5) {
           // Step 5: Notifications — required answer
           if (notificationsEnabled === null) {
@@ -313,8 +350,12 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
       } else {
         // ── WORKING PROFESSIONAL BRANCH (7 Steps Total) ───────────────────────
         if (step === 3) {
-          // Step 3: Monthly Income — optional
+          // Step 3: Monthly Income
           const num = parseFloat(income) || 0
+          if (income.trim() && (isNaN(num) || num < 0 || hasConsecutiveSpam(income))) {
+            setError("Please enter a valid positive income amount.")
+            return
+          }
           await saveProfile({ monthly_income: num, weekly_allowance: 0 })
           await goForward()
         } else if (step === 4) {
@@ -362,27 +403,6 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
             return
           }
           await goForward()
-        } else if (showGoalCreation) {
-          // Step 5b: Optional savings goal creation
-          const targetNum = parseFloat(goalTarget)
-          if (!goalName.trim()) {
-            setError("Give your goal a name, like 'Laptop Fund' or 'Dream Trip' 🎯")
-            return
-          }
-          if (!goalTarget || isNaN(targetNum) || targetNum <= 0) {
-            setError("Please enter a target amount greater than ₱0.")
-            return
-          }
-          await addGoal({
-            name: goalName.trim(),
-            target: targetNum,
-            saved: 0,
-            due: null,
-            icon: goalIcon,
-            accent: "#3D784E",
-          })
-          setShowGoalCreation(false)
-          await goForward(6)
         } else if (step === 6) {
           // Step 6: Notifications — required answer
           if (notificationsEnabled === null) {
@@ -401,33 +421,37 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
           onComplete()
         }
       }
+    } catch (err: any) {
+      console.error("Onboarding step save error:", err)
+      setError(err?.message || "Failed to save. Please try again.")
     } finally {
       setSaving(false)
     }
   }, [
-    step,
-    isStudentBranch,
     showGoalCreation,
+    goalTarget,
+    goalName,
+    goalIcon,
+    addGoal,
+    isStudentBranch,
+    goForward,
+    step,
     name,
+    saveProfile,
     profileType,
     weeklyAllowance,
-    income,
-    paydayType,
-    paydayDay1,
-    paydayDay2,
     primaryGoal,
     skipGoalCreation,
-    goalName,
-    goalTarget,
-    goalIcon,
     notificationsEnabled,
     currency,
-    saveProfile,
     completeOnboarding,
-    goForward,
-    addGoal,
-    updatePaydayConfig,
+    user?.id,
     onComplete,
+    income,
+    paydayDay1,
+    paydayType,
+    paydayDay2,
+    updatePaydayConfig,
   ])
 
   if (loadingProfile) {
@@ -437,6 +461,46 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
       </div>
     )
   }
+
+  const isContinueDisabled = useMemo(() => {
+    if (saving) return true
+    if (showGoalCreation) {
+      const targetNum = parseFloat(goalTarget)
+      return (
+        !goalName.trim() ||
+        !goalTarget.trim() ||
+        isNaN(targetNum) ||
+        targetNum <= 0 ||
+        hasConsecutiveSpam(goalName) ||
+        hasConsecutiveSpam(goalTarget)
+      )
+    }
+    if (step === 1) return !name.trim() || hasConsecutiveSpam(name)
+    if (step === 2) return !profileType
+    if (isStudentBranch && step === 3) {
+      const num = parseFloat(weeklyAllowance)
+      return !weeklyAllowance.trim() || isNaN(num) || num <= 0 || hasConsecutiveSpam(weeklyAllowance)
+    }
+    if (!isStudentBranch && step === 3) {
+      if (income.trim()) {
+        const num = parseFloat(income)
+        return isNaN(num) || num < 0 || hasConsecutiveSpam(income)
+      }
+      return false
+    }
+    return false
+  }, [
+    saving,
+    showGoalCreation,
+    goalName,
+    goalTarget,
+    step,
+    name,
+    profileType,
+    isStudentBranch,
+    weeklyAllowance,
+    income,
+  ])
 
   const progressPercent = step === 0 ? 0 : Math.min(100, Math.round((step / totalSteps) * 100))
 
@@ -692,14 +756,14 @@ export function PawiOnboardingFlow({ onComplete }: PawiOnboardingFlowProps) {
           <button
             type="button"
             onClick={handleNext}
-            disabled={saving}
-            className="pointer-events-auto flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-[#3D784E] py-4 text-sm font-black text-white shadow-lg shadow-[#3D784E]/30 hover:bg-[#356B46] active:scale-[0.98] transition-all disabled:opacity-60"
+            disabled={isContinueDisabled}
+            className="pointer-events-auto flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-[#3D784E] py-4 text-sm font-black text-white shadow-lg shadow-[#3D784E]/30 hover:bg-[#356B46] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
             ) : (
               <>
-                <span>{step === totalSteps ? "Finish & Go to Dashboard" : "Continue"}</span>
+                <span>{step === totalSteps && !showGoalCreation ? "Finish & Go to Dashboard" : "Continue"}</span>
                 <ArrowRight className="h-4 w-4" />
               </>
             )}
@@ -742,15 +806,21 @@ function WelcomeStep({ name, onStart }: { name: string; onStart: () => void }) {
 
       <div className="flex flex-col gap-2.5 w-full">
         <div className="flex items-center gap-3 rounded-2xl bg-card border border-border/60 px-4 py-3">
-          <span className="text-xl">📊</span>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#3D784E]/10 text-[#3D784E]">
+            <BarChart3 className="h-4 w-4" />
+          </div>
           <p className="text-xs font-semibold text-foreground">Personalized dashboard tailored to your life</p>
         </div>
         <div className="flex items-center gap-3 rounded-2xl bg-card border border-border/60 px-4 py-3">
-          <span className="text-xl">📅</span>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#3D784E]/10 text-[#3D784E]">
+            <Calendar className="h-4 w-4" />
+          </div>
           <p className="text-xs font-semibold text-foreground">Allowance or payday countdowns that make sense</p>
         </div>
         <div className="flex items-center gap-3 rounded-2xl bg-card border border-border/60 px-4 py-3">
-          <span className="text-xl">🎯</span>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#3D784E]/10 text-[#3D784E]">
+            <Target className="h-4 w-4" />
+          </div>
           <p className="text-xs font-semibold text-foreground">Goals aligned with what you actually care about</p>
         </div>
       </div>
@@ -789,7 +859,8 @@ function NameStep({ name, onChange }: { name: string; onChange: (v: string) => v
         <input
           type="text"
           value={name}
-          onChange={(e) => onChange(e.target.value)}
+          maxLength={MAX_LENGTH.NAME}
+          onChange={(e) => onChange(sanitizeSpam(e.target.value, MAX_LENGTH.NAME))}
           placeholder="e.g. Janver, Kaye, Alex"
           autoFocus
           autoComplete="given-name"
@@ -833,13 +904,13 @@ function ProfileTypeStep({
       icon: (
         <div className="relative">
           <GraduationCap className="h-6 w-6" />
-          <div className="absolute -bottom-1 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] text-white font-bold shadow-xs">
-            💼
+          <div className="absolute -bottom-1 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-white shadow-xs">
+            <Briefcase className="h-2.5 w-2.5" />
           </div>
         </div>
       ),
       title: "Working Student",
-      sub: "Allowance, part-time income, tuition, commuting",
+      sub: "Part-time income, tuition, commuting",
       preview: SUGGESTED_CATEGORIES.working_student,
     },
     {
@@ -898,11 +969,11 @@ function ProfileTypeStep({
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5 mb-2 leading-tight">{opt.sub}</p>
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1.5 mt-2">
                   {opt.preview.map((cat) => (
                     <span
                       key={cat}
-                      className="rounded-full bg-secondary/80 px-2 py-0.5 text-[9px] font-bold text-muted-foreground"
+                      className="rounded-full bg-secondary/80 px-2.5 py-1 text-xs font-semibold text-muted-foreground"
                     >
                       {cat}
                     </span>
@@ -951,10 +1022,11 @@ function WeeklyAllowanceStep({
           <input
             type="number"
             value={allowance}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => onChange(sanitizeNumericInput(e.target.value, MAX_LENGTH.AMOUNT_DIGITS))}
             placeholder="e.g. 1,500"
             autoFocus
-            min={0}
+            min={1}
+            maxLength={MAX_LENGTH.AMOUNT_DIGITS}
             className="flex h-14 w-full rounded-2xl border border-border/70 bg-secondary/40 pl-8 pr-4 text-base font-bold text-foreground outline-none focus:ring-2 focus:ring-[#3D784E] transition-all placeholder:text-muted-foreground/50"
           />
         </div>
@@ -1031,10 +1103,11 @@ function IncomeStep({ income, onChange }: { income: string; onChange: (v: string
           <input
             type="number"
             value={income}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => onChange(sanitizeNumericInput(e.target.value, MAX_LENGTH.AMOUNT_DIGITS))}
             placeholder="e.g. 35,000"
             autoFocus
-            min={0}
+            min={1}
+            maxLength={MAX_LENGTH.AMOUNT_DIGITS}
             className="flex h-14 w-full rounded-2xl border border-border/70 bg-secondary/40 pl-8 pr-4 text-base font-bold text-foreground outline-none focus:ring-2 focus:ring-[#3D784E] transition-all placeholder:text-muted-foreground/50"
           />
         </div>
@@ -1265,7 +1338,18 @@ function PrimaryGoalStep({
 }
 
 // Inline Goal Creation
-const GOAL_EMOJI_PRESETS = ["🎯", "✈️", "💻", "🏠", "💍", "🎓", "🚗", "📱", "💰", "🎉"]
+const GOAL_ICON_OPTIONS = [
+  { id: "🎯", icon: Target, label: "Goal" },
+  { id: "💻", icon: Laptop, label: "Tech" },
+  { id: "✈️", icon: Plane, label: "Travel" },
+  { id: "🏠", icon: Home, label: "Home" },
+  { id: "🎓", icon: GraduationCap, label: "Education" },
+  { id: "🚗", icon: Car, label: "Vehicle" },
+  { id: "📱", icon: Smartphone, label: "Device" },
+  { id: "💰", icon: Coins, label: "Savings" },
+  { id: "🎁", icon: Gift, label: "Gift" },
+  { id: "❤️", icon: Heart, label: "Personal" },
+]
 
 function GoalCreationStep({
   goalName,
@@ -1293,7 +1377,7 @@ function GoalCreationStep({
           </span>
         </div>
         <h2 className="text-2xl font-black text-foreground leading-tight">
-          What are you saving for? 🎯
+          What are you saving for?
         </h2>
         <p className="text-sm text-muted-foreground">
           Create your first savings goal now so it&apos;s waiting on your Plan screen the moment you finish.
@@ -1305,21 +1389,26 @@ function GoalCreationStep({
           Pick an icon
         </label>
         <div className="mt-2 flex flex-wrap gap-2">
-          {GOAL_EMOJI_PRESETS.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              onClick={() => onIconChange(emoji)}
-              className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-2xl border-2 text-lg transition-all",
-                goalIcon === emoji
-                  ? "border-[#3D784E] bg-[#3D784E]/10"
-                  : "border-border/60 bg-secondary/40 hover:bg-secondary"
-              )}
-            >
-              {emoji}
-            </button>
-          ))}
+          {GOAL_ICON_OPTIONS.map((opt) => {
+            const Icon = opt.icon
+            const isSelected = goalIcon === opt.id
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => onIconChange(opt.id)}
+                title={opt.label}
+                className={cn(
+                  "flex h-11 w-11 items-center justify-center rounded-2xl border-2 transition-all",
+                  isSelected
+                    ? "border-[#3D784E] bg-[#3D784E]/15 text-[#3D784E] shadow-xs"
+                    : "border-border/60 bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <Icon className="h-5 w-5" />
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -1331,7 +1420,8 @@ function GoalCreationStep({
           <input
             type="text"
             value={goalName}
-            onChange={(e) => onNameChange(e.target.value)}
+            maxLength={MAX_LENGTH.GOAL_TITLE}
+            onChange={(e) => onNameChange(sanitizeSpam(e.target.value, MAX_LENGTH.GOAL_TITLE))}
             placeholder='e.g. "Trip to Japan", "New Laptop"'
             autoFocus
             className="mt-1.5 flex h-12 w-full rounded-2xl border border-border/70 bg-secondary/40 px-4 text-sm font-bold text-foreground outline-none focus:ring-2 focus:ring-[#3D784E] placeholder:text-muted-foreground/50"
@@ -1346,9 +1436,10 @@ function GoalCreationStep({
             <input
               type="number"
               value={goalTarget}
-              onChange={(e) => onTargetChange(e.target.value)}
-              placeholder="e.g. 25,000"
               min={1}
+              maxLength={MAX_LENGTH.AMOUNT_DIGITS}
+              onChange={(e) => onTargetChange(sanitizeNumericInput(e.target.value, MAX_LENGTH.AMOUNT_DIGITS))}
+              placeholder="e.g. 25,000"
               className="flex h-12 w-full rounded-2xl border border-border/70 bg-secondary/40 pl-8 pr-4 text-sm font-bold text-foreground outline-none focus:ring-2 focus:ring-[#3D784E] placeholder:text-muted-foreground/50"
             />
           </div>

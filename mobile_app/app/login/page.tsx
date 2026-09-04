@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Mail, Lock, User, Eye, EyeOff, Sparkles, ShieldCheck, ArrowRight, Loader2, AlertCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
+import { hasConsecutiveSpam, sanitizeSpam, MAX_LENGTH } from "@/lib/anti-spam"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -55,6 +56,11 @@ export default function LoginPage() {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+
+    if (hasConsecutiveSpam(email) || hasConsecutiveSpam(password) || (isSignUp && hasConsecutiveSpam(name))) {
+      setError("Please avoid excessively repeating identical characters.")
+      return
+    }
 
     if (isSignUp && password !== confirmPassword) {
       setError("Passwords do not match")
@@ -212,7 +218,8 @@ export default function LoginPage() {
                       type="text"
                       placeholder="e.g. Janver"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      maxLength={MAX_LENGTH.NAME}
+                      onChange={(e) => setName(sanitizeSpam(e.target.value, MAX_LENGTH.NAME))}
                       className="h-12 w-full rounded-2xl border border-neutral-200 bg-neutral-50 pl-10 pr-4 text-sm font-semibold text-neutral-900 placeholder:text-neutral-400 focus:border-[#3D784E] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
                     />
                   </div>
@@ -232,7 +239,8 @@ export default function LoginPage() {
                   placeholder="name@example.com"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  maxLength={MAX_LENGTH.EMAIL}
+                  onChange={(e) => setEmail(sanitizeSpam(e.target.value, MAX_LENGTH.EMAIL))}
                   className="h-12 w-full rounded-2xl border border-neutral-200 bg-neutral-50 pl-10 pr-4 text-sm font-semibold text-neutral-900 placeholder:text-neutral-400 focus:border-[#3D784E] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
                 />
               </div>
@@ -250,7 +258,8 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  maxLength={MAX_LENGTH.PASSWORD}
+                  onChange={(e) => setPassword(e.target.value.slice(0, MAX_LENGTH.PASSWORD))}
                   className="h-12 w-full rounded-2xl border border-neutral-200 bg-neutral-50 pl-10 pr-11 text-sm font-semibold text-neutral-900 placeholder:text-neutral-400 focus:border-[#3D784E] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
                 />
                 <button
@@ -283,7 +292,8 @@ export default function LoginPage() {
                       placeholder="••••••••"
                       required
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      maxLength={MAX_LENGTH.PASSWORD}
+                      onChange={(e) => setConfirmPassword(e.target.value.slice(0, MAX_LENGTH.PASSWORD))}
                       className="h-12 w-full rounded-2xl border border-neutral-200 bg-neutral-50 pl-10 pr-4 text-sm font-semibold text-neutral-900 placeholder:text-neutral-400 focus:border-[#3D784E] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3D784E]/15 transition-all"
                     />
                   </div>

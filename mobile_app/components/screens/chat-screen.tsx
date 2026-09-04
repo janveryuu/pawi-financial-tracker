@@ -24,6 +24,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useProfile } from "@/lib/use-profile"
 import { formatMoney, getBrandLogo, getWalletBrandColor } from "@/lib/pawi-data"
 import { ProposedAction } from "@/lib/chat-action-parser"
+import { hasConsecutiveSpam, sanitizeSpam } from "@/lib/anti-spam"
 
 interface ExtendedChatMessage {
   role: "user" | "assistant"
@@ -64,6 +65,7 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
 
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isRateLimited, setIsRateLimited] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
   const [activeAction, setActiveAction] = useState<ProposedAction | null>(null)
@@ -106,7 +108,8 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
 
   const handleSend = async (textToSend?: string) => {
     const text = (textToSend || input).trim()
-    if (!text || isLoading) return
+    if (!text || isLoading || isRateLimited) return
+    if (hasConsecutiveSpam(text)) return
 
     setInput("")
     setExecutionError(null)
@@ -164,6 +167,10 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
         }),
       })
       const data = await res.json()
+
+      if (data.rateLimited) {
+        setIsRateLimited(true)
+      }
 
       const proposed = data.proposedAction as ProposedAction | null
       setActiveAction(proposed && proposed.status !== "executed" && proposed.status !== "cancelled" ? proposed : null)
@@ -782,26 +789,40 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
 
       {/* Floating Bottom Input Card */}
       <div className="mt-2 space-y-2">
+        {isRateLimited && (
+          <div className="flex items-center gap-2 rounded-2xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-xs font-bold text-amber-700 dark:text-amber-300">
+            <Sparkles className="h-4 w-4 shrink-0 text-amber-500" />
+            <span>Daily AI conversation limit reached. Pawi will be back with full energy tomorrow! 🐢💤</span>
+          </div>
+        )}
+
         <div className="relative flex flex-col rounded-3xl border border-border/80 bg-card p-3 shadow-md">
           <textarea
             rows={2}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            disabled={isRateLimited}
+            maxLength={200}
+            onChange={(e) => setInput(sanitizeSpam(e.target.value, 200))}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault()
                 handleSend()
               }
             }}
-            placeholder='e.g. "Spent 200 on food", "Salary 5000 in GCash", "Paid Netflix 500"...'
-            className="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none px-1"
+            placeholder={
+              isRateLimited
+                ? "Daily chat limit reached for today 🐢💤"
+                : 'e.g. "Spent 200 on food", "Salary 5000 in GCash", "Paid Netflix 500"...'
+            }
+            className="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none px-1 disabled:opacity-50"
           />
 
           <div className="flex items-center justify-end gap-2 pt-1">
             <button
               type="button"
               onClick={handleMicClick}
-              className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
+              disabled={isRateLimited}
+              className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-40 ${
                 isListening
                   ? "bg-rose-500 text-white animate-pulse"
                   : "bg-[#3D784E]/12 text-[#3D784E] hover:bg-[#3D784E]/20"
@@ -812,7 +833,7 @@ export function ChatScreen({ onBack }: ChatScreenProps) {
             <button
               type="button"
               onClick={() => handleSend()}
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || isLoading || isRateLimited}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-foreground hover:bg-[#3D784E] hover:text-white disabled:opacity-40 transition-all active:scale-95"
             >
               <ArrowUp className="h-4 w-4 stroke-[2.5]" />

@@ -1,9 +1,30 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Target, X } from "lucide-react"
+import { createPortal } from "react-dom"
+import {
+  Target,
+  X,
+  Laptop,
+  Plane,
+  Home,
+  Car,
+  GraduationCap,
+  Smartphone,
+  Coins,
+  Gift,
+  Heart,
+  Sparkles,
+} from "lucide-react"
 import { useStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
+import {
+  hasConsecutiveSpam,
+  sanitizeSpam,
+  sanitizeNumericInput,
+  isValidPositiveAmount,
+  MAX_LENGTH,
+} from "@/lib/anti-spam"
 
 interface AddGoalModalProps {
   open: boolean
@@ -18,15 +39,31 @@ const accents = [
   "oklch(0.7 0.15 25)",
 ]
 
-const EMOJI_OPTIONS = ["🏖️", "🛡️", "🏠", "🚗", "💻", "🎓", "💍", "✈️", "📱", "🎉"]
+const GOAL_ICON_PRESETS = [
+  { id: "🎯", icon: Target, label: "Target" },
+  { id: "💻", icon: Laptop, label: "Laptop" },
+  { id: "✈️", icon: Plane, label: "Travel" },
+  { id: "🏠", icon: Home, label: "House" },
+  { id: "🎓", icon: GraduationCap, label: "School" },
+  { id: "🚗", icon: Car, label: "Car" },
+  { id: "📱", icon: Smartphone, label: "Phone" },
+  { id: "💰", icon: Coins, label: "Savings" },
+  { id: "🎁", icon: Gift, label: "Gift" },
+  { id: "❤️", icon: Heart, label: "Personal" },
+]
 
 export function AddGoalModal({ open, onClose }: AddGoalModalProps) {
+  const [mounted, setMounted] = useState(false)
   const [name, setName] = useState("")
   const [target, setTarget] = useState("")
   const [saved, setSaved] = useState("")
   const [due, setDue] = useState("")
-  const [selectedIcon, setSelectedIcon] = useState("")
+  const [selectedIcon, setSelectedIcon] = useState("🎯")
   const { addGoal } = useStore()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Reset form when opened
   useEffect(() => {
@@ -35,15 +72,15 @@ export function AddGoalModal({ open, onClose }: AddGoalModalProps) {
       setTarget("")
       setSaved("")
       setDue("")
-      setSelectedIcon("")
+      setSelectedIcon("🎯")
     }
   }, [open])
 
   const handleAdd = () => {
-    if (!name.trim() || !target) return
+    if (!name.trim() || !isValidPositiveAmount(target) || hasConsecutiveSpam(name)) return
 
     addGoal({
-      name,
+      name: name.trim().slice(0, MAX_LENGTH.GOAL_TITLE),
       target: Number(target),
       due: due || null,
       saved: Number(saved) || 0,
@@ -67,9 +104,9 @@ export function AddGoalModal({ open, onClose }: AddGoalModalProps) {
     }
   }, [open, onClose])
 
-  if (!open) return null
+  if (!open || !mounted) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <button
         type="button"
@@ -103,18 +140,21 @@ export function AddGoalModal({ open, onClose }: AddGoalModalProps) {
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              maxLength={MAX_LENGTH.GOAL_TITLE}
+              onChange={(e) => setName(sanitizeSpam(e.target.value, MAX_LENGTH.GOAL_TITLE))}
               placeholder="e.g., Bohol Trip, Emergency Fund"
               className="flex h-12 w-full rounded-xl border border-border/60 bg-secondary/40 px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Target Amount</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Target Amount (PHP)</label>
             <input
               type="number"
               value={target}
-              onChange={(e) => setTarget(e.target.value)}
+              min={1}
+              maxLength={MAX_LENGTH.AMOUNT_DIGITS}
+              onChange={(e) => setTarget(sanitizeNumericInput(e.target.value, MAX_LENGTH.AMOUNT_DIGITS))}
               placeholder="0.00"
               className="flex h-12 w-full rounded-xl border border-border/60 bg-secondary/40 px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             />
@@ -125,7 +165,9 @@ export function AddGoalModal({ open, onClose }: AddGoalModalProps) {
             <input
               type="number"
               value={saved}
-              onChange={(e) => setSaved(e.target.value)}
+              min={0}
+              maxLength={MAX_LENGTH.AMOUNT_DIGITS}
+              onChange={(e) => setSaved(sanitizeNumericInput(e.target.value, MAX_LENGTH.AMOUNT_DIGITS))}
               placeholder="0.00"
               className="flex h-12 w-full rounded-xl border border-border/60 bg-secondary/40 px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             />
@@ -144,19 +186,26 @@ export function AddGoalModal({ open, onClose }: AddGoalModalProps) {
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Icon</label>
             <div className="flex flex-wrap gap-2">
-              {EMOJI_OPTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setSelectedIcon(emoji)}
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full border bg-secondary/40 text-lg transition-colors hover:bg-secondary",
-                    selectedIcon === emoji ? "border-primary bg-primary/10 ring-2 ring-primary/20" : "border-border/60"
-                  )}
-                >
-                  {emoji}
-                </button>
-              ))}
+              {GOAL_ICON_PRESETS.map((opt) => {
+                const Icon = opt.icon
+                const isSelected = selectedIcon === opt.id
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setSelectedIcon(opt.id)}
+                    title={opt.label}
+                    className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-xl border transition-all",
+                      isSelected
+                        ? "border-[#3D784E] bg-[#3D784E]/15 text-[#3D784E] ring-2 ring-[#3D784E]/20"
+                        : "border-border/60 bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -172,13 +221,14 @@ export function AddGoalModal({ open, onClose }: AddGoalModalProps) {
           <button
             type="button"
             onClick={handleAdd}
-            disabled={!name.trim() || !target}
-            className="flex-1 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-opacity disabled:opacity-50"
+            disabled={!name.trim() || !isValidPositiveAmount(target) || hasConsecutiveSpam(name)}
+            className="flex-1 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Save Goal
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
