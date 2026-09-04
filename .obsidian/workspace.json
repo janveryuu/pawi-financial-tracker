@@ -183,5 +183,9 @@
     }
   },
   "active": "4018938b82f627b2",
-  "lastOpenFiles": []
+  "lastOpenFiles": [
+    "react/utils/csp-provider.md",
+    "react/utils",
+    "react"
+  ]
 }
