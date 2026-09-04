@@ -1,3 +1,32 @@
+---
+title: "Pawi: AI-Powered Personal Finance Tracker"
+type: project-architecture
+category: fintech
+status: Production / Active
+version: 2.0.1
+mascot: Pawi the Pawikan (Sea Turtle)
+platforms:
+  - Next.js 16 (PWA)
+  - Android TWA (APK)
+  - Vanilla Web App (Firebase)
+tags:
+  - project/pawi
+  - fintech
+  - architecture/fullstack
+related_projects:
+  - "[[Capy — Deep Project Architecture & System|Capy Mood & Travel Companion]]"
+tech_stack:
+  - "[[Next.js]]"
+  - "[[PostgreSQL]]"
+  - "[[Artificial Intelligence & LLMs]]"
+  - "[[Mobile Applications & TWA]]"
+  - "[[Tailwind CSS]]"
+dashboard: "[[Home]]"
+canvas: "[[Pawi Architecture.canvas]]"
+github_repo: janveryuu/pawi-financial-tracker
+apk_binary: Pawi-V2.apk
+---
+
 # 🐢 Pawi: AI-Powered Personal Finance Tracker — Complete Project Architecture & Knowledge Base
 
 > [!INFO] **Obsidian Document Metadata**
